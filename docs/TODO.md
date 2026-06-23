@@ -10,8 +10,11 @@ Living backlog. Done work lives in git history; this tracks what's next.
 ## 🔴 Next (priority order)
 
 ### Security & auth
-- [ ] **Per-user permission rules** — Triplit schema roles scoping rows to `ownerId`; per-user tokens instead of the client service token. Shared exercise library stays world-readable; custom exercises owner-scoped. *(in progress)*
-- [ ] **Real auth** — login UI; `getCurrentUserId()` returns the authenticated id; claim anon-owned data on first login; token-mint endpoint (so the JWT secret never reaches the client).
+- [x] **Per-user permission rules** — owner-scoped permissions on all collections; library read/insert-open. Verified: user B can't see user A's data.
+- [x] **Real auth** — self-hosted Supabase (RS256), login/signup/signout/account, auth-gated app, Supabase token → Triplit session.
+- [ ] Social login (Google/Apple) via Supabase
+- [ ] Email confirmation flow + password reset
+- [ ] Deploy Supabase + sync server on the Tailscale box
 
 ### Phase 3 — Programs
 - [x] Programs = ordered named days, each mapped to a routine (PPL-style)

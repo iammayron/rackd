@@ -13,6 +13,23 @@ Local-first gym workout tracker (plan routines, run workouts, rest timer, histor
 
 Before committing, run: `pnpm typecheck && pnpm test`.
 
+### Auth (self-hosted Supabase)
+
+- `supabase start` runs the local stack; `supabase status -o env` prints keys.
+- **Supabase defaults to ES256 JWTs; Triplit only verifies HS256/RS256.** So we
+  use an **RS256** signing key: `supabase gen signing-key --algorithm RS256`
+  → wrap as a JSON array in `supabase/signing_keys.json` (gitignored, private) →
+  `signing_keys_path` in `config.toml` → restart Supabase.
+- The sync server validates Supabase user tokens via `SUPABASE_JWT_SECRET` = the
+  **RS256 public JWK** (from `/auth/v1/.well-known/jwks.json`, single key object).
+- Web env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- After login, `AuthProvider` calls `client.startSession(accessToken)`; the app is
+  auth-gated (no anonymous use). `getCurrentUserId()` = Supabase user id.
+- Permissions: every collection is owner-scoped (`ownerId == token.sub`); the
+  exercise library is read/insert-open (allow-all filter = `[["id","isDefined",true]]`;
+  `{}` or `filter:[]` mean DENY in Triplit). Switching signing keys invalidates
+  existing sessions — sign out/in to get a token under the new key.
+
 ### Cloud sync (optional, self-hosted)
 
 - `pnpm --filter @fitnow/sync start` — run the Triplit sync server (env `JWT_SECRET`, `PORT` default 8787, `STORAGE` sqlite|memory).
