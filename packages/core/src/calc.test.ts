@@ -73,6 +73,48 @@ describe("sessionVolume", () => {
     ] as SetLog[];
     expect(sessionVolume(sets)).toBe(500);
   });
+  it("is 0 for no sets", () => {
+    expect(sessionVolume([])).toBe(0);
+  });
+  it("is 0 when nothing is completed", () => {
+    const sets = [
+      { weight: 80, reps: 8, completed: false },
+      { weight: 80, reps: 8, completed: false },
+    ] as SetLog[];
+    expect(sessionVolume(sets)).toBe(0);
+  });
+  it("sums weight x reps across many completed sets", () => {
+    const sets = [
+      { weight: 100, reps: 5, completed: true }, // 500
+      { weight: 60, reps: 10, completed: true }, // 600
+      { weight: 40, reps: 12, completed: true }, // 480
+    ] as SetLog[];
+    expect(sessionVolume(sets)).toBe(1580);
+  });
+});
+
+describe("weekly volume & count", () => {
+  // Mirrors WeeklyVolumeCard: weekStartIndex picks this week's Monday; sessions
+  // whose day index is >= that are "this week"; volume = sessionVolume of their
+  // completed sets, count = number of this-week sessions.
+  const monday = weekStartIndex(100, 4); // today Thu (index 100) → Monday is 97
+  const sessions = [
+    { dayIndex: 97, sets: [{ weight: 100, reps: 5, completed: true }] }, // Mon, this week
+    { dayIndex: 100, sets: [{ weight: 60, reps: 10, completed: true }] }, // Thu, this week
+    { dayIndex: 96, sets: [{ weight: 50, reps: 10, completed: true }] }, // last Sun, prior week
+  ];
+  const thisWeek = sessions.filter((s) => s.dayIndex >= monday);
+
+  it("includes only sessions on/after this week's Monday", () => {
+    expect(thisWeek.map((s) => s.dayIndex)).toEqual([97, 100]);
+  });
+  it("counts this-week workouts", () => {
+    expect(thisWeek.length).toBe(2);
+  });
+  it("sums this-week volume only", () => {
+    const sets = thisWeek.flatMap((s) => s.sets) as SetLog[];
+    expect(sessionVolume(sets)).toBe(500 + 600);
+  });
 });
 
 describe("units", () => {
@@ -81,6 +123,20 @@ describe("units", () => {
   });
   it("formats", () => {
     expect(formatWeight(100, "kg")).toBe("100 kg");
+  });
+  it("passes kg through unchanged at the edge", () => {
+    expect(toKg(100, "kg")).toBe(100);
+    expect(fromKg(100, "kg")).toBe(100);
+  });
+  it("converts lb to canonical kg", () => {
+    expect(toKg(100, "lb")).toBeCloseTo(45.359237, 6);
+  });
+  it("converts canonical kg back to lb for display", () => {
+    expect(fromKg(45.359237, "lb")).toBeCloseTo(100, 6);
+  });
+  it("rounds at the display edge to the requested decimals", () => {
+    expect(formatWeight(45.359237, "lb", 0)).toBe("100 lb");
+    expect(formatWeight(100, "lb", 1)).toBe("220.5 lb");
   });
 });
 
