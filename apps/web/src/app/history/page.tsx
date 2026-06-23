@@ -32,42 +32,27 @@ export default function HistoryPage() {
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
-      <main style={{ flex: 1, padding: "var(--space-6)" }}>
-        <h1 style={{ fontSize: "var(--text-xl)", fontWeight: 700, marginBottom: "var(--space-4)" }}>
-          History
-        </h1>
+    <div className="flex flex-col min-h-[100dvh]">
+      <main className="flex-1 p-6">
+        <h1 className="text-2xl font-bold mb-4">History</h1>
 
         {sessions.length === 0 && (
-          <p style={{ color: "var(--text-muted)" }}>No finished workouts yet.</p>
+          <p className="text-[var(--text-muted)]">No finished workouts yet.</p>
         )}
 
-        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        <ul className="list-none p-0 m-0">
           {sessions.map((s) => (
             <li key={s.id}>
               <Link
                 href={`/history/${s.id}`}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "var(--space-3)",
-                  background: "var(--surface)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius)",
-                  padding: "var(--space-3) var(--space-4)",
-                  marginBottom: "var(--space-2)",
-                  color: "var(--text)",
-                  textDecoration: "none",
-                }}
+                className="flex items-center gap-3 bg-[var(--surface)] border border-[var(--border)] rounded-lg py-3 px-4 mb-2 text-[var(--text)] no-underline"
               >
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600 }}>{s.name}</div>
-                  <div style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
-                    {fmtDate(s.startedAt)}
-                  </div>
+                <div className="flex-1">
+                  <div className="font-semibold">{s.name}</div>
+                  <div className="text-sm text-[var(--text-muted)]">{fmtDate(s.startedAt)}</div>
                 </div>
                 {s.endedAt && (
-                  <span style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
+                  <span className="text-sm text-[var(--text-muted)]">
                     {fmtDuration(s.startedAt, s.endedAt)}
                   </span>
                 )}

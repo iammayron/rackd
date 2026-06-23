@@ -55,90 +55,50 @@ export default function Home() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
-      <main style={{ flex: 1, padding: "var(--space-6)", paddingBottom: 96 }}>
-        <h1 style={{ fontSize: "var(--text-xl)", fontWeight: 700 }}>FitNow</h1>
-      <p style={{ color: "var(--text-muted)", marginBottom: "var(--space-4)" }}>
-        Pick exercises, start your workout.
-      </p>
+    <div className="flex flex-col min-h-[100dvh]">
+      <main className="flex-1 p-6 pb-24">
+        <h1 className="text-2xl font-bold">FitNow</h1>
+        <p className="text-[var(--text-muted)] mb-4">Pick exercises, start your workout.</p>
 
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search exercises…"
-        style={{
-          width: "100%",
-          minHeight: "var(--tap-min)",
-          padding: "0 var(--space-4)",
-          background: "var(--surface)",
-          color: "var(--text)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius)",
-          fontSize: "var(--text-base)",
-          marginBottom: "var(--space-4)",
-        }}
-      />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search exercises…"
+          className="w-full min-h-11 px-4 mb-4 bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+        />
 
-      <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-        {filtered.map((ex) => {
-          const isSel = selected.includes(ex.id);
-          return (
-            <li key={ex.id}>
-              <button
-                onClick={() => toggle(ex.id)}
-                style={{
-                  width: "100%",
-                  textAlign: "left",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "var(--space-3)",
-                  minHeight: "var(--tap-min)",
-                  padding: "var(--space-3) var(--space-4)",
-                  marginBottom: "var(--space-2)",
-                  background: isSel ? "var(--accent)" : "var(--surface)",
-                  color: isSel ? "#fff" : "var(--text)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius)",
-                }}
-              >
-                <span style={{ fontSize: "var(--text-base)", fontWeight: 600 }}>{ex.name}</span>
-                <span
-                  style={{
-                    marginLeft: "auto",
-                    fontSize: "var(--text-sm)",
-                    opacity: 0.8,
-                  }}
+        <ul className="list-none p-0 m-0">
+          {filtered.map((ex) => {
+            const isSel = selected.includes(ex.id);
+            return (
+              <li key={ex.id}>
+                <button
+                  type="button"
+                  onClick={() => toggle(ex.id)}
+                  className={`w-full text-left flex items-center gap-3 min-h-11 py-3 px-4 mb-2 border border-[var(--border)] rounded-lg ${
+                    isSel ? "bg-[var(--accent)] text-white" : "bg-[var(--surface)] text-[var(--text)]"
+                  }`}
                 >
-                  {ex.primaryMuscle} · {ex.equipment}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+                  <span className="text-base font-semibold">{ex.name}</span>
+                  <span className="ms-auto text-sm opacity-80">
+                    {ex.primaryMuscle} · {ex.equipment}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
 
-      {selected.length > 0 && (
-        <button
-          onClick={start}
-          disabled={starting}
-          style={{
-            position: "fixed",
-            left: "50%",
-            transform: "translateX(-50%)",
-            bottom: 72,
-            width: "min(440px, calc(100% - 32px))",
-            minHeight: 52,
-            background: "var(--accent)",
-            color: "#fff",
-            border: "none",
-            borderRadius: "var(--radius-lg)",
-            fontSize: "var(--text-lg)",
-            fontWeight: 700,
-          }}
-        >
-          {starting ? "Starting…" : `Start workout (${selected.length})`}
-        </button>
-      )}
+        {selected.length > 0 && (
+          <button
+            type="button"
+            onClick={start}
+            disabled={starting}
+            className="fixed left-1/2 -translate-x-1/2 bottom-[72px] w-[min(440px,calc(100%-32px))] min-h-[52px] rounded-2xl bg-[var(--accent)] text-white border-none text-lg font-bold disabled:opacity-60"
+          >
+            {starting ? "Starting…" : `Start workout (${selected.length})`}
+          </button>
+        )}
       </main>
       <Nav />
     </div>

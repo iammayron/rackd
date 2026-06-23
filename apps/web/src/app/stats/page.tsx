@@ -72,42 +72,24 @@ export default function StatsPage() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
-      <main style={{ flex: 1, padding: "var(--space-6)" }}>
-        <h1 style={{ fontSize: "var(--text-xl)", fontWeight: 700, marginBottom: "var(--space-4)" }}>
-          Stats
-        </h1>
+    <div className="flex flex-col min-h-[100dvh]">
+      <main className="flex-1 p-6">
+        <h1 className="text-2xl font-bold mb-4">Stats</h1>
 
         <Card title="Bodyweight">
-          <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
+          <div className="flex gap-2 mb-3">
             <input
               value={bw}
               onChange={(e) => setBw(e.target.value)}
               inputMode="decimal"
               placeholder="kg"
               aria-label="Bodyweight"
-              style={{
-                flex: 1,
-                minHeight: "var(--tap-min)",
-                padding: "0 var(--space-3)",
-                background: "var(--surface-2)",
-                color: "var(--text)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius)",
-                fontSize: "var(--text-base)",
-              }}
+              className="flex-1 min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             />
             <button
+              type="button"
               onClick={logBw}
-              style={{
-                minHeight: "var(--tap-min)",
-                padding: "0 var(--space-4)",
-                background: "var(--accent)",
-                color: "#fff",
-                border: "none",
-                borderRadius: "var(--radius)",
-                fontWeight: 700,
-              }}
+              className="min-h-11 px-4 bg-[var(--accent)] text-white border-none rounded-lg font-bold hover:bg-[var(--accent-press)]"
             >
               Log
             </button>
@@ -116,12 +98,12 @@ export default function StatsPage() {
         </Card>
 
         {withHistory.length === 0 ? (
-          <p style={{ color: "var(--text-muted)" }}>
+          <p className="text-[var(--text-muted)]">
             Finish a workout to see progress charts and PRs.
           </p>
         ) : (
           <>
-            <div style={{ marginBottom: "var(--space-4)" }}>
+            <div className="mb-4">
               <AdvancedSelect
                 value={selected}
                 onChange={setSelected}
@@ -131,20 +113,14 @@ export default function StatsPage() {
             </div>
 
             {prs.length > 0 && (
-              <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-4)", flexWrap: "wrap" }}>
+              <div className="flex gap-2 mb-4 flex-wrap">
                 {prs.map((pr) => (
                   <span
                     key={pr.id}
-                    style={{
-                      background: "var(--surface-2)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "var(--radius)",
-                      padding: "var(--space-2) var(--space-3)",
-                      fontSize: "var(--text-sm)",
-                    }}
+                    className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg py-2 px-3 text-sm"
                   >
                     🏆 {pr.type === "1rm" ? "Est 1RM" : "Top weight"}{" "}
-                    <strong style={{ color: "var(--accent)" }}>{pr.value} kg</strong>
+                    <strong className="text-[var(--accent)]">{pr.value} kg</strong>
                   </span>
                 ))}
               </div>
@@ -166,18 +142,8 @@ export default function StatsPage() {
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-lg)",
-        padding: "var(--space-4)",
-        marginBottom: "var(--space-4)",
-      }}
-    >
-      <h2 style={{ fontSize: "var(--text-base)", color: "var(--text-muted)", marginBottom: "var(--space-3)" }}>
-        {title}
-      </h2>
+    <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 mb-4">
+      <h2 className="text-base text-[var(--text-muted)] mb-3">{title}</h2>
       {children}
     </section>
   );

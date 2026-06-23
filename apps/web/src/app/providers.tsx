@@ -28,11 +28,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (!ready) {
-    return (
-      <div style={{ padding: "var(--space-8)", color: "var(--text-muted)" }}>
-        Loading FitNow…
-      </div>
-    );
+    return <div className="p-8 text-[var(--text-muted)]">Loading FitNow…</div>;
   }
   return <>{children}</>;
 }

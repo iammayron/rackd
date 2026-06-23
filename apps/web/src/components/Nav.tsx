@@ -14,31 +14,16 @@ const items = [
 export function Nav() {
   const path = usePathname();
   return (
-    <nav
-      style={{
-        position: "sticky",
-        bottom: 0,
-        display: "flex",
-        borderTop: "1px solid var(--border)",
-        background: "var(--bg)",
-      }}
-    >
+    <nav className="sticky bottom-0 flex border-t border-[var(--border)] bg-[var(--bg)]">
       {items.map((it) => {
         const active = it.href === "/" ? path === "/" : path.startsWith(it.href);
         return (
           <Link
             key={it.href}
             href={it.href}
-            style={{
-              flex: 1,
-              textAlign: "center",
-              padding: "var(--space-3) 0",
-              minHeight: "var(--tap-min)",
-              color: active ? "var(--accent)" : "var(--text-muted)",
-              fontWeight: active ? 700 : 500,
-              fontSize: "var(--text-sm)",
-              textDecoration: "none",
-            }}
+            className={`flex-1 text-center py-3 min-h-11 text-sm no-underline ${
+              active ? "text-[var(--accent)] font-bold" : "text-[var(--text-muted)] font-medium"
+            }`}
           >
             {it.label}
           </Link>
