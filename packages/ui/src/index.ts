@@ -48,3 +48,5 @@ export { RestTimerRing } from "./components/RestTimerRing";
 export type { RestTimerRingProps } from "./components/RestTimerRing";
 export { SetRow } from "./components/SetRow";
 export type { SetRowProps } from "./components/SetRow";
+export { MuscleVisualizer, muscleHue, exerciseGradient } from "./components/MuscleVisualizer";
+export type { MuscleVisualizerProps } from "./components/MuscleVisualizer";

@@ -1,6 +1,7 @@
 "use client";
 
 import type { PointerEvent } from "react";
+import Link from "next/link";
 import {
   addRoutineSet,
   updateRoutineSet,
@@ -96,9 +97,12 @@ export function RoutineExerciseEditor({
             ⠿
           </button>
         )}
-        <h2 className="text-lg font-bold">
+        <Link
+          href={`/exercise/${routineExercise.exerciseId}`}
+          className="text-lg font-bold text-[var(--text)] no-underline hover:text-[var(--accent)]"
+        >
           {routineExercise.exercise?.name ?? "Exercise"}
-        </h2>
+        </Link>
         <div className="ms-auto flex items-center gap-2">
           <ReplaceExercisePicker
             currentExerciseId={routineExercise.exerciseId}
