@@ -7,6 +7,7 @@ const items = [
   { href: "/", label: "Workout" },
   { href: "/routines", label: "Routines" },
   { href: "/history", label: "History" },
+  { href: "/stats", label: "Stats" },
 ];
 
 /** Bottom tab bar — thumb-zone navigation across the main sections. */

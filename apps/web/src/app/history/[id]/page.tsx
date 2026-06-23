@@ -16,6 +16,7 @@ interface SetRow {
   weight: number;
   reps: number;
   completed: boolean;
+  isPr: boolean;
 }
 
 function ExerciseSummary({ se }: { se: SessionExerciseRow }) {
@@ -49,6 +50,7 @@ function ExerciseSummary({ se }: { se: SessionExerciseRow }) {
           <span style={{ color: "var(--text)" }}>
             {s.weight} kg × {s.reps}
           </span>
+          {s.isPr && <span title="Personal record">🏆</span>}
         </div>
       ))}
       {best > 0 && (

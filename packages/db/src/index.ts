@@ -1,4 +1,5 @@
 import { TriplitClient } from "@triplit/client";
+import { estimate1RM } from "@fitnow/core";
 import { schema } from "./schema";
 
 export { schema } from "./schema";
@@ -117,9 +118,156 @@ export async function logSet(
 }
 
 export async function finishSession(client: Client, sessionId: string, now: number) {
-  return client.update("sessions", sessionId, (s) => {
+  await client.update("sessions", sessionId, (s) => {
     s.endedAt = now;
   });
+  const session = await client.fetchById("sessions", sessionId);
+  if (session) {
+    return detectAndRecordPRs(client, { sessionId, ownerId: session.ownerId, now });
+  }
+  return [];
+}
+
+export interface DetectedPR {
+  exerciseId: string;
+  type: "1rm" | "weight";
+  value: number;
+}
+
+/**
+ * After a session, record new all-time PRs (est 1RM + max weight) per exercise.
+ * personalRecords acts as the running ledger; the contributing set is flagged
+ * isPr so history can badge it. Idempotent enough: re-running won't beat an
+ * already-recorded equal best.
+ */
+export async function detectAndRecordPRs(
+  client: Client,
+  args: { sessionId: string; ownerId: string; now: number },
+): Promise<DetectedPR[]> {
+  const found: DetectedPR[] = [];
+  const ses = await client.fetch(
+    client.query("sessionExercises").Where("sessionId", "=", args.sessionId),
+  );
+
+  for (const se of ses) {
+    const sets = await client.fetch(
+      client
+        .query("setLogs")
+        .Where("sessionExerciseId", "=", se.id)
+        .Where("completed", "=", true),
+    );
+    if (sets.length === 0) continue;
+
+    // best set by estimated 1RM, and the heaviest set
+    let best1rmSet = sets[0]!;
+    let best1rm = 0;
+    let topWeightSet = sets[0]!;
+    for (const s of sets) {
+      const e = estimate1RM(s.weight, s.reps);
+      if (e > best1rm) {
+        best1rm = e;
+        best1rmSet = s;
+      }
+      if (s.weight > topWeightSet.weight) topWeightSet = s;
+    }
+    best1rm = Math.round(best1rm);
+
+    const prior1rm = await client.fetchOne(
+      client
+        .query("personalRecords")
+        .Where("exerciseId", "=", se.exerciseId)
+        .Where("type", "=", "1rm")
+        .Order("value", "DESC"),
+    );
+    if (best1rm > 0 && (!prior1rm || best1rm > prior1rm.value)) {
+      await client.insert("personalRecords", {
+        ownerId: args.ownerId,
+        exerciseId: se.exerciseId,
+        type: "1rm",
+        value: best1rm,
+        sessionId: args.sessionId,
+        achievedAt: args.now,
+      });
+      await client.update("setLogs", best1rmSet.id, (s) => {
+        s.isPr = true;
+      });
+      found.push({ exerciseId: se.exerciseId, type: "1rm", value: best1rm });
+    }
+
+    const priorW = await client.fetchOne(
+      client
+        .query("personalRecords")
+        .Where("exerciseId", "=", se.exerciseId)
+        .Where("type", "=", "weight")
+        .Order("value", "DESC"),
+    );
+    if (topWeightSet.weight > 0 && (!priorW || topWeightSet.weight > priorW.value)) {
+      await client.insert("personalRecords", {
+        ownerId: args.ownerId,
+        exerciseId: se.exerciseId,
+        type: "weight",
+        value: topWeightSet.weight,
+        sessionId: args.sessionId,
+        achievedAt: args.now,
+      });
+      await client.update("setLogs", topWeightSet.id, (s) => {
+        s.isPr = true;
+      });
+      found.push({ exerciseId: se.exerciseId, type: "weight", value: topWeightSet.weight });
+    }
+  }
+  return found;
+}
+
+export interface ExerciseStatPoint {
+  sessionId: string;
+  date: number;
+  best1rm: number;
+  volume: number;
+  topWeight: number;
+}
+
+/**
+ * Per-session stats for one exercise across finished sessions, oldest→newest.
+ * Powers the trend charts. Computed client-side (fine for one exercise).
+ */
+export async function exerciseStats(
+  client: Client,
+  exerciseId: string,
+): Promise<ExerciseStatPoint[]> {
+  const ses = await client.fetch(
+    client.query("sessionExercises").Where("exerciseId", "=", exerciseId),
+  );
+  if (ses.length === 0) return [];
+
+  const sessions = await client.fetch(client.query("sessions"));
+  const byId = new Map(sessions.map((s) => [s.id, s]));
+
+  const points: ExerciseStatPoint[] = [];
+  for (const se of ses) {
+    const session = byId.get(se.sessionId);
+    if (!session || session.endedAt == null) continue;
+    const sets = await client.fetch(
+      client.query("setLogs").Where("sessionExerciseId", "=", se.id).Where("completed", "=", true),
+    );
+    if (sets.length === 0) continue;
+    let best1rm = 0;
+    let volume = 0;
+    let topWeight = 0;
+    for (const s of sets) {
+      best1rm = Math.max(best1rm, estimate1RM(s.weight, s.reps));
+      volume += s.weight * s.reps;
+      topWeight = Math.max(topWeight, s.weight);
+    }
+    points.push({
+      sessionId: se.sessionId,
+      date: session.startedAt,
+      best1rm: Math.round(best1rm),
+      volume,
+      topWeight,
+    });
+  }
+  return points.sort((a, b) => a.date - b.date);
 }
 
 /* ---------------------------------------------------------------------------
