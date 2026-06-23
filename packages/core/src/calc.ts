@@ -110,3 +110,21 @@ export function todaysRoutine<T extends { order: number; scheduledDays?: number[
     .filter((r) => r.scheduledDays?.includes(weekday))
     .sort((a, b) => a.order - b.order)[0];
 }
+
+/**
+ * Local replacement suggestions for an exercise: other library exercises that
+ * share the same `primaryMuscle` and/or the same `equipment`, excluding the
+ * exercise itself. Ranked best-first — a match on both muscle and equipment
+ * outranks a match on either alone; ties broken by name. Pure, so the UI can
+ * compute suggestions offline from the in-memory library.
+ */
+export function suggestReplacements<
+  T extends { id: string; name: string; primaryMuscle: string; equipment: string },
+>(library: readonly T[], target: Pick<T, "id" | "primaryMuscle" | "equipment">): T[] {
+  const score = (e: T) =>
+    (e.primaryMuscle === target.primaryMuscle ? 2 : 0) +
+    (e.equipment === target.equipment ? 1 : 0);
+  return library
+    .filter((e) => e.id !== target.id && score(e) > 0)
+    .sort((a, b) => score(b) - score(a) || a.name.localeCompare(b.name));
+}

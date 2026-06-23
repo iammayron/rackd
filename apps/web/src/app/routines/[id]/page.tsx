@@ -23,6 +23,7 @@ import { WeekdayPicker } from "@/features/routines/WeekdayPicker";
 interface RoutineExerciseRow {
   id: string;
   order: number;
+  exerciseId: string;
   supersetGroup?: number;
   exercise?: { name: string } | null;
 }

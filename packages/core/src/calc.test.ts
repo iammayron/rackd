@@ -6,6 +6,7 @@ import {
   sessionVolume,
   warmupSets,
   todaysRoutine,
+  suggestReplacements,
 } from "./calc";
 import { toKg, fromKg, formatWeight } from "./units";
 import { startTimer, pauseTimer, resumeTimer, remainingMs, addTime } from "./timer";
@@ -119,5 +120,30 @@ describe("todaysRoutine", () => {
   });
   it("ignores routines with no schedule", () => {
     expect(todaysRoutine([{ order: 0, name: "Any" }], 3)).toBeUndefined();
+  });
+});
+
+describe("suggestReplacements", () => {
+  const bench = { id: "a", name: "Bench Press", primaryMuscle: "chest", equipment: "barbell" };
+  const dbPress = { id: "b", name: "Dumbbell Press", primaryMuscle: "chest", equipment: "dumbbell" };
+  const fly = { id: "c", name: "Cable Fly", primaryMuscle: "chest", equipment: "cable" };
+  const row = { id: "d", name: "Barbell Row", primaryMuscle: "back", equipment: "barbell" };
+  const squat = { id: "e", name: "Squat", primaryMuscle: "legs", equipment: "machine" };
+  const lib = [bench, dbPress, fly, row, squat];
+
+  it("excludes the exercise itself", () => {
+    expect(suggestReplacements(lib, bench).map((e) => e.id)).not.toContain("a");
+  });
+  it("includes same-muscle and same-equipment matches", () => {
+    const ids = suggestReplacements(lib, bench).map((e) => e.id);
+    expect(ids).toEqual(expect.arrayContaining(["b", "c", "d"]));
+    expect(ids).not.toContain("e"); // no shared muscle or equipment
+  });
+  it("ranks a both-match above a single-match", () => {
+    // chest match (db, fly) score 2; barbell match (row) score 1 → chest first
+    expect(suggestReplacements(lib, bench)[2]?.id).toBe("d");
+  });
+  it("returns empty when nothing matches", () => {
+    expect(suggestReplacements([bench], bench)).toEqual([]);
   });
 });

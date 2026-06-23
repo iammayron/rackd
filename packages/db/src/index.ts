@@ -129,6 +129,21 @@ export async function setRoutineExerciseSuperset(
   });
 }
 
+/**
+ * Swap which library exercise a routine slot points at, keeping its order,
+ * superset link, rest and prescribed sets. The `exercise` relation re-resolves
+ * via `$exerciseId`, so the new name/media flow through automatically.
+ */
+export async function replaceRoutineExercise(
+  client: Client,
+  id: string,
+  newExerciseId: string,
+) {
+  return client.update("routineExercises", id, (e) => {
+    e.exerciseId = newExerciseId;
+  });
+}
+
 /** Remove an exercise from a live session, including its logged sets. */
 export async function removeSessionExercise(client: Client, sessionExerciseId: string) {
   const sets = await client.fetch(

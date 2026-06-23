@@ -6,15 +6,18 @@ import {
   updateRoutineSet,
   deleteRoutineSet,
   removeRoutineExercise,
+  replaceRoutineExercise,
 } from "@myfit/db";
 import { getClient } from "@/lib/triplit";
 import { useUnit } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";
 import { MoveButtons } from "@/components/MoveButtons";
+import { ReplaceExercisePicker } from "@/features/routines/ReplaceExercisePicker";
 
 interface RoutineExerciseRow {
   id: string;
   order: number;
+  exerciseId: string;
   exercise?: { name: string } | null;
 }
 
@@ -96,14 +99,22 @@ export function RoutineExerciseEditor({
         <h2 className="text-lg font-bold">
           {routineExercise.exercise?.name ?? "Exercise"}
         </h2>
-        <button
-          type="button"
-          onClick={() => removeRoutineExercise(getClient(), routineExercise.id)}
-          aria-label="Remove exercise"
-          className="ms-auto bg-transparent border-none text-lg text-[var(--text-muted)]"
-        >
-          ×
-        </button>
+        <div className="ms-auto flex items-center gap-2">
+          <ReplaceExercisePicker
+            currentExerciseId={routineExercise.exerciseId}
+            onReplace={(newId) =>
+              replaceRoutineExercise(getClient(), routineExercise.id, newId)
+            }
+          />
+          <button
+            type="button"
+            onClick={() => removeRoutineExercise(getClient(), routineExercise.id)}
+            aria-label="Remove exercise"
+            className="bg-transparent border-none text-lg text-[var(--text-muted)]"
+          >
+            ×
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-3 text-sm text-[var(--text-muted)]">
