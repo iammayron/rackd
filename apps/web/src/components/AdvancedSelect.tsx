@@ -63,18 +63,37 @@ export function AdvancedSelect({
   };
 
   return (
-    <select
-      ref={ref}
-      data-hs-select={JSON.stringify(config)}
-      defaultValue={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="hidden"
-    >
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
+    <div className="relative">
+      <select
+        ref={ref}
+        data-hs-select={JSON.stringify(config)}
+        defaultValue={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="hidden"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      {/* Preline doesn't inject a chevron — overlay one (clicks pass through). */}
+      <div className="absolute top-1/2 end-3 -translate-y-1/2 pointer-events-none">
+        <svg
+          className="shrink-0 size-4 text-[var(--text-muted)]"
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </div>
+    </div>
   );
 }
