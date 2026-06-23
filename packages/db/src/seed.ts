@@ -44,14 +44,40 @@ export const SEED_EXERCISES: SeedExercise[] = [
   { id: "ex_plank", name: "Plank", primaryMuscle: "abs", secondaryMuscles: [], equipment: "bodyweight", category: "bodyweight", instructions: "Hold a straight line, brace the core." },
   { id: "ex_hanging_leg_raise", name: "Hanging Leg Raise", primaryMuscle: "abs", secondaryMuscles: ["forearms"], equipment: "bodyweight", category: "bodyweight", instructions: "Raise legs to hip height, no swinging." },
   { id: "ex_cable_crunch", name: "Cable Crunch", primaryMuscle: "abs", secondaryMuscles: [], equipment: "cable", category: "machine", instructions: "Crunch the ribs toward the pelvis." },
+
+  // PPL program additions (chest / shoulders / arms)
+  { id: "ex_db_bench_press", name: "Dumbbell Bench Press", primaryMuscle: "chest", secondaryMuscles: ["triceps", "shoulders"], equipment: "dumbbell", category: "dumbbell", instructions: "Press dumbbells from chest to lockout — wider ROM than the barbell." },
+  { id: "ex_cable_chest_fly", name: "Cable Chest Fly", primaryMuscle: "chest", secondaryMuscles: ["shoulders"], equipment: "cable", category: "machine", instructions: "Bring the handles together in front, squeeze the chest, keep constant tension." },
+  { id: "ex_cable_lateral_raise", name: "Cable Lateral Raise", primaryMuscle: "shoulders", secondaryMuscles: [], equipment: "cable", category: "machine", instructions: "Raise the handle to shoulder height, lead with the elbow, no swinging." },
+  { id: "ex_reverse_pec_deck", name: "Reverse Pec Deck", primaryMuscle: "shoulders", secondaryMuscles: ["traps"], equipment: "machine", category: "machine", instructions: "Lead with the elbows going wide, squeeze the rear delts." },
+  { id: "ex_bb_overhead_tricep_ext", name: "Barbell Overhead Triceps Extension", primaryMuscle: "triceps", secondaryMuscles: [], equipment: "barbell", category: "barbell", instructions: "Press the bar overhead, lower behind the head, elbows forward — long head focus." },
+  { id: "ex_overhead_cable_tricep_ext", name: "Overhead Cable Triceps Extension", primaryMuscle: "triceps", secondaryMuscles: [], equipment: "cable", category: "machine", instructions: "Face away from the machine, hinge slightly, extend the rope overhead." },
+  { id: "ex_db_skullcrusher", name: "Dumbbell Skullcrusher", primaryMuscle: "triceps", secondaryMuscles: [], equipment: "dumbbell", category: "dumbbell", instructions: "Lying on a bench, lower the dumbbells toward the temples, extend to full lockout." },
+  { id: "ex_hammer_curl", name: "Hammer Curl", primaryMuscle: "biceps", secondaryMuscles: ["forearms"], equipment: "dumbbell", category: "dumbbell", instructions: "Neutral grip, elbows fixed — hits the brachialis and brachioradialis." },
+  { id: "ex_incline_db_curl", name: "Incline Dumbbell Curl", primaryMuscle: "biceps", secondaryMuscles: ["forearms"], equipment: "dumbbell", category: "dumbbell", instructions: "Arms hanging back on an incline bench for a big long-head stretch; slow eccentric." },
+  { id: "ex_cable_curl", name: "Cable Curl", primaryMuscle: "biceps", secondaryMuscles: ["forearms"], equipment: "cable", category: "machine", instructions: "Curl the low pulley, hold and squeeze at the top for peak contraction." },
+
+  // PPL program additions (back / legs)
+  { id: "ex_single_arm_db_row", name: "Single-Arm Dumbbell Row", primaryMuscle: "back", secondaryMuscles: ["biceps"], equipment: "dumbbell", category: "dumbbell", instructions: "Brace on a bench, pull the elbow back and up, big range of motion." },
+  { id: "ex_straight_arm_pulldown", name: "Cable Straight-Arm Pulldown", primaryMuscle: "back", secondaryMuscles: [], equipment: "cable", category: "machine", instructions: "Arms near-straight, hinge at the hips, pull the bar to the thighs — lat isolation." },
+  { id: "ex_hack_squat", name: "Hack Squat", primaryMuscle: "quads", secondaryMuscles: ["glutes"], equipment: "machine", category: "machine", instructions: "Squat in the hack machine, full depth, drive through mid-foot." },
+  { id: "ex_bulgarian_split_squat", name: "Bulgarian Split Squat", primaryMuscle: "quads", secondaryMuscles: ["glutes", "hamstrings"], equipment: "dumbbell", category: "dumbbell", instructions: "Rear foot elevated, descend on the front leg, stay upright." },
+  { id: "ex_sumo_deadlift", name: "Sumo Deadlift", primaryMuscle: "glutes", secondaryMuscles: ["hamstrings", "back", "quads"], equipment: "barbell", category: "barbell", instructions: "Wide stance, toes out, flat back, drive the floor away — more glute/inner-thigh than conventional." },
+  { id: "ex_seated_calf_raise", name: "Seated Calf Raise", primaryMuscle: "calves", secondaryMuscles: [], equipment: "machine", category: "machine", instructions: "Seated, full stretch and contraction — targets the soleus." },
 ];
 
-/** Insert the starter library if the exercises collection is empty (idempotent). */
+/**
+ * Insert any missing library exercises (idempotent per id). Existing rows are
+ * left untouched, so adding to SEED_EXERCISES seeds the new ones on next login
+ * without re-inserting or clobbering the rest. Returns the count inserted.
+ */
 export async function seedExercises(client: Client): Promise<number> {
-  const existing = await client.fetch(client.query("exercises").Limit(1));
-  if (existing.length > 0) return 0;
+  const existing = await client.fetch(client.query("exercises"));
+  const existingIds = new Set(existing.map((e) => e.id));
 
+  let inserted = 0;
   for (const ex of SEED_EXERCISES) {
+    if (existingIds.has(ex.id)) continue;
     await client.insert("exercises", {
       id: ex.id,
       name: ex.name,
@@ -63,6 +89,7 @@ export async function seedExercises(client: Client): Promise<number> {
       mediaSource: "library",
       isCustom: false,
     });
+    inserted++;
   }
-  return SEED_EXERCISES.length;
+  return inserted;
 }

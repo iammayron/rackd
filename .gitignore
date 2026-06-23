@@ -24,3 +24,4 @@ supabase/.temp/
 .claude/settings.local.json
 .claude/*.local.json
 .claude/.test-status
+.chief/
