@@ -128,6 +128,14 @@ export interface SetLog extends SetShape {
   isPr: boolean;
 }
 
+export interface BodyMetric {
+  id: string;
+  ownerId: string;
+  date: number;
+  weightKg: number;
+  note?: string;
+}
+
 export type PrType = "1rm" | "weight" | "reps" | "volume";
 
 export interface PersonalRecord {

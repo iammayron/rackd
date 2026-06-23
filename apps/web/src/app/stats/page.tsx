@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { exerciseStats, type ExerciseStatPoint } from "@fitnow/db";
+import { exerciseStats, logBodyweight, type ExerciseStatPoint } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
 import { useQuery } from "@/lib/use-query";
 import { LineChart, BarChart } from "@/components/Chart";
@@ -19,6 +19,11 @@ interface PRRow {
   type: string;
   value: number;
   achievedAt: number;
+}
+interface BodyRow {
+  id: string;
+  weightKg: number;
+  date: number;
 }
 
 export default function StatsPage() {
@@ -55,12 +60,58 @@ export default function StatsPage() {
     [selected],
   );
 
+  const { results: body } = useQuery<BodyRow>((c) => c.query("bodyMetrics").Order("date", "ASC"));
+  const [bw, setBw] = useState("");
+  async function logBw() {
+    const v = Number(bw);
+    if (!v) return;
+    await logBodyweight(getClient(), { ownerId: "local", weightKg: v, now: Date.now() });
+    setBw("");
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
       <main style={{ flex: 1, padding: "var(--space-6)" }}>
         <h1 style={{ fontSize: "var(--text-xl)", fontWeight: 700, marginBottom: "var(--space-4)" }}>
           Stats
         </h1>
+
+        <Card title="Bodyweight">
+          <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-3)" }}>
+            <input
+              value={bw}
+              onChange={(e) => setBw(e.target.value)}
+              inputMode="decimal"
+              placeholder="kg"
+              aria-label="Bodyweight"
+              style={{
+                flex: 1,
+                minHeight: "var(--tap-min)",
+                padding: "0 var(--space-3)",
+                background: "var(--surface-2)",
+                color: "var(--text)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                fontSize: "var(--text-base)",
+              }}
+            />
+            <button
+              onClick={logBw}
+              style={{
+                minHeight: "var(--tap-min)",
+                padding: "0 var(--space-4)",
+                background: "var(--accent)",
+                color: "#fff",
+                border: "none",
+                borderRadius: "var(--radius)",
+                fontWeight: 700,
+              }}
+            >
+              Log
+            </button>
+          </div>
+          <LineChart data={body.map((b) => b.weightKg)} unit="kg" />
+        </Card>
 
         {withHistory.length === 0 ? (
           <p style={{ color: "var(--text-muted)" }}>

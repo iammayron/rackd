@@ -117,6 +117,16 @@ export const schema = S.Collections({
       achievedAt: S.Number(),
     }),
   },
+
+  bodyMetrics: {
+    schema: S.Schema({
+      id: S.Id(),
+      ownerId: S.String(),
+      date: S.Number(),
+      weightKg: S.Number(),
+      note: S.Optional(S.String()),
+    }),
+  },
 });
 
 export type Schema = typeof schema;

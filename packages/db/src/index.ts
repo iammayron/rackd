@@ -219,6 +219,19 @@ export async function detectAndRecordPRs(
   return found;
 }
 
+/** Log a bodyweight entry. */
+export async function logBodyweight(
+  client: Client,
+  args: { ownerId: string; weightKg: number; now: number; note?: string },
+) {
+  return client.insert("bodyMetrics", {
+    ownerId: args.ownerId,
+    weightKg: args.weightKg,
+    date: args.now,
+    note: args.note,
+  });
+}
+
 export interface ExerciseStatPoint {
   sessionId: string;
   date: number;

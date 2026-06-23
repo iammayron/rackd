@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { nextWeight } from "@fitnow/core";
 import { addSet, lastPerformance, type PrevSet } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
 import { useQuery } from "@/lib/use-query";
@@ -49,16 +50,24 @@ export function ExerciseCard({ sessionExercise }: { sessionExercise: SessionExer
     return prev?.find((p) => p.order === order);
   }
 
+  // Heaviest set last time → progressive-overload target for this session.
+  const prevTop = prev?.reduce((b, s) => (s.weight > b.weight ? s : b), prev[0]!);
+  const suggestedWeight = prevTop
+    ? nextWeight(prevTop.weight, prevTop.reps, prevTop.reps)
+    : undefined;
+  const noneCompleted = sets.every((s) => !s.completed);
+
   async function onAddSet() {
     const order = sets.length + 1;
     const last = sets[sets.length - 1];
     const fallback = prevFor(order) ?? prev?.[prev.length - 1];
+    // first set of the session → suggest the progressive-overload weight
+    const firstWeight = suggestedWeight ?? fallback?.weight ?? 0;
     await addSet(getClient(), {
       sessionExerciseId: sessionExercise.id,
       order,
-      // prefill from the last set this session, else last time's performance
-      weight: last?.weight ?? fallback?.weight ?? 0,
-      reps: last?.reps ?? fallback?.reps ?? 0,
+      weight: last?.weight ?? firstWeight,
+      reps: last?.reps ?? prevTop?.reps ?? fallback?.reps ?? 0,
     });
   }
 
@@ -75,6 +84,31 @@ export function ExerciseCard({ sessionExercise }: { sessionExercise: SessionExer
       <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, marginBottom: "var(--space-2)" }}>
         {sessionExercise.exercise?.name ?? "Exercise"}
       </h2>
+
+      {prevTop && suggestedWeight !== undefined && noneCompleted && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "var(--space-2)",
+            background: "var(--surface-2)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius)",
+            padding: "var(--space-2) var(--space-3)",
+            marginBottom: "var(--space-3)",
+            fontSize: "var(--text-sm)",
+          }}
+        >
+          <span>📈 Try</span>
+          <strong style={{ color: "var(--accent)" }}>
+            {suggestedWeight} kg × {prevTop.reps}
+          </strong>
+          <span style={{ color: "var(--text-muted)" }}>
+            (last {prevTop.weight}×{prevTop.reps})
+          </span>
+        </div>
+      )}
+
       <div
         style={{
           display: "flex",
