@@ -31,7 +31,7 @@ Living backlog. Done work lives in git history; this tracks what's next.
 - [x] kg/lb units toggle (canonical kg storage, unit-aware plate calc)
 - [x] Add/remove exercises during an active workout
 - [x] Reorder exercises (up/down) in routines + active workout
-- [ ] Supersets UI
+- [x] Supersets — link adjacent exercises (routine editor + active-workout display)
 
 ### Infra
 - [ ] Deploy — build sync Docker image on the Tailscale box, set web env, ship frontend
