@@ -1,16 +1,23 @@
-# FitNow self-host (home box + Tailscale).
-# 1. cp .env.example .env  and set JWT_SECRET to a long random string
-# 2. docker compose up -d
-# 3. generate a token:  docker compose exec sync node gen-token.mjs "$JWT_SECRET" service
-# 4. point the web app at this box over your tailnet:
-#      NEXT_PUBLIC_TRIPLIT_URL=http://<tailscale-host>:8787
-#      NEXT_PUBLIC_TRIPLIT_TOKEN=<token from step 3>
+# FitNow self-host (home box + Tailscale). See DEPLOY.md for the full flow.
+#
+# Supabase runs separately via the CLI on the box (`supabase start` — it manages
+# its own containers). This compose runs the two app services:
+#   sync — Triplit sync server (durable sqlite volume)
+#   web  — Next.js PWA (standalone)
+#
+# 1. cp .env.example .env  and fill every value (see DEPLOY.md)
+# 2. docker compose up -d --build
+# 3. expose over Tailscale; install the PWA on your phone
 services:
   sync:
-    build: ./apps/sync
+    build:
+      context: .
+      dockerfile: apps/sync/Dockerfile
     restart: unless-stopped
     environment:
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      # RS256 public JWK (single key) from Supabase JWKS — validates user tokens.
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:?set SUPABASE_JWT_SECRET in .env}
       PORT: 8787
       STORAGE: sqlite
       LOCAL_DATABASE_URL: /data/triplit.db
@@ -19,6 +26,20 @@ services:
       - "8787:8787"
     volumes:
       - fitnow-sync-data:/data
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?}
+        NEXT_PUBLIC_TRIPLIT_URL: ${NEXT_PUBLIC_TRIPLIT_URL:?}
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - sync
 
 volumes:
   fitnow-sync-data:

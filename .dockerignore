@@ -1,0 +1,13 @@
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/coverage
+.git
+.claude
+supabase/.branches
+supabase/.temp
+supabase/signing_keys.json
+**/.env
+**/.env.local
+*.tsbuildinfo
