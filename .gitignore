@@ -9,3 +9,8 @@ coverage/
 .env.local
 .DS_Store
 .vercel
+
+# Claude Code: commit shared config, keep personal/local + markers out.
+.claude/settings.local.json
+.claude/*.local.json
+.claude/.test-status
