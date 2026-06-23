@@ -44,6 +44,12 @@ Genuinely-new surfaces: exercise **detail page**, **workout summary + share card
 
 ---
 
+## Status
+
+- **Phase 0 — done** (`dd37c39`): tokens, `[data-theme]` + no-FOUC + `useTheme` + Settings toggle, Hanken Grotesk via next/font, manifest/metadata rebrand, `@myfit/*`→`@rackd/*` rename. Storage IDs (`dbName`, localStorage keys) intentionally left as `"myfit"` — renaming orphans local-first data; migrate separately.
+- **Phase 1 — done** (`e30d04d`): 12 kit components ported to TSX in `packages/ui`; brand icons regenerated (PNG arc simplified by ImageMagick; SVG source exact).
+- **Phase 2 — in progress**: 3-tab nav (Home/Plans/Progress, Settings → header), restyle screens to kit.
+
 ## Phases
 
 Each phase is independently shippable. 0 is pure foundation; 5 is the only one needing

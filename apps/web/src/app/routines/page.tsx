@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createRoutine, startSessionFromRoutine, deleteRoutine } from "@rackd/db";
+import { Card, Button } from "@rackd/ui";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
@@ -44,9 +45,9 @@ export default function RoutinesPage() {
 
   return (
     <div className="flex flex-col min-h-[100dvh]">
-      <main className="flex-1 p-6">
-        <div className="flex items-center mb-4">
-          <h1 className="text-2xl font-bold">Routines</h1>
+      <main className="flex-1 px-5 pt-5 pb-24">
+        <div className="flex items-center mb-5">
+          <h1 className="text-2xl font-extrabold">Routines</h1>
           <Link
             href="/discover"
             className="ms-auto text-sm font-semibold text-[var(--accent)] no-underline"
@@ -61,44 +62,41 @@ export default function RoutinesPage() {
           </p>
         )}
 
-        <ul className="list-none p-0 m-0">
+        <ul className="list-none p-0 m-0 flex flex-col gap-2">
           {routines.map((r) => (
-            <li
-              key={r.id}
-              className="flex items-center gap-3 bg-[var(--surface)] border border-[var(--border)] rounded-lg py-3 px-4 mb-2"
-            >
-              <Link
-                href={`/routines/${r.id}`}
-                className="flex-1 font-semibold text-[var(--text)] no-underline"
-              >
-                {r.name}
-              </Link>
-              <button
-                type="button"
-                onClick={() => start(r.id)}
-                className="inline-flex items-center min-h-10 px-4 rounded-lg bg-[var(--accent)] text-white font-bold hover:bg-[var(--accent-press)]"
-              >
-                Start
-              </button>
-              <button
-                type="button"
-                onClick={() => deleteRoutine(getClient(), r.id)}
-                aria-label="Delete routine"
-                className="min-h-10 w-9 bg-transparent border-none text-lg text-[var(--text-muted)]"
-              >
-                ×
-              </button>
+            <li key={r.id}>
+              <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <Link
+                  href={`/routines/${r.id}`}
+                  className="flex-1 font-semibold text-[var(--text)] no-underline"
+                >
+                  {r.name}
+                </Link>
+                <Button variant="primary" size="sm" onClick={() => start(r.id)}>
+                  Start
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => deleteRoutine(getClient(), r.id)}
+                  aria-label="Delete routine"
+                  className="min-h-10 w-9 bg-transparent border-none text-lg text-[var(--text-muted)]"
+                >
+                  ×
+                </button>
+              </Card>
             </li>
           ))}
         </ul>
 
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="lg"
+          fullWidth
           onClick={create}
-          className="mt-4 min-h-[52px] w-full rounded-2xl bg-[var(--surface-2)] text-[var(--accent)] border border-dashed border-[var(--border)] text-lg font-bold"
+          style={{ marginTop: 16, borderStyle: "dashed", color: "var(--accent)" }}
         >
           + New routine
-        </button>
+        </Button>
       </main>
       <Nav />
     </div>

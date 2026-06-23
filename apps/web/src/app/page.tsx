@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startSession, addSessionExercise, startSessionFromRoutine } from "@rackd/db";
 import { todaysRoutine } from "@rackd/core";
+import { Card, Button, Avatar, Input, SelectableRow } from "@rackd/ui";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
 import { Nav } from "@/components/Nav";
-import { Avatar } from "@/components/Avatar";
 import { WeightProgressCard } from "@/features/dashboard/WeightProgressCard";
 import { WeeklyVolumeCard } from "@/features/dashboard/WeeklyVolumeCard";
 import { HistoryStreakCard } from "@/features/dashboard/HistoryStreakCard";
@@ -34,6 +34,9 @@ interface RoutineRow {
   scheduledDays?: Set<number> | number[];
 }
 
+const EYEBROW =
+  "text-[var(--text-muted)] text-xs font-semibold uppercase tracking-[0.06em]";
+
 export default function Home() {
   const router = useRouter();
   const { results: exercises } = useQuery<ExerciseRow>((c) =>
@@ -53,6 +56,7 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [starting, setStarting] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -96,110 +100,103 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-[100dvh]">
-      <main className="flex-1 p-6 pb-24">
-        <div className="flex items-center gap-3 mb-5">
+      <main className="flex-1 px-5 pt-5 pb-28">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-6">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/assets/logo-mark.svg" alt="" width={34} height={34} className="block" />
           <div className="flex-1">
-            <h1 className="text-2xl font-bold">Rackd</h1>
-            <p className="text-[var(--text-muted)]">Ready when you are.</p>
+            <div className="text-2xl font-extrabold leading-none tracking-[-0.01em]">Rackd</div>
+            <div className="text-[var(--text-muted)] text-sm">Ready when you are.</div>
           </div>
           <Link href="/settings" aria-label="Profile and settings">
-            <Avatar src={profile?.photoUrl || null} name={profile?.displayName} size={44} />
+            <Avatar src={profile?.photoUrl || null} name={profile?.displayName} />
           </Link>
         </div>
 
-        <section
-          className={`mb-8 rounded-3xl p-6 ${
-            today
-              ? "bg-[var(--accent)] text-white shadow-lg"
-              : "border border-dashed border-[var(--border)] bg-[var(--surface)]"
-          }`}
-        >
-          <p
-            className={`text-xs font-semibold uppercase tracking-wide ${
-              today ? "text-white/80" : "text-[var(--text-muted)]"
-            }`}
-          >
-            Today’s workout
-          </p>
-          {today ? (
-            <>
-              <h2 className="mt-1 text-3xl font-extrabold leading-tight">{today.name}</h2>
-              <button
-                type="button"
-                onClick={startToday}
-                disabled={starting}
-                className="mt-5 min-h-[52px] w-full rounded-2xl bg-white text-[var(--accent)] text-lg font-bold disabled:opacity-60"
-              >
-                {starting ? "Starting…" : "Start workout"}
-              </button>
-            </>
-          ) : (
-            <>
-              <h2 className="mt-1 text-2xl font-bold text-[var(--text)]">Rest day</h2>
-              <p className="mt-1 text-[var(--text-muted)]">
-                Nothing scheduled for today.
-              </p>
-              <Link
-                href="/routines"
-                className="mt-5 inline-flex min-h-[52px] w-full items-center justify-center rounded-2xl bg-[var(--accent)] text-lg font-bold text-white no-underline"
-              >
-                Pick a routine to start
-              </Link>
-            </>
-          )}
-        </section>
+        {/* Today — the one hero action, or a Rest day */}
+        {today ? (
+          <Card variant="accent" style={{ marginBottom: 24 }}>
+            <div className="text-xs font-bold uppercase tracking-[0.06em] opacity-85 whitespace-nowrap">
+              Today&apos;s workout
+            </div>
+            <div className="mt-2 text-3xl font-extrabold leading-[1.05]">{today.name}</div>
+            <Button
+              variant="secondary"
+              size="lg"
+              fullWidth
+              onClick={startToday}
+              disabled={starting}
+              style={{ marginTop: 18, background: "#fff", color: "var(--accent)", border: "none" }}
+            >
+              {starting ? "Starting…" : "Start workout"}
+            </Button>
+            <button
+              type="button"
+              onClick={() => setQuickOpen((v) => !v)}
+              className="block w-full mt-2.5 py-1.5 bg-transparent border-none cursor-pointer text-sm font-bold text-white/90 text-center"
+            >
+              Start quick workout ›
+            </button>
+          </Card>
+        ) : (
+          <Card variant="dashed" style={{ marginBottom: 24, textAlign: "center", padding: 28 }}>
+            <div className={EYEBROW}>Today</div>
+            <div className="mt-1.5 text-3xl font-extrabold leading-[1.1]">Rest day</div>
+            <div className="mt-1 text-sm text-[var(--text-muted)]">
+              Nothing scheduled — recovery is where you grow.
+            </div>
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={() => setQuickOpen(true)}
+              style={{ marginTop: 18 }}
+            >
+              Start quick workout
+            </Button>
+          </Card>
+        )}
 
         <WeightProgressCard />
-
         <WeeklyVolumeCard />
-
         <HistoryStreakCard />
 
-        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">
-          Quick workout
-        </h2>
-        <p className="mb-3 text-sm text-[var(--text-muted)]">
-          Pick exercises to start an ad-hoc session.
-        </p>
+        {/* Quick ad-hoc workout — pick exercises to start a session with no routine */}
+        {quickOpen && (
+          <section className="mt-2">
+            <h2 className={`${EYEBROW} mb-1`}>Quick workout</h2>
+            <p className="mb-3 text-sm text-[var(--text-muted)]">
+              Pick exercises to start an ad-hoc session.
+            </p>
 
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search exercises…"
-          className="w-full min-h-11 px-4 mb-4 bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-        />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search exercises…"
+              style={{ marginBottom: 12 }}
+            />
 
-        <ul className="list-none p-0 m-0">
-          {filtered.map((ex) => {
-            const isSel = selected.includes(ex.id);
-            return (
-              <li key={ex.id}>
-                <button
-                  type="button"
-                  onClick={() => toggle(ex.id)}
-                  className={`w-full text-left flex items-center gap-3 min-h-11 py-3 px-4 mb-2 border border-[var(--border)] rounded-lg ${
-                    isSel ? "bg-[var(--accent)] text-white" : "bg-[var(--surface)] text-[var(--text)]"
-                  }`}
-                >
-                  <span className="text-base font-semibold">{ex.name}</span>
-                  <span className="ms-auto text-sm opacity-80">
-                    {ex.primaryMuscle} · {ex.equipment}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+            <ul className="list-none p-0 m-0 flex flex-col gap-2">
+              {filtered.map((ex) => (
+                <li key={ex.id}>
+                  <SelectableRow
+                    title={ex.name}
+                    meta={`${ex.primaryMuscle} · ${ex.equipment}`}
+                    selected={selected.includes(ex.id)}
+                    onClick={() => toggle(ex.id)}
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {selected.length > 0 && (
-          <button
-            type="button"
-            onClick={start}
-            disabled={starting}
-            className="fixed left-1/2 -translate-x-1/2 bottom-[72px] w-[min(440px,calc(100%-32px))] min-h-[52px] rounded-2xl bg-[var(--accent)] text-white border-none text-lg font-bold disabled:opacity-60"
-          >
-            {starting ? "Starting…" : `Start workout (${selected.length})`}
-          </button>
+          <div className="fixed left-1/2 -translate-x-1/2 bottom-[84px] w-[min(440px,calc(100%-32px))] z-30">
+            <Button variant="primary" size="lg" fullWidth onClick={start} disabled={starting}>
+              {starting ? "Starting…" : `Start workout (${selected.length})`}
+            </Button>
+          </div>
         )}
       </main>
       <Nav />

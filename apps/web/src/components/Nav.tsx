@@ -3,27 +3,34 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+// 3-tab IA: Home / Plans / Progress. Settings lives behind the dashboard header
+// avatar, not the tab bar. Plans is the hub for programs + routines + templates;
+// Progress is the hub for history + PRs/weight.
 const items = [
-  { href: "/", label: "Workout" },
-  { href: "/routines", label: "Routines" },
-  { href: "/programs", label: "Programs" },
-  { href: "/history", label: "History" },
-  { href: "/settings", label: "Settings" },
+  { href: "/", label: "Home", match: (p: string) => p === "/" },
+  { href: "/programs", label: "Plans", match: (p: string) => p.startsWith("/programs") || p.startsWith("/routines") },
+  { href: "/history", label: "Progress", match: (p: string) => p.startsWith("/history") },
 ];
 
-/** Bottom tab bar — thumb-zone navigation across the main sections. */
+/** Bottom tab bar — thumb-zone navigation. Mirrors the @rackd/ui TabBar visual
+ *  (active = coral pill on accent-wash) but stays Link-based for App Router. */
 export function Nav() {
   const path = usePathname();
   return (
-    <nav className="sticky bottom-0 flex border-t border-[var(--border)] bg-[var(--bg)] pb-[env(safe-area-inset-bottom)]">
+    <nav
+      className="sticky bottom-0 flex gap-1 border-t border-[var(--border)] bg-[var(--bg)] px-2.5 pt-2.5"
+      style={{ paddingBottom: "calc(12px + env(safe-area-inset-bottom))" }}
+    >
       {items.map((it) => {
-        const active = it.href === "/" ? path === "/" : path.startsWith(it.href);
+        const active = it.match(path);
         return (
           <Link
             key={it.href}
             href={it.href}
-            className={`flex-1 text-center py-3 min-h-11 text-sm no-underline ${
-              active ? "text-[var(--accent)] font-bold" : "text-[var(--text-muted)] font-medium"
+            className={`flex-1 min-h-14 flex items-center justify-center rounded-[14px] text-center text-[13px] no-underline transition-colors ${
+              active
+                ? "bg-[var(--accent-wash)] text-[var(--accent)] font-bold"
+                : "text-[var(--text-muted)] font-medium"
             }`}
           >
             {it.label}

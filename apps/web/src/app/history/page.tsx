@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { exerciseStats, type ExerciseStatPoint } from "@rackd/db";
+import { Card, Badge } from "@rackd/ui";
 import { getClient } from "@/lib/triplit";
 import { useUnit } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";
@@ -30,6 +31,9 @@ interface PRRow {
   achievedAt: number;
 }
 
+const EYEBROW =
+  "text-[var(--text-muted)] text-xs font-semibold uppercase tracking-[0.06em]";
+
 function fmtDate(ms: number): string {
   return new Date(ms).toLocaleDateString(undefined, {
     weekday: "short",
@@ -52,35 +56,37 @@ export default function HistoryPage() {
 
   return (
     <div className="flex flex-col min-h-[100dvh]">
-      <main className="flex-1 p-6">
-        <h1 className="text-2xl font-bold mb-4">History</h1>
+      <main className="flex-1 px-5 pt-5 pb-24">
+        <h1 className="text-2xl font-extrabold mb-5">Progress</h1>
 
+        <ExerciseProgress />
+
+        <div className={`${EYEBROW} mb-2 mt-2`}>Recent sessions</div>
         {sessions.length === 0 && (
-          <p className="text-[var(--text-muted)]">No finished workouts yet.</p>
+          <p className="text-[var(--text-muted)]">
+            No finished workouts yet — your streak starts here.
+          </p>
         )}
 
-        <ul className="list-none p-0 m-0">
+        <ul className="list-none p-0 m-0 flex flex-col gap-2">
           {sessions.map((s) => (
             <li key={s.id}>
-              <Link
-                href={`/history/${s.id}`}
-                className="flex items-center gap-3 bg-[var(--surface)] border border-[var(--border)] rounded-lg py-3 px-4 mb-2 text-[var(--text)] no-underline"
-              >
-                <div className="flex-1">
-                  <div className="font-semibold">{s.name}</div>
-                  <div className="text-sm text-[var(--text-muted)]">{fmtDate(s.startedAt)}</div>
-                </div>
-                {s.endedAt && (
-                  <span className="text-sm text-[var(--text-muted)]">
-                    {fmtDuration(s.startedAt, s.endedAt)}
-                  </span>
-                )}
+              <Link href={`/history/${s.id}`} className="no-underline block">
+                <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div className="flex-1">
+                    <div className="font-semibold text-[var(--text)]">{s.name}</div>
+                    <div className="text-sm text-[var(--text-muted)]">{fmtDate(s.startedAt)}</div>
+                  </div>
+                  {s.endedAt && (
+                    <span className="text-sm text-[var(--text-muted)] tabular-nums">
+                      {fmtDuration(s.startedAt, s.endedAt)}
+                    </span>
+                  )}
+                </Card>
               </Link>
             </li>
           ))}
         </ul>
-
-        <ExerciseProgress />
       </main>
       <Nav />
     </div>
@@ -132,10 +138,8 @@ function ExerciseProgress() {
   if (withHistory.length === 0) return null;
 
   return (
-    <section className="mt-8">
-      <h2 className="text-xl font-bold mb-4">Progress</h2>
-
-      <div className="mb-4">
+    <section className="mb-6">
+      <div className="mb-3">
         <AdvancedSelect
           value={selected}
           onChange={setSelected}
@@ -147,34 +151,21 @@ function ExerciseProgress() {
       {prs.length > 0 && (
         <div className="flex gap-2 mb-4 flex-wrap">
           {prs.map((pr) => (
-            <span
-              key={pr.id}
-              className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg py-2 px-3 text-sm"
-            >
-              🏆 {pr.type === "1rm" ? "Est 1RM" : "Top weight"}{" "}
-              <strong className="text-[var(--accent)]">
-                {display(pr.value)} {unit}
-              </strong>
-            </span>
+            <Badge key={pr.id} tone="accent">
+              🏆 {pr.type === "1rm" ? "Est 1RM" : "Top weight"} {display(pr.value)} {unit}
+            </Badge>
           ))}
         </div>
       )}
 
-      <Card title="Est 1RM over time">
+      <Card variant="feature" style={{ marginBottom: 16 }}>
+        <div className={`${EYEBROW} mb-3`}>Est 1RM over time</div>
         <LineChart data={points.map((p) => display(p.best1rm))} unit={unit} />
       </Card>
-      <Card title="Volume per session">
+      <Card variant="feature" style={{ marginBottom: 16 }}>
+        <div className={`${EYEBROW} mb-3`}>Volume per session</div>
         <BarChart data={points.map((p) => display(p.volume))} unit={unit} />
       </Card>
-    </section>
-  );
-}
-
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 mb-4">
-      <h2 className="text-base text-[var(--text-muted)] mb-3">{title}</h2>
-      {children}
     </section>
   );
 }
