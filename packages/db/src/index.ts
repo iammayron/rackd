@@ -486,6 +486,37 @@ export async function addRoutineExercise(
   });
 }
 
+/**
+ * Add an exercise to a routine pre-filled from the user's profile defaults:
+ * `defaultSets` routineSets (each `targetReps` = `defaultReps`) and the
+ * routineExercise's `restSec` = `defaultRestSec`. Falls back to 3 sets /
+ * 10 reps / 120s rest when no profile defaults exist.
+ */
+export async function addRoutineExerciseWithDefaults(
+  client: Client,
+  args: { routineId: string; exerciseId: string; order: number; ownerId: string },
+) {
+  const profile = await getProfile(client, args.ownerId);
+  const sets = profile.defaultSets ?? 3;
+  const reps = profile.defaultReps ?? 10;
+  const restSec = profile.defaultRestSec ?? 120;
+
+  const re = await addRoutineExercise(client, {
+    routineId: args.routineId,
+    exerciseId: args.exerciseId,
+    order: args.order,
+    restSec,
+  });
+  for (let i = 0; i < sets; i++) {
+    await addRoutineSet(client, {
+      routineExerciseId: re.id,
+      order: i + 1,
+      targetReps: reps,
+    });
+  }
+  return re;
+}
+
 export async function removeRoutineExercise(client: Client, id: string) {
   const sets = await client.fetch(
     client.query("routineSets").Where("routineExerciseId", "=", id),

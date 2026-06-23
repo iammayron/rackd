@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   renameRoutine,
-  addRoutineExercise,
-  addRoutineSet,
+  addRoutineExerciseWithDefaults,
   startSessionFromRoutine,
   setRoutineExerciseOrder,
   setRoutineExerciseSuperset,
@@ -63,13 +62,13 @@ export default function RoutineEditorPage() {
   }
 
   async function onPick(exerciseId: string) {
-    const re = await addRoutineExercise(getClient(), {
+    // pre-fill from the user's profile defaults (sets/reps/rest)
+    await addRoutineExerciseWithDefaults(getClient(), {
       routineId,
       exerciseId,
       order: exercises.length + 1,
+      ownerId: getCurrentUserId(),
     });
-    // seed one starter set so the card isn't empty
-    await addRoutineSet(getClient(), { routineExerciseId: re.id, order: 1, targetReps: 8 });
   }
 
   async function move(index: number, dir: -1 | 1) {
