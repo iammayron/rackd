@@ -20,4 +20,16 @@ body {
   max-width: 480px;
   margin: 0 auto;
   min-height: 100dvh;
+  /* iOS PWA safe areas: clear the status bar / notch (top) + landscape notch
+     (sides). Bottom (home indicator) is handled on the sticky <nav> itself,
+     since sticky bottom-0 anchors to the viewport, not this padding box. */
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Full-height page wrappers must subtract the top inset the shell added, or
+   they overflow by that amount and the sticky nav drifts off-screen. */
+.app-shell .min-h-\[100dvh\] {
+  min-height: calc(100dvh - env(safe-area-inset-top));
 }

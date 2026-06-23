@@ -15,7 +15,7 @@ const items = [
 export function Nav() {
   const path = usePathname();
   return (
-    <nav className="sticky bottom-0 flex border-t border-[var(--border)] bg-[var(--bg)]">
+    <nav className="sticky bottom-0 flex border-t border-[var(--border)] bg-[var(--bg)] pb-[env(safe-area-inset-bottom)]">
       {items.map((it) => {
         const active = it.href === "/" ? path === "/" : path.startsWith(it.href);
         return (
