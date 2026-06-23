@@ -29,12 +29,14 @@ export function ExerciseCard({
   total,
   onMove,
   inGroup = false,
+  startsRest = true,
 }: {
   sessionExercise: SessionExerciseRow;
   index: number;
   total: number;
   onMove: (dir: -1 | 1) => void;
   inGroup?: boolean;
+  startsRest?: boolean;
 }) {
   const { unit, display } = useUnit();
   const { results: sets } = useQuery<SetRowData>(
@@ -94,7 +96,7 @@ export function ExerciseCard({
     >
       {inGroup && (
         <div className="text-xs font-bold uppercase tracking-wide text-[var(--accent)] mb-1">
-          Superset
+          Superset{!startsRest ? " → no rest, go to next" : ""}
         </div>
       )}
       <div className="flex items-center gap-2 mb-2">
@@ -138,6 +140,7 @@ export function ExerciseCard({
             key={s.id}
             data={s}
             restSec={sessionExercise.restSec}
+            startsRest={startsRest}
             prevLabel={p ? `${display(p.weight)}×${p.reps}` : undefined}
           />
         );

@@ -107,6 +107,8 @@ export default function WorkoutPage() {
           const next = sessionExercises[i + 1];
           const g = se.supersetGroup;
           const inGroup = g != null && (prev?.supersetGroup === g || next?.supersetGroup === g);
+          // skip rest when the next exercise is your superset partner (go straight to it)
+          const startsRest = g == null || next?.supersetGroup !== g;
           return (
             <ExerciseCard
               key={se.id}
@@ -115,6 +117,7 @@ export default function WorkoutPage() {
               total={sessionExercises.length}
               onMove={(dir) => move(i, dir)}
               inGroup={inGroup}
+              startsRest={startsRest}
             />
           );
         })}

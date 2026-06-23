@@ -26,10 +26,13 @@ export function SetRow({
   data,
   restSec,
   prevLabel,
+  startsRest = true,
 }: {
   data: SetRowData;
   restSec: number;
   prevLabel?: string;
+  /** false for a supersetted exercise that isn't last in its group — go straight to the partner. */
+  startsRest?: boolean;
 }) {
   const startTimer = useTimerStore((s) => s.start);
   const { unit, display, toKg } = useUnit();
@@ -44,7 +47,7 @@ export function SetRow({
       reps: Number(reps) || 0,
       completed: next,
     });
-    if (next) startTimer(restSec);
+    if (next && startsRest) startTimer(restSec);
   }
 
   return (
