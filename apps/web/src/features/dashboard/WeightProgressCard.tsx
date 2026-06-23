@@ -113,13 +113,13 @@ export function WeightProgressCard() {
           <div className="mt-2 flex items-end gap-6">
             <div>
               <p className="text-xs text-[var(--text-muted)]">Current</p>
-              <p className="text-3xl font-extrabold leading-tight">
+              <p className="text-3xl font-extrabold leading-tight tabular-nums">
                 {currentKg !== undefined ? fmt(currentKg) : "—"}
               </p>
             </div>
             <div>
               <p className="text-xs text-[var(--text-muted)]">Goal</p>
-              <p className="text-2xl font-bold leading-tight text-[var(--text-muted)]">
+              <p className="text-2xl font-bold leading-tight text-[var(--text-muted)] tabular-nums">
                 {goalKg !== undefined ? fmt(goalKg) : "—"}
               </p>
             </div>

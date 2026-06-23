@@ -31,3 +31,16 @@ body {
 .app-shell .min-h-\[100dvh\] {
   min-height: calc(100dvh - env(safe-area-inset-top));
 }
+
+/* Respect reduced-motion: calm the press-shrink, ring sweep, and any animation.
+   Rackd's motion is quick and confident, never essential — safe to neutralize. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

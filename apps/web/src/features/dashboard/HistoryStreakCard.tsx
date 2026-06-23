@@ -57,7 +57,7 @@ export function HistoryStreakCard() {
       ) : (
         <>
           <div className="mb-4 flex items-baseline gap-2">
-            <span className="text-3xl font-extrabold text-[var(--accent)]">{streak}</span>
+            <span className="text-3xl font-extrabold text-[var(--accent)] tabular-nums">{streak}</span>
             <span className="text-[var(--text-muted)]">
               day{streak === 1 ? "" : "s"} streak {streak > 0 ? "🔥" : ""}
             </span>

@@ -63,13 +63,13 @@ export function WeeklyVolumeCard() {
       ) : (
         <div className="flex gap-8">
           <div>
-            <div className="text-3xl font-extrabold text-[var(--accent)]">{workouts}</div>
+            <div className="text-3xl font-extrabold text-[var(--accent)] tabular-nums">{workouts}</div>
             <div className="text-sm text-[var(--text-muted)]">
               workout{workouts === 1 ? "" : "s"}
             </div>
           </div>
           <div>
-            <div className="text-3xl font-extrabold text-[var(--accent)]">{volume}</div>
+            <div className="text-3xl font-extrabold text-[var(--accent)] tabular-nums">{volume}</div>
             <div className="text-sm text-[var(--text-muted)]">{unit} volume</div>
           </div>
         </div>
