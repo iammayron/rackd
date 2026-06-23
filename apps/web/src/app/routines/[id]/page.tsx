@@ -8,6 +8,7 @@ import {
   addRoutineSet,
   startSessionFromRoutine,
   setRoutineExerciseOrder,
+  setRoutineExerciseSuperset,
 } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
@@ -18,6 +19,7 @@ import { AddExercisePicker } from "@/features/routines/AddExercisePicker";
 interface RoutineExerciseRow {
   id: string;
   order: number;
+  supersetGroup?: number;
   exercise?: { name: string } | null;
 }
 
@@ -66,6 +68,35 @@ export default function RoutineEditorPage() {
       setRoutineExerciseOrder(client, a.id, b.order),
       setRoutineExerciseOrder(client, b.id, a.order),
     ]);
+  }
+
+  // two exercises are supersetted when they share a non-null group
+  function linkedNext(i: number): boolean {
+    const a = exercises[i];
+    const b = exercises[i + 1];
+    return !!a && !!b && a.supersetGroup != null && a.supersetGroup === b.supersetGroup;
+  }
+  function inGroup(i: number): boolean {
+    return linkedNext(i) || (i > 0 && linkedNext(i - 1));
+  }
+
+  async function toggleSupersetNext(i: number) {
+    const a = exercises[i];
+    const b = exercises[i + 1];
+    if (!a || !b) return;
+    const client = getClient();
+    if (linkedNext(i)) {
+      // unlink b; clear a too if it isn't part of the previous pair
+      await setRoutineExerciseSuperset(client, b.id, undefined);
+      const prev = exercises[i - 1];
+      if (!(prev && prev.supersetGroup === a.supersetGroup)) {
+        await setRoutineExerciseSuperset(client, a.id, undefined);
+      }
+    } else {
+      const group = a.supersetGroup ?? a.order;
+      if (a.supersetGroup == null) await setRoutineExerciseSuperset(client, a.id, group);
+      await setRoutineExerciseSuperset(client, b.id, group);
+    }
   }
 
   async function start() {
@@ -117,6 +148,9 @@ export default function RoutineEditorPage() {
             index={i}
             total={exercises.length}
             onMove={(dir) => move(i, dir)}
+            inGroup={inGroup(i)}
+            linkedNext={linkedNext(i)}
+            onToggleNext={() => toggleSupersetNext(i)}
           />
         ))}
         <AddExercisePicker onPick={onPick} />

@@ -22,6 +22,7 @@ interface SessionExerciseRow {
   exerciseId: string;
   order: number;
   restSec: number;
+  supersetGroup?: number;
   exercise?: { name: string } | null;
 }
 
@@ -101,15 +102,22 @@ export default function WorkoutPage() {
         {!fetching && sessionExercises.length === 0 && (
           <p className="text-[var(--text-muted)]">No exercises in this session.</p>
         )}
-        {sessionExercises.map((se, i) => (
-          <ExerciseCard
-            key={se.id}
-            sessionExercise={se}
-            index={i}
-            total={sessionExercises.length}
-            onMove={(dir) => move(i, dir)}
-          />
-        ))}
+        {sessionExercises.map((se, i) => {
+          const prev = sessionExercises[i - 1];
+          const next = sessionExercises[i + 1];
+          const g = se.supersetGroup;
+          const inGroup = g != null && (prev?.supersetGroup === g || next?.supersetGroup === g);
+          return (
+            <ExerciseCard
+              key={se.id}
+              sessionExercise={se}
+              index={i}
+              total={sessionExercises.length}
+              onMove={(dir) => move(i, dir)}
+              inGroup={inGroup}
+            />
+          );
+        })}
         {!fetching && <AddExercisePicker onPick={onAddExercise} />}
       </main>
 

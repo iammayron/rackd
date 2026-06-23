@@ -78,6 +78,16 @@ export async function setRoutineExerciseOrder(client: Client, id: string, order:
   });
 }
 
+export async function setRoutineExerciseSuperset(
+  client: Client,
+  id: string,
+  group: number | undefined,
+) {
+  return client.update("routineExercises", id, (e) => {
+    e.supersetGroup = group;
+  });
+}
+
 /** Remove an exercise from a live session, including its logged sets. */
 export async function removeSessionExercise(client: Client, sessionExerciseId: string) {
   const sets = await client.fetch(

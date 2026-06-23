@@ -32,11 +32,17 @@ export function RoutineExerciseEditor({
   index,
   total,
   onMove,
+  inGroup,
+  linkedNext,
+  onToggleNext,
 }: {
   routineExercise: RoutineExerciseRow;
   index: number;
   total: number;
   onMove: (dir: -1 | 1) => void;
+  inGroup: boolean;
+  linkedNext: boolean;
+  onToggleNext: () => void;
 }) {
   const { unit, display, toKg } = useUnit();
   const { results: sets } = useQuery<RoutineSetRow>(
@@ -56,7 +62,16 @@ export function RoutineExerciseEditor({
   }
 
   return (
-    <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 mb-4">
+    <section
+      className={`bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 ${
+        linkedNext ? "mb-1" : "mb-4"
+      } ${inGroup ? "border-l-4 border-l-[var(--accent)]" : ""}`}
+    >
+      {inGroup && (
+        <div className="text-xs font-bold uppercase tracking-wide text-[var(--accent)] mb-1">
+          Superset
+        </div>
+      )}
       <div className="flex items-center gap-2 mb-2">
         <MoveButtons index={index} total={total} onMove={onMove} />
         <h2 className="text-lg font-bold">
@@ -121,6 +136,20 @@ export function RoutineExerciseEditor({
       >
         + Add set
       </button>
+
+      {index < total - 1 && (
+        <button
+          type="button"
+          onClick={onToggleNext}
+          className={`mt-2 min-h-9 w-full rounded-lg text-sm font-semibold ${
+            linkedNext
+              ? "bg-[var(--accent)] text-white"
+              : "bg-transparent text-[var(--text-muted)] border border-[var(--border)]"
+          }`}
+        >
+          ⛓ {linkedNext ? "Supersetted with next" : "Superset with next"}
+        </button>
+      )}
     </section>
   );
 }

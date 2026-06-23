@@ -28,11 +28,13 @@ export function ExerciseCard({
   index,
   total,
   onMove,
+  inGroup = false,
 }: {
   sessionExercise: SessionExerciseRow;
   index: number;
   total: number;
   onMove: (dir: -1 | 1) => void;
+  inGroup?: boolean;
 }) {
   const { unit, display } = useUnit();
   const { results: sets } = useQuery<SetRowData>(
@@ -85,7 +87,16 @@ export function ExerciseCard({
   }
 
   return (
-    <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 mb-4">
+    <section
+      className={`bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 mb-4 ${
+        inGroup ? "border-l-4 border-l-[var(--accent)]" : ""
+      }`}
+    >
+      {inGroup && (
+        <div className="text-xs font-bold uppercase tracking-wide text-[var(--accent)] mb-1">
+          Superset
+        </div>
+      )}
       <div className="flex items-center gap-2 mb-2">
         <MoveButtons index={index} total={total} onMove={onMove} />
         <h2 className="text-lg font-bold">
