@@ -4,6 +4,14 @@ Local-first gym workout tracker (plan routines, run workouts, rest timer, histor
 
 ## Commands
 
+> **How this project runs locally: Docker Compose, not `pnpm dev`.** Both `web`
+> (:3000) and `sync` (:8787) run as local containers (`myfit-web-1` /
+> `myfit-sync-1`) from `docker-compose.yml`. Use `docker compose up -d --build`
+> to run/restart; images bake source at build time (**no hot reload** — rebuild
+> to apply changes; `NEXT_PUBLIC_*` baked then too). A "busy" :3000/:8787 is
+> almost always our own container → `docker rm -f myfit-web-1`. Don't suggest
+> `pnpm dev` unless asked. See `docs/solutions/workflow-issues/`.
+
 - `pnpm dev` — run all apps (web on :3000)
 - `pnpm --filter @myfit/web dev` — web only
 - `pnpm typecheck` — type check all packages (run before every commit)
