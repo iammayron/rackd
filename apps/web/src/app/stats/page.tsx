@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { exerciseStats, logBodyweight, type ExerciseStatPoint } from "@myfit/db";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId, useAuth } from "@/lib/auth";
@@ -100,6 +101,12 @@ export default function StatsPage() {
         <Card title="Account">
           <div className="flex items-center gap-3">
             <span className="flex-1 text-sm text-[var(--text-muted)] truncate">{user?.email}</span>
+            <Link
+              href="/settings"
+              className="min-h-10 inline-flex items-center px-4 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)] font-semibold no-underline"
+            >
+              Settings
+            </Link>
             <button
               type="button"
               onClick={() => signOut()}
