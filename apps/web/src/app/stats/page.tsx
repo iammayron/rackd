@@ -6,6 +6,7 @@ import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
 import { LineChart, BarChart } from "@/components/Chart";
+import { AdvancedSelect } from "@/components/AdvancedSelect";
 import { Nav } from "@/components/Nav";
 
 interface ExerciseRow {
@@ -120,28 +121,14 @@ export default function StatsPage() {
           </p>
         ) : (
           <>
-            <select
-              value={selected}
-              onChange={(e) => setSelected(e.target.value)}
-              aria-label="Exercise"
-              style={{
-                width: "100%",
-                minHeight: "var(--tap-min)",
-                padding: "0 var(--space-3)",
-                background: "var(--surface)",
-                color: "var(--text)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius)",
-                fontSize: "var(--text-base)",
-                marginBottom: "var(--space-4)",
-              }}
-            >
-              {withHistory.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}
-                </option>
-              ))}
-            </select>
+            <div style={{ marginBottom: "var(--space-4)" }}>
+              <AdvancedSelect
+                value={selected}
+                onChange={setSelected}
+                placeholder="Choose exercise…"
+                options={withHistory.map((e) => ({ value: e.id, label: e.name }))}
+              />
+            </div>
 
             {prs.length > 0 && (
               <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-4)", flexWrap: "wrap" }}>

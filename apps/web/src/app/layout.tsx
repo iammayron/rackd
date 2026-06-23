@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
+import { PrelineInit } from "@/components/PrelineInit";
 
 export const metadata: Metadata = {
   title: "FitNow",
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="app-shell">
           <Providers>{children}</Providers>
         </div>
+        <PrelineInit />
       </body>
     </html>
   );
