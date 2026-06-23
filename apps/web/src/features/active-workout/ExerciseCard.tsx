@@ -3,12 +3,19 @@
 import { useEffect, useState } from "react";
 import type { PointerEvent } from "react";
 import { nextWeight } from "@myfit/core";
-import { addSet, lastPerformance, removeSessionExercise, type PrevSet } from "@myfit/db";
+import {
+  addSet,
+  lastPerformance,
+  removeSessionExercise,
+  replaceSessionExercise,
+  type PrevSet,
+} from "@myfit/db";
 import { getClient } from "@/lib/triplit";
 import { useUnit } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";
 import { MoveButtons } from "@/components/MoveButtons";
 import { ExerciseThumb, ExerciseMediaModal, type ExerciseMediaData } from "@/components/ExerciseMedia";
+import { ReplaceExercisePicker } from "@/features/routines/ReplaceExercisePicker";
 import { SetRow, type SetRowData } from "./SetRow";
 import { PlatesPanel } from "./PlatesPanel";
 
@@ -126,14 +133,20 @@ export function ExerciseCard({
         <h2 className="text-lg font-bold">
           {sessionExercise.exercise?.name ?? "Exercise"}
         </h2>
-        <button
-          type="button"
-          onClick={() => removeSessionExercise(getClient(), sessionExercise.id)}
-          aria-label="Remove exercise"
-          className="ms-auto bg-transparent border-none text-lg text-[var(--text-muted)]"
-        >
-          ×
-        </button>
+        <div className="ms-auto flex items-center gap-2">
+          <ReplaceExercisePicker
+            currentExerciseId={sessionExercise.exerciseId}
+            onReplace={(newId) => replaceSessionExercise(getClient(), sessionExercise.id, newId)}
+          />
+          <button
+            type="button"
+            onClick={() => removeSessionExercise(getClient(), sessionExercise.id)}
+            aria-label="Remove exercise"
+            className="bg-transparent border-none text-lg text-[var(--text-muted)]"
+          >
+            ×
+          </button>
+        </div>
       </div>
 
       {prevTop && suggestedWeight !== undefined && noneCompleted && (

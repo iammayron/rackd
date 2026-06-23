@@ -144,6 +144,22 @@ export async function replaceRoutineExercise(
   });
 }
 
+/**
+ * Swap which library exercise a live session slot points at, keeping its order
+ * and rest. Mutates only `sessionExercises` — the source routine is untouched
+ * (the session is a deep copy of the plan). The `exercise` relation re-resolves
+ * via `$exerciseId`, so the new name/media flow through automatically.
+ */
+export async function replaceSessionExercise(
+  client: Client,
+  id: string,
+  newExerciseId: string,
+) {
+  return client.update("sessionExercises", id, (e) => {
+    e.exerciseId = newExerciseId;
+  });
+}
+
 /** Remove an exercise from a live session, including its logged sets. */
 export async function removeSessionExercise(client: Client, sessionExerciseId: string) {
   const sets = await client.fetch(
