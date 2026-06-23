@@ -66,6 +66,15 @@ export async function addSessionExercise(
   });
 }
 
+/** Remove an exercise from a live session, including its logged sets. */
+export async function removeSessionExercise(client: Client, sessionExerciseId: string) {
+  const sets = await client.fetch(
+    client.query("setLogs").Where("sessionExerciseId", "=", sessionExerciseId),
+  );
+  for (const s of sets) await client.delete("setLogs", s.id);
+  await client.delete("sessionExercises", sessionExerciseId);
+}
+
 /** Add an empty (uncompleted) set row to a session exercise. */
 export async function addSet(
   client: Client,

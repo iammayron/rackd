@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { nextWeight } from "@fitnow/core";
-import { addSet, lastPerformance, type PrevSet } from "@fitnow/db";
+import { addSet, lastPerformance, removeSessionExercise, type PrevSet } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
 import { useQuery } from "@/lib/use-query";
 import { SetRow, type SetRowData } from "./SetRow";
@@ -73,9 +73,19 @@ export function ExerciseCard({ sessionExercise }: { sessionExercise: SessionExer
 
   return (
     <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 mb-4">
-      <h2 className="text-lg font-bold mb-2">
-        {sessionExercise.exercise?.name ?? "Exercise"}
-      </h2>
+      <div className="flex items-center mb-2">
+        <h2 className="text-lg font-bold">
+          {sessionExercise.exercise?.name ?? "Exercise"}
+        </h2>
+        <button
+          type="button"
+          onClick={() => removeSessionExercise(getClient(), sessionExercise.id)}
+          aria-label="Remove exercise"
+          className="ms-auto bg-transparent border-none text-lg text-[var(--text-muted)]"
+        >
+          ×
+        </button>
+      </div>
 
       {prevTop && suggestedWeight !== undefined && noneCompleted && (
         <div className="flex items-center gap-2 bg-[var(--surface-2)] border border-[var(--border)] rounded-lg py-2 px-3 mb-3 text-sm">

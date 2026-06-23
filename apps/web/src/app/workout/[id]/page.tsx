@@ -1,11 +1,12 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { finishSession } from "@fitnow/db";
+import { finishSession, addSessionExercise, addSet } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
 import { useQuery } from "@/lib/use-query";
 import { ExerciseCard } from "@/features/active-workout/ExerciseCard";
 import { RestTimerBar } from "@/features/active-workout/RestTimerBar";
+import { AddExercisePicker } from "@/features/routines/AddExercisePicker";
 
 interface SessionExerciseRow {
   id: string;
@@ -34,6 +35,16 @@ export default function WorkoutPage() {
   async function finish() {
     await finishSession(getClient(), sessionId, Date.now());
     router.push("/");
+  }
+
+  async function onAddExercise(exerciseId: string) {
+    const client = getClient();
+    const se = await addSessionExercise(client, {
+      sessionId,
+      exerciseId,
+      order: sessionExercises.length + 1,
+    });
+    await addSet(client, { sessionExerciseId: se.id, order: 1 });
   }
 
   return (
@@ -65,6 +76,7 @@ export default function WorkoutPage() {
         {sessionExercises.map((se) => (
           <ExerciseCard key={se.id} sessionExercise={se} />
         ))}
+        {!fetching && <AddExercisePicker onPick={onAddExercise} />}
       </main>
 
       <RestTimerBar />
