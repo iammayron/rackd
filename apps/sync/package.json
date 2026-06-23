@@ -11,6 +11,7 @@
     "@fitnow/core": "workspace:*",
     "@fitnow/db": "workspace:*",
     "@triplit/server": "^1.1.8",
+    "better-sqlite3": "^11.8.0",
     "tsx": "^4.19.2"
   }
 }
