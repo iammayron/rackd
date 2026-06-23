@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { TrainingGoal } from "@myfit/core";
-import { getProfile, updateProfile, type ProfilePatch } from "@myfit/db";
-import { mmss } from "@myfit/ui";
+import type { TrainingGoal } from "@rackd/core";
+import { getProfile, updateProfile, type ProfilePatch } from "@rackd/db";
+import { mmss } from "@rackd/ui";
 import { getClient } from "@/lib/triplit";
-import { getCurrentUserId } from "@/lib/auth";
+import { getCurrentUserId, useAuth } from "@/lib/auth";
 import { useUnit, useUnitStore } from "@/lib/units-store";
+import { useTheme } from "@/lib/theme";
 import { AdvancedSelect } from "@/components/AdvancedSelect";
 import { Avatar } from "@/components/Avatar";
 import { uploadProfilePhoto, PHOTO_ACCEPT } from "@/lib/upload-photo";
@@ -61,6 +62,8 @@ function posInt(s: string): number | undefined {
 export function SettingsForm() {
   const { unit, display, toKg } = useUnit();
   const setUnit = useUnitStore((s) => s.setUnit);
+  const { user, signOut } = useAuth();
+  const { theme, setTheme: setThemeChoice } = useTheme();
   const metric = unit === "kg";
   const heightUnit = metric ? "cm" : "in";
 
@@ -196,6 +199,20 @@ export function SettingsForm() {
         </div>
       </Field>
 
+      <Field label="Appearance">
+        <div className="inline-flex rounded-lg border border-[var(--border)] p-1 bg-[var(--surface-2)]">
+          <Segment active={theme === "light"} onClick={() => setThemeChoice("light")}>
+            Light
+          </Segment>
+          <Segment active={theme === "dark"} onClick={() => setThemeChoice("dark")}>
+            Dark
+          </Segment>
+          <Segment active={theme === "system"} onClick={() => setThemeChoice("system")}>
+            System
+          </Segment>
+        </div>
+      </Field>
+
       <Field label="Name">
         <Input value={name} onChange={setName} placeholder="Your name" />
       </Field>
@@ -283,6 +300,20 @@ export function SettingsForm() {
           {saving ? "Saving…" : "Save"}
         </button>
         {saved && <span className="text-sm text-[var(--text-muted)]">Saved ✓</span>}
+      </div>
+
+      <div className="pt-6 mt-2 border-t border-[var(--border)]">
+        <span className="block text-sm text-[var(--text-muted)] mb-1.5">Account</span>
+        <div className="flex items-center gap-3">
+          <span className="flex-1 text-sm text-[var(--text-muted)] truncate">{user?.email}</span>
+          <button
+            type="button"
+            onClick={() => signOut()}
+            className="min-h-10 px-4 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)] font-semibold"
+          >
+            Sign out
+          </button>
+        </div>
       </div>
     </div>
   );

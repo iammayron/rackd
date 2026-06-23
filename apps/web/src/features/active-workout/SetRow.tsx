@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { estimate1RM } from "@myfit/core";
-import { updateSet, deleteSet } from "@myfit/db";
+import { estimate1RM } from "@rackd/core";
+import { updateSet, deleteSet } from "@rackd/db";
 import { getClient } from "@/lib/triplit";
 import { useUnit } from "@/lib/units-store";
 import { useTimerStore } from "./timer-store";

@@ -1,5 +1,5 @@
 import { createServer, createTriplitStorageProvider } from "@triplit/server";
-import { schema, roles } from "@myfit/db";
+import { schema, roles } from "@rackd/db";
 
 /**
  * MyFit self-hosted Triplit sync server.

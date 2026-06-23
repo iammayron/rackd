@@ -21,10 +21,10 @@ importers:
 
   apps/sync:
     dependencies:
-      '@myfit/core':
+      '@rackd/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@myfit/db':
+      '@rackd/db':
         specifier: workspace:*
         version: link:../../packages/db
       '@triplit/server':
@@ -39,13 +39,13 @@ importers:
 
   apps/web:
     dependencies:
-      '@myfit/core':
+      '@rackd/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@myfit/db':
+      '@rackd/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@myfit/ui':
+      '@rackd/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@supabase/supabase-js':
@@ -103,7 +103,7 @@ importers:
 
   packages/db:
     dependencies:
-      '@myfit/core':
+      '@rackd/core':
         specifier: workspace:*
         version: link:../core
       '@triplit/client':

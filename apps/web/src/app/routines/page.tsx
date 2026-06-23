@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createRoutine, startSessionFromRoutine, deleteRoutine } from "@myfit/db";
+import { createRoutine, startSessionFromRoutine, deleteRoutine } from "@rackd/db";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";

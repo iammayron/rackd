@@ -7,7 +7,7 @@ import {
   deleteRoutineSet,
   removeRoutineExercise,
   replaceRoutineExercise,
-} from "@myfit/db";
+} from "@rackd/db";
 import { getClient } from "@/lib/triplit";
 import { useUnit } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";

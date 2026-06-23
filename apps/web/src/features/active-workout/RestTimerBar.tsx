@@ -1,6 +1,6 @@
 "use client";
 
-import { mmss } from "@myfit/ui";
+import { mmss } from "@rackd/ui";
 import { useTimerStore } from "./timer-store";
 
 const BTN =

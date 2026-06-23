@@ -4,13 +4,13 @@
     {
       "name": "web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@myfit/web", "dev"],
+      "runtimeArgs": ["--filter", "@rackd/web", "dev"],
       "port": 3000
     },
     {
       "name": "web-prod",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@myfit/web", "start", "-p", "3100"],
+      "runtimeArgs": ["--filter", "@rackd/web", "start", "-p", "3100"],
       "port": 3100
     }
   ]

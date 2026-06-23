@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { currentStreak } from "@myfit/core";
+import { currentStreak } from "@rackd/core";
 import { useQuery } from "@/lib/use-query";
 
 interface SessionRow {

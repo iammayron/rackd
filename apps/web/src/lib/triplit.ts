@@ -1,4 +1,4 @@
-import { createClient, type Client } from "@myfit/db";
+import { createClient, type Client } from "@rackd/db";
 
 /**
  * Browser-only Triplit client (IndexedDB). The auth token is NOT set here —

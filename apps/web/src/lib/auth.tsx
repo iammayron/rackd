@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { seedExercises } from "@myfit/db";
+import { seedExercises } from "@rackd/db";
 import { getSupabase } from "./supabase";
 import { getClient } from "./triplit";
 

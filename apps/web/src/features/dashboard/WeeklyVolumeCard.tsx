@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { sessionVolume, weekStartIndex } from "@myfit/core";
-import type { SetLog } from "@myfit/core";
+import { sessionVolume, weekStartIndex } from "@rackd/core";
+import type { SetLog } from "@rackd/core";
 import { useUnit } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";
 

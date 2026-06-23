@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { logBodyWeight } from "@myfit/db";
+import { logBodyWeight } from "@rackd/db";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";

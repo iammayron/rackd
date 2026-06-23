@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { startSession, addSessionExercise, startSessionFromRoutine } from "@myfit/db";
-import { todaysRoutine } from "@myfit/core";
+import { startSession, addSessionExercise, startSessionFromRoutine } from "@rackd/db";
+import { todaysRoutine } from "@rackd/core";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
@@ -99,7 +99,7 @@ export default function Home() {
       <main className="flex-1 p-6 pb-24">
         <div className="flex items-center gap-3 mb-5">
           <div className="flex-1">
-            <h1 className="text-2xl font-bold">MyFit</h1>
+            <h1 className="text-2xl font-bold">Rackd</h1>
             <p className="text-[var(--text-muted)]">Ready when you are.</p>
           </div>
           <Link href="/settings" aria-label="Profile and settings">

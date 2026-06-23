@@ -1,43 +1,157 @@
-/* Design tokens — single source of truth (DRY). Dark-first (gyms). */
+/* ─────────────────────────────────────────────────────────────────────────
+   Rackd — design tokens (single source of truth, DRY).
+   One coral accent across both themes so the brand stays constant.
+   Light is the DEFAULT (bright gym, 6am); dark is opt-in via [data-theme="dark"]
+   on <html> (set by the no-FOUC controller in layout.tsx — follows OS + toggle).
+   Style with the SEMANTIC aliases (--surface, --text, --accent…); the raw
+   palette exists so themes stay swappable.
+   ───────────────────────────────────────────────────────────────────────── */
+
 :root {
-  --bg: #0b0d10;
-  --surface: #16191f;
-  --surface-2: #1f242c;
-  --border: #2a2f38;
-  --text: #f4f6f8;
-  --text-muted: #9aa3af;
-  --accent: #4f7cff;
-  --accent-press: #3a63da;
-  --success: #36d399; /* completed set */
-  --warning: #fbbd23;
-  --danger: #f87272;
+  /* ── Raw brand palette ─────────────────────────────────────────────────── */
+  --coral-500: #ff5a3c; /* primary accent (light) */
+  --coral-600: #e8462b; /* pressed */
+  --coral-400: #ff6b4d; /* primary accent (dark) */
+  --coral-300: #ff8163; /* pressed (dark) */
+  --coral-100: #ffe7e0; /* tint wash / selected bg (light) */
 
-  --radius-sm: 6px;
-  --radius: 10px;
-  --radius-lg: 16px;
+  --green-500: #16a34a; /* completed set (light) */
+  --green-400: #34d399; /* completed set (dark) */
+  --amber-500: #d97706;
+  --amber-400: #fbbf24;
+  --red-500: #dc2626;
+  --red-400: #f87171;
 
+  /* ── Light theme (default) ─────────────────────────────────────────────── */
+  --bg: #f7f8fa; /* soft off-white, not pure */
+  --surface: #ffffff; /* cards */
+  --surface-2: #eef1f5; /* insets, pressed, inputs */
+  --border: #e2e6ec;
+  --text: #11161d;
+  --text-muted: #5b6776;
+  --text-on-accent: #ffffff;
+
+  --accent: var(--coral-500);
+  --accent-press: var(--coral-600);
+  --accent-wash: var(--coral-100); /* selected / highlighted row bg */
+
+  --success: var(--green-500);
+  --success-ink: #06231a; /* text/icon on a success fill */
+  --warning: var(--amber-500);
+  --danger: var(--red-500);
+
+  --ring: color-mix(in srgb, var(--accent) 45%, transparent);
+
+  color-scheme: light;
+
+  /* ── Typography ────────────────────────────────────────────────────────── */
+  /* --font-hanken injected by next/font (layout.tsx). System stack is fallback. */
+  --font-sans: var(--font-hanken), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  --font-num: var(--font-sans);
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-heavy: 800;
+
+  --text-xs: 12px; /* eyebrow labels, meta only */
+  --text-sm: 14px; /* secondary, captions */
+  --text-base: 16px; /* body, inputs */
+  --text-lg: 20px; /* card titles, set inputs */
+  --text-xl: 28px; /* big numbers, readable at arm's length */
+  --text-2xl: 34px; /* hero stat */
+  --text-3xl: 44px; /* screen hero / today's workout */
+  --text-timer: 56px; /* the rest-timer ring countdown */
+
+  --leading-tight: 1.05;
+  --leading-snug: 1.2;
+  --leading-normal: 1.45;
+
+  --tracking-eyebrow: 0.06em; /* uppercase eyebrow labels */
+  --tracking-tight: -0.01em; /* large display numbers */
+
+  --num: "tnum" 1, "lnum" 1; /* equal-width digits so tickers don't jump */
+
+  /* ── Radii — rounded, friendly ─────────────────────────────────────────── */
+  --radius-sm: 8px; /* inputs, chips, small controls */
+  --radius: 12px; /* default — buttons, list rows */
+  --radius-md: 16px; /* cards */
+  --radius-lg: 24px; /* hero / feature cards */
+  --radius-xl: 28px; /* today's-workout block */
+  --radius-pill: 999px; /* fully round — tags, avatars, FAB */
+
+  --border-width: 1px;
+  --border-color: var(--border);
+
+  /* ── Soft elevation — warm-tinted, low-contrast ────────────────────────── */
+  --shadow-sm: 0 1px 2px rgba(17, 22, 29, 0.06);
+  --shadow: 0 2px 8px rgba(17, 22, 29, 0.08);
+  --shadow-md: 0 6px 20px rgba(17, 22, 29, 0.1);
+  --shadow-lg: 0 12px 32px rgba(17, 22, 29, 0.14);
+  /* Coral glow — only under the accent CTA / live timer ring. */
+  --shadow-accent: 0 8px 24px color-mix(in srgb, var(--accent) 38%, transparent);
+
+  /* ── Motion — quick, confident, slight press-spring. No bouncy loops. ──── */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --dur-slow: 320ms;
+
+  /* ── Spacing & sizing — 4px base grid ──────────────────────────────────── */
+  --space-0: 0;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
+  --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
 
-  --tap-min: 44px; /* min touch target */
-
-  --text-sm: 14px;
-  --text-base: 16px;
-  --text-lg: 20px;
-  --text-xl: 28px; /* big numbers, readable at arm's length */
+  --tap-min: 44px; /* never smaller (Apple HIG) */
+  --tap-cta: 52px; /* primary CTAs */
+  --app-width: 480px; /* the phone column */
+  --content-pad: 24px; /* default screen gutter */
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f6f7f9;
-    --surface: #ffffff;
-    --surface-2: #eef0f3;
-    --border: #dfe3e8;
-    --text: #0b0d10;
-    --text-muted: #5a6472;
-  }
+/* ── Dark theme — opt-in on <html> ([data-theme="dark"]) ─────────────────── */
+[data-theme="dark"] {
+  --bg: #0e1116; /* near-black, slight warmth (never pure #000) */
+  --surface: #171b22;
+  --surface-2: #20262f;
+  --border: #2c333d;
+  --text: #f3f5f8;
+  --text-muted: #9aa6b4;
+  --text-on-accent: #1a0a06;
+
+  --accent: var(--coral-400); /* same family, brighter for dark */
+  --accent-press: var(--coral-300);
+  --accent-wash: color-mix(in srgb, var(--coral-400) 18%, transparent);
+
+  --success: var(--green-400);
+  --success-ink: #06231a;
+  --warning: var(--amber-400);
+  --danger: var(--red-400);
+
+  --ring: color-mix(in srgb, var(--accent) 55%, transparent);
+
+  color-scheme: dark;
+
+  /* Deeper, neutral shadows (warm tint disappears on near-black). */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 6px 22px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 14px 36px rgba(0, 0, 0, 0.6);
+}
+
+/* Equal-width digits for stats / the timer ring. */
+.tabular-nums,
+.rk-num {
+  font-feature-settings: var(--num);
+  font-variant-numeric: tabular-nums lining-nums;
 }

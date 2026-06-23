@@ -10,7 +10,7 @@ import {
   setSessionExerciseOrder,
   reorderSessionExercises,
   type DetectedPR,
-} from "@myfit/db";
+} from "@rackd/db";
 import { getClient } from "@/lib/triplit";
 import { useQuery } from "@/lib/use-query";
 import type { ExerciseMediaData } from "@/components/ExerciseMedia";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { estimate1RM } from "@myfit/core";
+import { estimate1RM } from "@rackd/core";
 import { useUnit } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";
 

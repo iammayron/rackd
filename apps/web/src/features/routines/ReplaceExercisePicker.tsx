@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { suggestReplacements } from "@myfit/core";
+import { suggestReplacements } from "@rackd/core";
 import { useQuery } from "@/lib/use-query";
 import { ExerciseThumb } from "@/components/ExerciseMedia";
 

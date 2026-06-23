@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import type { PointerEvent } from "react";
-import { nextWeight } from "@myfit/core";
+import { nextWeight } from "@rackd/core";
 import {
   addSet,
   lastPerformance,
   removeSessionExercise,
   replaceSessionExercise,
   type PrevSet,
-} from "@myfit/db";
+} from "@rackd/db";
 import { getClient } from "@/lib/triplit";
 import { useUnit } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";

@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { fromKg, toKg as coreToKg, type Unit } from "@myfit/core";
+import { fromKg, toKg as coreToKg, type Unit } from "@rackd/core";
 
 const KEY = "myfit.unit";
 

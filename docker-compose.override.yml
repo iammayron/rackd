@@ -1,0 +1,10 @@
+# Local-only overrides (not for deploy). Host port 9000 is occupied on this box
+# (another loopback service), so remap MinIO's published ports. The in-container
+# port stays 9000, so web→minio over the compose network is unchanged — only the
+# browser-facing host ports move. `!override` replaces the base `ports:` list
+# instead of appending (which would re-introduce the 9000 conflict).
+services:
+  minio:
+    ports: !override
+      - "9200:9000" # S3 API  → browser uses http://localhost:9200/myfit
+      - "9201:9001" # console → http://localhost:9201

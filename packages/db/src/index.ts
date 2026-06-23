@@ -1,6 +1,6 @@
 import { TriplitClient } from "@triplit/client";
-import { estimate1RM } from "@myfit/core";
-import type { TrainingGoal, UnitPreference } from "@myfit/core";
+import { estimate1RM } from "@rackd/core";
+import type { TrainingGoal, UnitPreference } from "@rackd/core";
 import { schema, roles } from "./schema";
 
 export { schema, roles } from "./schema";

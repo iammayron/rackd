@@ -8,7 +8,7 @@ const items = [
   { href: "/routines", label: "Routines" },
   { href: "/programs", label: "Programs" },
   { href: "/history", label: "History" },
-  { href: "/stats", label: "Stats" },
+  { href: "/settings", label: "Settings" },
 ];
 
 /** Bottom tab bar — thumb-zone navigation across the main sections. */

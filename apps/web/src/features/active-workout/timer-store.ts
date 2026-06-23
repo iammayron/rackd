@@ -8,7 +8,7 @@ import {
   remainingMs,
   isFired,
   type TimerState,
-} from "@myfit/core";
+} from "@rackd/core";
 
 /**
  * Global rest timer — one instance for the whole app, survives navigation.
