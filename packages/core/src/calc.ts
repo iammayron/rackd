@@ -148,3 +148,16 @@ export function currentStreak(workoutDays: readonly number[], todayIndex: number
   }
   return streak;
 }
+
+/**
+ * Day index of this week's start (Monday) on or before today. `todayIndex` =
+ * today's local-midnight day index (days since the epoch, computed in local
+ * time); `todayWeekday` = `Date.getDay()` (0=Sun … 6=Sat). A session whose day
+ * index is >= this value falls in the current week. Pure — the UI converts
+ * timestamps to local-midnight day indices and reads the weekday, same split as
+ * `currentStreak`/`todaysRoutine`.
+ */
+export function weekStartIndex(todayIndex: number, todayWeekday: number): number {
+  const daysSinceMonday = (todayWeekday + 6) % 7; // Mon→0, Tue→1 … Sun→6
+  return todayIndex - daysSinceMonday;
+}

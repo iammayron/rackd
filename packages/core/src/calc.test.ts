@@ -8,6 +8,7 @@ import {
   todaysRoutine,
   suggestReplacements,
   currentStreak,
+  weekStartIndex,
 } from "./calc";
 import { toKg, fromKg, formatWeight } from "./units";
 import { startTimer, pauseTimer, resumeTimer, remainingMs, addTime } from "./timer";
@@ -167,5 +168,17 @@ describe("currentStreak", () => {
   });
   it("dedupes multiple workouts on the same day", () => {
     expect(currentStreak([100, 100, 99], 100)).toBe(2);
+  });
+});
+
+describe("weekStartIndex", () => {
+  it("returns today's index when today is Monday", () => {
+    expect(weekStartIndex(100, 1)).toBe(100); // Monday
+  });
+  it("backs up to the most recent Monday mid-week", () => {
+    expect(weekStartIndex(100, 4)).toBe(97); // Thursday → 3 days back
+  });
+  it("treats Sunday as the last day of the week (6 days back)", () => {
+    expect(weekStartIndex(100, 0)).toBe(94); // Sunday → Monday is 6 days earlier
   });
 });

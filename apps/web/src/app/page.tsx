@@ -11,6 +11,7 @@ import { useQuery } from "@/lib/use-query";
 import { Nav } from "@/components/Nav";
 import { Avatar } from "@/components/Avatar";
 import { WeightProgressCard } from "@/features/dashboard/WeightProgressCard";
+import { WeeklyVolumeCard } from "@/features/dashboard/WeeklyVolumeCard";
 import { HistoryStreakCard } from "@/features/dashboard/HistoryStreakCard";
 
 interface ExerciseRow {
@@ -149,6 +150,8 @@ export default function Home() {
         </section>
 
         <WeightProgressCard />
+
+        <WeeklyVolumeCard />
 
         <HistoryStreakCard />
 
