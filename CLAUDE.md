@@ -47,6 +47,7 @@ Logic lives in `packages/`; apps are thin shells.
 - **Exercise media is URL-only.** `thumbnailUrl`/`clipUrl` are CDN links, cached-on-view by the service worker — never store binaries in the synced DB. Logging must never block on media; fall back to thumbnail + text offline.
 - **KISS** — no server/AI/abstraction until a real second caller exists. Rule of three before extracting.
 - **Sync server needs the schema baked in.** `apps/sync` starts Triplit with `dbOptions.schema` (`{ collections: schema }`). Without it, relational `.Include()` queries fail to sync (`InvalidQueryInclusionError` — "inclusion was: null") even though they work locally. The client `syncSchema` option alone is not enough.
+- **UI uses Preline** (preferred over native controls). Preline 4 exposes `window.HSStaticMethods` only (no `window.HSSelect`); enhance via `HSStaticMethods.autoInit()`. `globals.css` imports `variants.css` + `@source` by **relative path** (`../../node_modules/preline/...`) because they aren't in Preline's package `exports`. `PrelineInit` re-inits on route change; wrap stateful widgets (see `AdvancedSelect`) and forward the native `change` to React. Inline-styles → Preline/Tailwind migration is in progress (Stats select done first).
 - **Identity** flows through `getCurrentUserId()` (`apps/web/src/lib/auth.ts`) — persisted anon id today, swap to real auth later. Never hardcode `ownerId`. No per-user permission rules yet (service token = full access); add Triplit roles before multi-user.
 
 ## Migrations / data
