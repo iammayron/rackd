@@ -93,6 +93,17 @@ export async function setRoutineExerciseOrder(client: Client, id: string, order:
   });
 }
 
+/** Persist a full reorder: `order` becomes the 1-based position in `orderedIds`. */
+export async function reorderRoutineExercises(client: Client, orderedIds: string[]) {
+  await Promise.all(
+    orderedIds.map((id, i) =>
+      client.update("routineExercises", id, (e) => {
+        e.order = i + 1;
+      }),
+    ),
+  );
+}
+
 export async function setRoutineExerciseSuperset(
   client: Client,
   id: string,

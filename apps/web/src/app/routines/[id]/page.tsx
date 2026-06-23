@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { PointerEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   renameRoutine,
@@ -8,6 +9,7 @@ import {
   startSessionFromRoutine,
   setRoutineExerciseOrder,
   setRoutineExerciseSuperset,
+  reorderRoutineExercises,
   publishRoutine,
 } from "@myfit/db";
 import { getClient } from "@/lib/triplit";
@@ -46,6 +48,69 @@ export default function RoutineEditorPage() {
 
   const [draftName, setDraftName] = useState(name);
   useEffect(() => setDraftName(name), [name]);
+
+  // --- drag-and-drop reorder (pointer events: works on touch + mouse) ---
+  const listRef = useRef<HTMLDivElement>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  // local id ordering; mirrors the query unless a drag is in progress
+  const [orderIds, setOrderIds] = useState<string[]>([]);
+  const orderRef = useRef<string[]>([]);
+  useEffect(() => {
+    if (!dragId) setOrderIds(exercises.map((e) => e.id));
+  }, [exercises, dragId]);
+  orderRef.current = orderIds;
+
+  const byId = new Map(exercises.map((e) => [e.id, e]));
+  const ordered = dragId
+    ? (orderIds.map((id) => byId.get(id)).filter(Boolean) as RoutineExerciseRow[])
+    : exercises;
+
+  function onDragMove(clientY: number) {
+    const id = dragId;
+    const container = listRef.current;
+    if (!id || !container) return;
+    const nodes = Array.from(container.querySelectorAll<HTMLElement>("[data-rex]"));
+    let target = nodes.findIndex((n) => {
+      const r = n.getBoundingClientRect();
+      return clientY < r.top + r.height / 2;
+    });
+    if (target === -1) target = nodes.length - 1;
+    setOrderIds((prev) => {
+      const from = prev.indexOf(id);
+      if (from === -1 || from === target) return prev;
+      const next = prev.slice();
+      next.splice(from, 1);
+      next.splice(target, 0, id);
+      return next;
+    });
+  }
+
+  useEffect(() => {
+    if (!dragId) return;
+    const onMovePtr = (e: globalThis.PointerEvent) => {
+      e.preventDefault();
+      onDragMove(e.clientY);
+    };
+    const onUp = () => {
+      const ids = orderRef.current;
+      setDragId(null);
+      void reorderRoutineExercises(getClient(), ids);
+    };
+    window.addEventListener("pointermove", onMovePtr, { passive: false });
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMovePtr);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragId]);
+
+  function startDrag(id: string, e: PointerEvent) {
+    e.preventDefault();
+    setDragId(id);
+  }
 
   const { user } = useAuth();
   const [published, setPublished] = useState(false);
@@ -155,18 +220,22 @@ export default function RoutineEditorPage() {
       </header>
 
       <main className="flex-1 p-4">
-        {exercises.map((re, i) => (
-          <RoutineExerciseEditor
-            key={re.id}
-            routineExercise={re}
-            index={i}
-            total={exercises.length}
-            onMove={(dir) => move(i, dir)}
-            inGroup={inGroup(i)}
-            linkedNext={linkedNext(i)}
-            onToggleNext={() => toggleSupersetNext(i)}
-          />
-        ))}
+        <div ref={listRef}>
+          {ordered.map((re, i) => (
+            <RoutineExerciseEditor
+              key={re.id}
+              routineExercise={re}
+              index={i}
+              total={ordered.length}
+              onMove={(dir) => move(i, dir)}
+              inGroup={inGroup(i)}
+              linkedNext={linkedNext(i)}
+              onToggleNext={() => toggleSupersetNext(i)}
+              dragging={dragId === re.id}
+              onDragHandleDown={(e) => startDrag(re.id, e)}
+            />
+          ))}
+        </div>
         <AddExercisePicker onPick={onPick} />
 
         {exercises.length > 0 && (

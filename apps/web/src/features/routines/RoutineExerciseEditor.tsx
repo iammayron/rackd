@@ -1,5 +1,6 @@
 "use client";
 
+import type { PointerEvent } from "react";
 import {
   addRoutineSet,
   updateRoutineSet,
@@ -35,6 +36,8 @@ export function RoutineExerciseEditor({
   inGroup,
   linkedNext,
   onToggleNext,
+  dragging,
+  onDragHandleDown,
 }: {
   routineExercise: RoutineExerciseRow;
   index: number;
@@ -43,6 +46,8 @@ export function RoutineExerciseEditor({
   inGroup: boolean;
   linkedNext: boolean;
   onToggleNext: () => void;
+  dragging?: boolean;
+  onDragHandleDown?: (e: PointerEvent) => void;
 }) {
   const { unit, display, toKg } = useUnit();
   const { results: sets } = useQuery<RoutineSetRow>(
@@ -63,9 +68,12 @@ export function RoutineExerciseEditor({
 
   return (
     <section
+      data-rex={routineExercise.id}
       className={`bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 ${
         linkedNext ? "mb-1" : "mb-4"
-      } ${inGroup ? "border-l-4 border-l-[var(--accent)]" : ""}`}
+      } ${inGroup ? "border-l-4 border-l-[var(--accent)]" : ""} ${
+        dragging ? "opacity-60 ring-2 ring-[var(--accent)]" : ""
+      }`}
     >
       {inGroup && (
         <div className="text-xs font-bold uppercase tracking-wide text-[var(--accent)] mb-1">
@@ -74,6 +82,17 @@ export function RoutineExerciseEditor({
       )}
       <div className="flex items-center gap-2 mb-2">
         <MoveButtons index={index} total={total} onMove={onMove} />
+        {onDragHandleDown && (
+          <button
+            type="button"
+            onPointerDown={onDragHandleDown}
+            aria-label="Drag to reorder"
+            style={{ touchAction: "none", cursor: "grab" }}
+            className="flex items-center justify-center w-6 text-[var(--text-muted)] select-none"
+          >
+            ⠿
+          </button>
+        )}
         <h2 className="text-lg font-bold">
           {routineExercise.exercise?.name ?? "Exercise"}
         </h2>
