@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { finishSession, addSessionExercise, addSet } from "@fitnow/db";
+import { finishSession, addSessionExercise, addSet, setSessionExerciseOrder } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
 import { useQuery } from "@/lib/use-query";
 import { ExerciseCard } from "@/features/active-workout/ExerciseCard";
@@ -47,6 +47,19 @@ export default function WorkoutPage() {
     await addSet(client, { sessionExerciseId: se.id, order: 1 });
   }
 
+  async function move(index: number, dir: -1 | 1) {
+    const j = index + dir;
+    if (j < 0 || j >= sessionExercises.length) return;
+    const a = sessionExercises[index];
+    const b = sessionExercises[j];
+    if (!a || !b) return;
+    const client = getClient();
+    await Promise.all([
+      setSessionExerciseOrder(client, a.id, b.order),
+      setSessionExerciseOrder(client, b.id, a.order),
+    ]);
+  }
+
   return (
     <div className="flex flex-col min-h-[100dvh]">
       <header className="sticky top-0 z-10 flex items-center gap-3 py-3 px-4 bg-[var(--bg)] border-b border-[var(--border)]">
@@ -73,8 +86,14 @@ export default function WorkoutPage() {
         {!fetching && sessionExercises.length === 0 && (
           <p className="text-[var(--text-muted)]">No exercises in this session.</p>
         )}
-        {sessionExercises.map((se) => (
-          <ExerciseCard key={se.id} sessionExercise={se} />
+        {sessionExercises.map((se, i) => (
+          <ExerciseCard
+            key={se.id}
+            sessionExercise={se}
+            index={i}
+            total={sessionExercises.length}
+            onMove={(dir) => move(i, dir)}
+          />
         ))}
         {!fetching && <AddExercisePicker onPick={onAddExercise} />}
       </main>

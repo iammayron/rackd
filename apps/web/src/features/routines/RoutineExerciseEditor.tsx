@@ -9,6 +9,7 @@ import {
 import { getClient } from "@/lib/triplit";
 import { useUnit } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";
+import { MoveButtons } from "@/components/MoveButtons";
 
 interface RoutineExerciseRow {
   id: string;
@@ -28,8 +29,14 @@ const CELL =
 
 export function RoutineExerciseEditor({
   routineExercise,
+  index,
+  total,
+  onMove,
 }: {
   routineExercise: RoutineExerciseRow;
+  index: number;
+  total: number;
+  onMove: (dir: -1 | 1) => void;
 }) {
   const { unit, display, toKg } = useUnit();
   const { results: sets } = useQuery<RoutineSetRow>(
@@ -50,7 +57,8 @@ export function RoutineExerciseEditor({
 
   return (
     <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 mb-4">
-      <div className="flex items-center mb-2">
+      <div className="flex items-center gap-2 mb-2">
+        <MoveButtons index={index} total={total} onMove={onMove} />
         <h2 className="text-lg font-bold">
           {routineExercise.exercise?.name ?? "Exercise"}
         </h2>

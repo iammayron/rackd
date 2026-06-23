@@ -7,6 +7,7 @@ import {
   addRoutineExercise,
   addRoutineSet,
   startSessionFromRoutine,
+  setRoutineExerciseOrder,
 } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
@@ -54,6 +55,19 @@ export default function RoutineEditorPage() {
     await addRoutineSet(getClient(), { routineExerciseId: re.id, order: 1, targetReps: 8 });
   }
 
+  async function move(index: number, dir: -1 | 1) {
+    const j = index + dir;
+    if (j < 0 || j >= exercises.length) return;
+    const a = exercises[index];
+    const b = exercises[j];
+    if (!a || !b) return;
+    const client = getClient();
+    await Promise.all([
+      setRoutineExerciseOrder(client, a.id, b.order),
+      setRoutineExerciseOrder(client, b.id, a.order),
+    ]);
+  }
+
   async function start() {
     const s = await startSessionFromRoutine(getClient(), {
       routineId,
@@ -96,8 +110,14 @@ export default function RoutineEditorPage() {
       </header>
 
       <main className="flex-1 p-4">
-        {exercises.map((re) => (
-          <RoutineExerciseEditor key={re.id} routineExercise={re} />
+        {exercises.map((re, i) => (
+          <RoutineExerciseEditor
+            key={re.id}
+            routineExercise={re}
+            index={i}
+            total={exercises.length}
+            onMove={(dir) => move(i, dir)}
+          />
         ))}
         <AddExercisePicker onPick={onPick} />
       </main>

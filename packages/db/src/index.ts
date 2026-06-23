@@ -66,6 +66,18 @@ export async function addSessionExercise(
   });
 }
 
+export async function setSessionExerciseOrder(client: Client, id: string, order: number) {
+  return client.update("sessionExercises", id, (e) => {
+    e.order = order;
+  });
+}
+
+export async function setRoutineExerciseOrder(client: Client, id: string, order: number) {
+  return client.update("routineExercises", id, (e) => {
+    e.order = order;
+  });
+}
+
 /** Remove an exercise from a live session, including its logged sets. */
 export async function removeSessionExercise(client: Client, sessionExerciseId: string) {
   const sets = await client.fetch(

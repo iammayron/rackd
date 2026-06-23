@@ -6,6 +6,7 @@ import { addSet, lastPerformance, removeSessionExercise, type PrevSet } from "@f
 import { getClient } from "@/lib/triplit";
 import { useUnit } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";
+import { MoveButtons } from "@/components/MoveButtons";
 import { SetRow, type SetRowData } from "./SetRow";
 import { PlatesPanel } from "./PlatesPanel";
 
@@ -22,7 +23,17 @@ interface SessionExerciseRow {
  * One exercise in the live session: header + its set rows + "add set".
  * Owns its own reactive query for its sets (composes cleanly per card).
  */
-export function ExerciseCard({ sessionExercise }: { sessionExercise: SessionExerciseRow }) {
+export function ExerciseCard({
+  sessionExercise,
+  index,
+  total,
+  onMove,
+}: {
+  sessionExercise: SessionExerciseRow;
+  index: number;
+  total: number;
+  onMove: (dir: -1 | 1) => void;
+}) {
   const { unit, display } = useUnit();
   const { results: sets } = useQuery<SetRowData>(
     (c) =>
@@ -75,7 +86,8 @@ export function ExerciseCard({ sessionExercise }: { sessionExercise: SessionExer
 
   return (
     <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 mb-4">
-      <div className="flex items-center mb-2">
+      <div className="flex items-center gap-2 mb-2">
+        <MoveButtons index={index} total={total} onMove={onMove} />
         <h2 className="text-lg font-bold">
           {sessionExercise.exercise?.name ?? "Exercise"}
         </h2>
