@@ -7,6 +7,7 @@ import { getClient } from "@/lib/triplit";
 import { useUnit } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";
 import { MoveButtons } from "@/components/MoveButtons";
+import { ExerciseThumb, ExerciseMediaModal, type ExerciseMediaData } from "@/components/ExerciseMedia";
 import { SetRow, type SetRowData } from "./SetRow";
 import { PlatesPanel } from "./PlatesPanel";
 
@@ -16,7 +17,7 @@ interface SessionExerciseRow {
   exerciseId: string;
   order: number;
   restSec: number;
-  exercise?: { name: string } | null;
+  exercise?: ExerciseMediaData | null;
 }
 
 /**
@@ -39,6 +40,7 @@ export function ExerciseCard({
   startsRest?: boolean;
 }) {
   const { unit, display } = useUnit();
+  const [showMedia, setShowMedia] = useState(false);
   const { results: sets } = useQuery<SetRowData>(
     (c) =>
       c
@@ -101,6 +103,9 @@ export function ExerciseCard({
       )}
       <div className="flex items-center gap-2 mb-2">
         <MoveButtons index={index} total={total} onMove={onMove} />
+        {sessionExercise.exercise && (
+          <ExerciseThumb ex={sessionExercise.exercise} size={40} onClick={() => setShowMedia(true)} />
+        )}
         <h2 className="text-lg font-bold">
           {sessionExercise.exercise?.name ?? "Exercise"}
         </h2>
@@ -155,6 +160,10 @@ export function ExerciseCard({
       </button>
 
       <PlatesPanel topWeight={sets.reduce((m, s) => Math.max(m, s.weight), 0)} />
+
+      {showMedia && sessionExercise.exercise && (
+        <ExerciseMediaModal ex={sessionExercise.exercise} onClose={() => setShowMedia(false)} />
+      )}
     </section>
   );
 }

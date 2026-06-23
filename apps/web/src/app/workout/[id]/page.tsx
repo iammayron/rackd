@@ -11,6 +11,7 @@ import {
 } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
 import { useQuery } from "@/lib/use-query";
+import type { ExerciseMediaData } from "@/components/ExerciseMedia";
 import { ExerciseCard } from "@/features/active-workout/ExerciseCard";
 import { RestTimerBar } from "@/features/active-workout/RestTimerBar";
 import { PrCelebration } from "@/features/active-workout/PrCelebration";
@@ -23,7 +24,7 @@ interface SessionExerciseRow {
   order: number;
   restSec: number;
   supersetGroup?: number;
-  exercise?: { name: string } | null;
+  exercise?: ExerciseMediaData | null;
 }
 
 export default function WorkoutPage() {

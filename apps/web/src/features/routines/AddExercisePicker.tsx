@@ -2,12 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@/lib/use-query";
+import { ExerciseThumb } from "@/components/ExerciseMedia";
 
 interface ExerciseRow {
   id: string;
   name: string;
   primaryMuscle: string;
   equipment: string;
+  thumbnailUrl?: string;
 }
 
 /**
@@ -75,10 +77,11 @@ export function AddExercisePicker({ onPick }: { onPick: (exerciseId: string) => 
                 <button
                   type="button"
                   onClick={() => pick(ex.id)}
-                  className={`w-full text-left flex items-center gap-2 min-h-12 py-3 px-4 mb-2 rounded-lg border border-[var(--border)] ${
+                  className={`w-full text-left flex items-center gap-3 min-h-12 py-2 px-3 mb-2 rounded-lg border border-[var(--border)] ${
                     added === ex.id ? "bg-[var(--success)] text-[#06231a]" : "bg-[var(--surface)] text-[var(--text)]"
                   }`}
                 >
+                  <ExerciseThumb ex={ex} size={40} />
                   <span className="font-semibold">{ex.name}</span>
                   <span className="ms-auto text-sm text-[var(--text-muted)]">
                     {added === ex.id ? "added ✓" : `${ex.primaryMuscle} · ${ex.equipment}`}
