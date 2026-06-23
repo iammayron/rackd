@@ -45,6 +45,39 @@ export function plateBreakdown(
   return { perSide, leftover: Number((remaining * 2).toFixed(3)) };
 }
 
+export interface WarmupSet {
+  /** Fraction of the working weight (0 = empty bar). */
+  pct: number;
+  weight: number;
+  reps: number;
+}
+
+/**
+ * Standard warmup ramp toward a working weight. Rounds to the nearest
+ * `step` (plate granularity). Empty-bar set only when it's lighter than 40%.
+ */
+export function warmupSets(
+  workingWeight: number,
+  barWeight = 20,
+  step = 2.5,
+): WarmupSet[] {
+  if (workingWeight <= barWeight) return [];
+  const round = (w: number) => Math.max(barWeight, Math.round(w / step) * step);
+  const ramp: Array<{ pct: number; reps: number }> = [
+    { pct: 0, reps: 8 },
+    { pct: 0.4, reps: 5 },
+    { pct: 0.6, reps: 3 },
+    { pct: 0.8, reps: 2 },
+  ];
+  return ramp
+    .map((r) => ({
+      pct: r.pct,
+      reps: r.reps,
+      weight: r.pct === 0 ? barWeight : round(workingWeight * r.pct),
+    }))
+    .filter((s) => s.weight < workingWeight);
+}
+
 export type ProgressionScheme = "linear" | "double";
 
 /**

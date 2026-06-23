@@ -5,6 +5,7 @@ import { addSet, lastPerformance, type PrevSet } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
 import { useQuery } from "@/lib/use-query";
 import { SetRow, type SetRowData } from "./SetRow";
+import { PlatesPanel } from "./PlatesPanel";
 
 interface SessionExerciseRow {
   id: string;
@@ -117,6 +118,8 @@ export function ExerciseCard({ sessionExercise }: { sessionExercise: SessionExer
       >
         + Add set
       </button>
+
+      <PlatesPanel topWeight={sets.reduce((m, s) => Math.max(m, s.weight), 0)} />
     </section>
   );
 }

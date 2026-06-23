@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { estimate1RM, plateBreakdown, nextWeight, sessionVolume } from "./calc";
+import { estimate1RM, plateBreakdown, nextWeight, sessionVolume, warmupSets } from "./calc";
 import { toKg, fromKg, formatWeight } from "./units";
 import { startTimer, pauseTimer, resumeTimer, remainingMs, addTime } from "./timer";
 import type { SetLog } from "./types";
@@ -36,6 +36,22 @@ describe("nextWeight", () => {
   });
   it("linear always adds increment", () => {
     expect(nextWeight(60, 5, 8, "linear")).toBe(62.5);
+  });
+});
+
+describe("warmupSets", () => {
+  it("ramps to the working weight, rounded to plate step", () => {
+    const w = warmupSets(100, 20);
+    expect(w.map((s) => s.weight)).toEqual([20, 40, 60, 80]);
+    expect(w.every((s) => s.weight < 100)).toBe(true);
+  });
+  it("returns none when working weight <= bar", () => {
+    expect(warmupSets(20, 20)).toEqual([]);
+    expect(warmupSets(15, 20)).toEqual([]);
+  });
+  it("drops ramp sets that meet/exceed the working weight", () => {
+    const w = warmupSets(30, 20);
+    expect(w.every((s) => s.weight < 30)).toBe(true);
   });
 });
 
