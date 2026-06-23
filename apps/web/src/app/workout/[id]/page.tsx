@@ -1,11 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { finishSession, addSessionExercise, addSet, setSessionExerciseOrder } from "@fitnow/db";
+import {
+  finishSession,
+  addSessionExercise,
+  addSet,
+  setSessionExerciseOrder,
+  type DetectedPR,
+} from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
 import { useQuery } from "@/lib/use-query";
 import { ExerciseCard } from "@/features/active-workout/ExerciseCard";
 import { RestTimerBar } from "@/features/active-workout/RestTimerBar";
+import { PrCelebration } from "@/features/active-workout/PrCelebration";
 import { AddExercisePicker } from "@/features/routines/AddExercisePicker";
 
 interface SessionExerciseRow {
@@ -32,9 +40,16 @@ export default function WorkoutPage() {
     [sessionId],
   );
 
+  const [prs, setPrs] = useState<DetectedPR[] | null>(null);
+
   async function finish() {
-    await finishSession(getClient(), sessionId, Date.now());
-    router.push("/");
+    const found = await finishSession(getClient(), sessionId, Date.now());
+    if (found && found.length > 0) {
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate([120, 60, 120]);
+      setPrs(found);
+    } else {
+      router.push("/");
+    }
   }
 
   async function onAddExercise(exerciseId: string) {
@@ -99,6 +114,16 @@ export default function WorkoutPage() {
       </main>
 
       <RestTimerBar />
+
+      {prs && (
+        <PrCelebration
+          prs={prs}
+          nameById={Object.fromEntries(
+            sessionExercises.map((se) => [se.exerciseId, se.exercise?.name ?? "Exercise"]),
+          )}
+          onClose={() => router.push("/")}
+        />
+      )}
     </div>
   );
 }
