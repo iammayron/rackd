@@ -13,6 +13,13 @@ Local-first gym workout tracker (plan routines, run workouts, rest timer, histor
 
 Before committing, run: `pnpm typecheck && pnpm test`.
 
+### Cloud sync (optional, self-hosted)
+
+- `pnpm --filter @fitnow/sync start` — run the Triplit sync server (env `JWT_SECRET`, `PORT` default 8787, `STORAGE` sqlite|memory).
+- `pnpm --filter @fitnow/sync gen-token "$JWT_SECRET" service` — mint a token.
+- Enable in the web app by setting `NEXT_PUBLIC_TRIPLIT_URL` + `NEXT_PUBLIC_TRIPLIT_TOKEN` in `apps/web/.env.local` (unset = local-only). `NEXT_PUBLIC_*` is baked at build → rebuild after changing.
+- Deploy: `docker compose up -d` on a home box, expose over Tailscale. See `.env.example`.
+
 No formatter/linter is wired yet — the format hook auto-detects and no-ops until one is added. Don't reference a `lint`/`format` script until it actually exists.
 
 ## Architecture
@@ -39,6 +46,8 @@ Logic lives in `packages/`; apps are thin shells.
 - **Rest timer is wall-clock, not tick-counting.** `packages/core/src/timer.ts` stores an absolute `endAt`; PWA tabs sleep, so always recompute `remainingMs(state, now)`. Platform layer schedules the service-worker notification for `endAt`.
 - **Exercise media is URL-only.** `thumbnailUrl`/`clipUrl` are CDN links, cached-on-view by the service worker — never store binaries in the synced DB. Logging must never block on media; fall back to thumbnail + text offline.
 - **KISS** — no server/AI/abstraction until a real second caller exists. Rule of three before extracting.
+- **Sync server needs the schema baked in.** `apps/sync` starts Triplit with `dbOptions.schema` (`{ collections: schema }`). Without it, relational `.Include()` queries fail to sync (`InvalidQueryInclusionError` — "inclusion was: null") even though they work locally. The client `syncSchema` option alone is not enough.
+- **Identity** flows through `getCurrentUserId()` (`apps/web/src/lib/auth.ts`) — persisted anon id today, swap to real auth later. Never hardcode `ownerId`. No per-user permission rules yet (service token = full access); add Triplit roles before multi-user.
 
 ## Migrations / data
 
