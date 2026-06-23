@@ -24,8 +24,9 @@ Living backlog. Done work lives in git history; this tracks what's next.
 - [ ] Scheduled / calendar workouts
 
 ### Phase 4 — Social + AI
-- [ ] Profiles, follow, activity feed, share/clone routines
-- [ ] AI suggestions (Claude API) grounded in history — workout gen, weak-point analysis
+- [x] Share / discover / clone routines (public catalog)
+- [ ] Profiles, follow, activity feed
+- [ ] AI suggestions (Claude API) grounded in history — needs ANTHROPIC_API_KEY
 
 ### Content & polish
 - [x] Exercise media system — thumbnails + detail modal (clip plays when clipUrl set)
