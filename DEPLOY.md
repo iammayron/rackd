@@ -71,3 +71,8 @@ Runs full-screen, offline-capable, syncing to your box.
 - **Schema changes** → rebuild the sync image (`docker compose up -d --build sync`); it bakes the schema at startup.
 - Secrets: never commit `.env` or `supabase/signing_keys.json`.
 - Switching Supabase signing keys invalidates sessions — sign out/in.
+- **`SUPABASE_JWT_SECRET` must match the live signing key.** If sync rejects
+  tokens (401 / `InvalidTokenSignature`), the key rotated. Refresh it:
+  `curl -s http://<box>:54321/auth/v1/.well-known/jwks.json` → take `keys[0]`
+  (the public JWK object) → set it as `SUPABASE_JWT_SECRET` in `.env` →
+  `docker compose up -d sync`. The token's `kid` (header) must equal the JWK's `kid`.
