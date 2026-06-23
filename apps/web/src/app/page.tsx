@@ -94,46 +94,64 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-[100dvh]">
       <main className="flex-1 p-6 pb-24">
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-5">
           <div className="flex-1">
             <h1 className="text-2xl font-bold">MyFit</h1>
-            <p className="text-[var(--text-muted)]">Pick exercises, start your workout.</p>
+            <p className="text-[var(--text-muted)]">Ready when you are.</p>
           </div>
           <Link href="/settings" aria-label="Profile and settings">
             <Avatar src={profile?.photoUrl || null} name={profile?.displayName} size={44} />
           </Link>
         </div>
 
-        <section className="mb-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+        <section
+          className={`mb-8 rounded-3xl p-6 ${
+            today
+              ? "bg-[var(--accent)] text-white shadow-lg"
+              : "border border-dashed border-[var(--border)] bg-[var(--surface)]"
+          }`}
+        >
+          <p
+            className={`text-xs font-semibold uppercase tracking-wide ${
+              today ? "text-white/80" : "text-[var(--text-muted)]"
+            }`}
+          >
             Today’s workout
           </p>
           {today ? (
             <>
-              <h2 className="mt-1 text-xl font-bold text-[var(--text)]">{today.name}</h2>
+              <h2 className="mt-1 text-3xl font-extrabold leading-tight">{today.name}</h2>
               <button
                 type="button"
                 onClick={startToday}
                 disabled={starting}
-                className="mt-3 min-h-11 w-full rounded-xl bg-[var(--accent)] text-white font-bold disabled:opacity-60"
+                className="mt-5 min-h-[52px] w-full rounded-2xl bg-white text-[var(--accent)] text-lg font-bold disabled:opacity-60"
               >
-                {starting ? "Starting…" : "Start today’s workout"}
+                {starting ? "Starting…" : "Start workout"}
               </button>
             </>
           ) : (
             <>
+              <h2 className="mt-1 text-2xl font-bold text-[var(--text)]">Rest day</h2>
               <p className="mt-1 text-[var(--text-muted)]">
                 Nothing scheduled for today.
               </p>
               <Link
                 href="/routines"
-                className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-2)] font-bold text-[var(--accent)] no-underline"
+                className="mt-5 inline-flex min-h-[52px] w-full items-center justify-center rounded-2xl bg-[var(--accent)] text-lg font-bold text-white no-underline"
               >
                 Pick a routine to start
               </Link>
             </>
           )}
         </section>
+
+        <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+          Quick workout
+        </h2>
+        <p className="mb-3 text-sm text-[var(--text-muted)]">
+          Pick exercises to start an ad-hoc session.
+        </p>
 
         <input
           value={search}
