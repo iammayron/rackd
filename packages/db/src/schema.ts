@@ -204,6 +204,26 @@ export const schema = S.Collections({
     } as never,
   },
 
+  // Profile + settings, one row per user. Weights canonical (kg), height in cm.
+  // photoUrl is a URL only — no binary in the synced DB (media rule).
+  userProfile: {
+    schema: S.Schema({
+      id: S.Id(),
+      ownerId: S.String(),
+      displayName: S.Optional(S.String()),
+      photoUrl: S.Optional(S.String()),
+      heightCm: S.Optional(S.Number()),
+      currentWeightKg: S.Optional(S.Number()),
+      goalWeightKg: S.Optional(S.Number()),
+      trainingGoal: S.Optional(S.String()),
+      unitPreference: S.String({ default: "metric" }),
+      defaultRestSec: S.Number({ default: 120 }),
+      defaultSets: S.Number({ default: 3 }),
+      defaultReps: S.Number({ default: 10 }),
+    }),
+    permissions: ownerOnly,
+  },
+
   programDays: {
     schema: S.Schema({
       id: S.Id(),

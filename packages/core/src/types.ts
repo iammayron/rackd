@@ -152,6 +152,36 @@ export interface BodyMetric {
   note?: string;
 }
 
+export type TrainingGoal =
+  | "weight_loss"
+  | "hypertrophy"
+  | "strength"
+  | "muscle_gain";
+
+export type UnitPreference = "metric" | "imperial";
+
+/**
+ * Profile + settings, one row per user. Weights canonical (kg), height in cm —
+ * never store lb/imperial. `photoUrl` is a URL only (no binary in synced DB),
+ * consistent with the media rule. Defaults at create: defaultRestSec 120,
+ * defaultSets 3, defaultReps 10, unitPreference "metric".
+ */
+export interface UserProfile {
+  id: string;
+  ownerId: string;
+  displayName?: string;
+  /** URL only — never store binary in the synced DB. */
+  photoUrl?: string;
+  heightCm?: number;
+  currentWeightKg?: number;
+  goalWeightKg?: number;
+  trainingGoal?: TrainingGoal;
+  unitPreference: UnitPreference;
+  defaultRestSec: number;
+  defaultSets: number;
+  defaultReps: number;
+}
+
 export type PrType = "1rm" | "weight" | "reps" | "volume";
 
 export interface PersonalRecord {
