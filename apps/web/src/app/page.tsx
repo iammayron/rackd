@@ -10,6 +10,7 @@ import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
 import { Nav } from "@/components/Nav";
 import { Avatar } from "@/components/Avatar";
+import { WeightProgressCard } from "@/features/dashboard/WeightProgressCard";
 
 interface ExerciseRow {
   id: string;
@@ -145,6 +146,8 @@ export default function Home() {
             </>
           )}
         </section>
+
+        <WeightProgressCard />
 
         <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">
           Quick workout
