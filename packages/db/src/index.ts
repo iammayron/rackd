@@ -1,6 +1,6 @@
 import { TriplitClient } from "@triplit/client";
 import { estimate1RM } from "@rackd/core";
-import type { TrainingGoal, UnitPreference } from "@rackd/core";
+import type { TrainingGoal, UnitPreference, DiffExercise } from "@rackd/core";
 import { schema, roles } from "./schema";
 
 export { schema, roles } from "./schema";
@@ -735,6 +735,215 @@ export async function duplicateRoutine(
     }
   }
   return copy.id;
+}
+
+/* ---------------------------------------------------------------------------
+ * Save-back (#3) — push a finished session's changes back into its routine.
+ * ------------------------------------------------------------------------- */
+
+export type SaveBackMode = "numbers" | "exercises" | "everything";
+
+interface PlanEntry {
+  exerciseId: string;
+  supersetGroup?: number;
+  restSec?: number;
+  sets: Array<{
+    type?: string;
+    targetWeight?: number;
+    targetReps?: number;
+    targetRpe?: number;
+    tempo?: string;
+  }>;
+}
+
+/**
+ * Rewrite a routine's prescription from a finished session, per mode:
+ *  - "numbers"    keep the prescribed lineup; adopt the weights/reps performed.
+ *  - "exercises"  adopt the performed lineup; keep prescribed numbers where the
+ *                 exercise already existed (new exercises take performed numbers).
+ *  - "everything" adopt lineup AND numbers exactly as performed.
+ * Only the routine tree is rewritten — the session (history) is untouched.
+ */
+export async function applySessionToRoutine(
+  client: Client,
+  args: { sessionId: string; routineId: string; mode: SaveBackMode },
+) {
+  // Performed lineup + the loads actually logged.
+  const ses = await client.fetch(
+    client.query("sessionExercises").Where("sessionId", "=", args.sessionId).Order("order", "ASC"),
+  );
+  const performed: PlanEntry[] = [];
+  for (const se of ses) {
+    const sets = await client.fetch(
+      client.query("setLogs").Where("sessionExerciseId", "=", se.id).Order("order", "ASC"),
+    );
+    performed.push({
+      exerciseId: se.exerciseId,
+      supersetGroup: se.supersetGroup ?? undefined,
+      restSec: se.restSec ?? undefined,
+      sets: sets.map((s) => ({
+        type: s.type,
+        targetWeight: s.weight || undefined,
+        targetReps: s.reps || undefined,
+        targetRpe: s.rpe ?? undefined,
+      })),
+    });
+  }
+
+  // Current prescription (kept for "numbers"/"exercises" modes).
+  const oldEx = await client.fetch(
+    client.query("routineExercises").Where("routineId", "=", args.routineId).Order("order", "ASC"),
+  );
+  const oldPlan: PlanEntry[] = [];
+  const oldSetsByExerciseId = new Map<string, PlanEntry["sets"]>();
+  for (const re of oldEx) {
+    const sets = await client.fetch(
+      client.query("routineSets").Where("routineExerciseId", "=", re.id).Order("order", "ASC"),
+    );
+    const entry: PlanEntry = {
+      exerciseId: re.exerciseId,
+      supersetGroup: re.supersetGroup ?? undefined,
+      restSec: re.restSec ?? undefined,
+      sets: sets.map((s) => ({
+        type: s.type,
+        targetWeight: s.targetWeight ?? undefined,
+        targetReps: s.targetReps ?? undefined,
+        targetRpe: s.targetRpe ?? undefined,
+        tempo: s.tempo ?? undefined,
+      })),
+    };
+    oldPlan.push(entry);
+    if (!oldSetsByExerciseId.has(re.exerciseId)) oldSetsByExerciseId.set(re.exerciseId, entry.sets);
+  }
+
+  let plan: PlanEntry[];
+  if (args.mode === "everything") {
+    plan = performed;
+  } else if (args.mode === "numbers") {
+    const performedByExId = new Map(performed.map((p) => [p.exerciseId, p.sets]));
+    plan = oldPlan.map((o) => ({ ...o, sets: performedByExId.get(o.exerciseId) ?? o.sets }));
+  } else {
+    // "exercises": performed lineup, keep prescribed numbers where they existed.
+    plan = performed.map((p) => ({
+      exerciseId: p.exerciseId,
+      supersetGroup: p.supersetGroup,
+      restSec: p.restSec,
+      sets: oldSetsByExerciseId.get(p.exerciseId) ?? p.sets,
+    }));
+  }
+
+  // Replace the routine tree.
+  const ownerId = await ownerOf(client, "routines", args.routineId);
+  for (const re of oldEx) {
+    const sets = await client.fetch(
+      client.query("routineSets").Where("routineExerciseId", "=", re.id),
+    );
+    for (const s of sets) await client.delete("routineSets", s.id);
+    await client.delete("routineExercises", re.id);
+  }
+  let order = 1;
+  for (const entry of plan) {
+    const re = await client.insert("routineExercises", {
+      ownerId,
+      routineId: args.routineId,
+      exerciseId: entry.exerciseId,
+      order: order++,
+      supersetGroup: entry.supersetGroup,
+      restSec: entry.restSec ?? 120,
+    });
+    let so = 1;
+    for (const s of entry.sets) {
+      await client.insert("routineSets", {
+        ownerId,
+        routineExerciseId: re.id,
+        order: so++,
+        type: s.type ?? "normal",
+        targetReps: s.targetReps,
+        targetWeight: s.targetWeight,
+        targetRpe: s.targetRpe,
+        tempo: s.tempo,
+      });
+    }
+  }
+}
+
+export interface SaveBackContext {
+  routineId: string;
+  routineName: string;
+  /** Flattened plan vs performed, ready for `diffSessionVsRoutine` in @rackd/core. */
+  prescription: DiffExercise[];
+  performed: DiffExercise[];
+  /** Set when the session's routine is a day in the user's ACTIVE program. */
+  program: { programDayId: string; programName: string } | null;
+}
+
+/**
+ * Gather everything the finish flow needs to offer save-back: the routine this
+ * session came from, the prescription vs performed sets (for the pure diff), and
+ * whether the routine belongs to the active program (enables the "here" target).
+ * Returns null for ad-hoc sessions (no routineId) or a missing routine.
+ */
+export async function getSaveBackContext(
+  client: Client,
+  sessionId: string,
+): Promise<SaveBackContext | null> {
+  const session = await client.fetchById("sessions", sessionId);
+  if (!session?.routineId) return null;
+  const routine = await client.fetchById("routines", session.routineId);
+  if (!routine) return null;
+
+  const presEx = await client.fetch(
+    client.query("routineExercises").Where("routineId", "=", session.routineId).Order("order", "ASC"),
+  );
+  const prescription: DiffExercise[] = [];
+  for (const re of presEx) {
+    const sets = await client.fetch(
+      client.query("routineSets").Where("routineExerciseId", "=", re.id).Order("order", "ASC"),
+    );
+    prescription.push({
+      exerciseId: re.exerciseId,
+      sets: sets.map((s) => ({ weight: s.targetWeight ?? 0, reps: s.targetReps ?? 0 })),
+    });
+  }
+
+  const ses = await client.fetch(
+    client.query("sessionExercises").Where("sessionId", "=", sessionId).Order("order", "ASC"),
+  );
+  const performed: DiffExercise[] = [];
+  for (const se of ses) {
+    const sets = await client.fetch(
+      client.query("setLogs").Where("sessionExerciseId", "=", se.id).Order("order", "ASC"),
+    );
+    performed.push({
+      exerciseId: se.exerciseId,
+      sets: sets.map((s) => ({ weight: s.weight, reps: s.reps })),
+    });
+  }
+
+  let program: SaveBackContext["program"] = null;
+  const actives = await client.fetch(
+    client.query("programs").Where("ownerId", "=", session.ownerId).Where("active", "=", true),
+  );
+  for (const pr of actives) {
+    const day = await client.fetchOne(
+      client
+        .query("programDays")
+        .Where("programId", "=", pr.id)
+        .Where("routineId", "=", session.routineId),
+    );
+    if (day) {
+      program = { programDayId: day.id, programName: pr.name };
+      break;
+    }
+  }
+
+  return {
+    routineId: session.routineId,
+    routineName: routine.name,
+    prescription,
+    performed,
+    program,
+  };
 }
 
 /* ---------------------------------------------------------------------------

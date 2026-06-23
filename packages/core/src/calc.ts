@@ -215,6 +215,56 @@ export function advanceRotation(cursor: number, dayCount: number): number {
 }
 
 /**
+ * Save-back diff (#3): compare what was performed in a session against the
+ * routine's prescription, to decide whether finishing should offer to push the
+ * changes back. Pure — the caller flattens the routine tree (routineExercises +
+ * routineSets → targetWeight/targetReps) and the session tree (sessionExercises
+ * + setLogs → weight/reps) into these shapes, ordered as displayed.
+ *
+ *  - `exercisesChanged`: the ordered exercise lineup differs (added/removed/
+ *    swapped/reordered).
+ *  - `numbersChanged`: for an exercise present in both, the set count or any
+ *    weight/reps differs from the plan.
+ */
+export interface DiffExercise {
+  exerciseId: string;
+  sets: ReadonlyArray<{ weight?: number; reps?: number }>;
+}
+export interface SessionDiff {
+  exercisesChanged: boolean;
+  numbersChanged: boolean;
+}
+
+export function diffSessionVsRoutine(
+  prescription: readonly DiffExercise[],
+  performed: readonly DiffExercise[],
+): SessionDiff {
+  const exercisesChanged =
+    prescription.map((e) => e.exerciseId).join("|") !==
+    performed.map((e) => e.exerciseId).join("|");
+
+  let numbersChanged = false;
+  for (const p of performed) {
+    const base = prescription.find((b) => b.exerciseId === p.exerciseId);
+    if (!base) continue; // a brand-new exercise is an exercise change, not a number change
+    if (base.sets.length !== p.sets.length) {
+      numbersChanged = true;
+      break;
+    }
+    for (let i = 0; i < p.sets.length; i++) {
+      const a = p.sets[i];
+      const b = base.sets[i];
+      if ((a?.weight ?? 0) !== (b?.weight ?? 0) || (a?.reps ?? 0) !== (b?.reps ?? 0)) {
+        numbersChanged = true;
+        break;
+      }
+    }
+    if (numbersChanged) break;
+  }
+  return { exercisesChanged, numbersChanged };
+}
+
+/**
  * Day index of this week's start (Monday) on or before today. `todayIndex` =
  * today's local-midnight day index (days since the epoch, computed in local
  * time); `todayWeekday` = `Date.getDay()` (0=Sun … 6=Sat). A session whose day

@@ -9,15 +9,31 @@ import {
   addSet,
   setSessionExerciseOrder,
   reorderSessionExercises,
+  getSaveBackContext,
+  applySessionToRoutine,
+  duplicateRoutine,
+  updateProgramDay,
   type DetectedPR,
+  type SaveBackMode,
 } from "@rackd/db";
+import { diffSessionVsRoutine, type SessionDiff } from "@rackd/core";
 import { getClient } from "@/lib/triplit";
+import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
 import type { ExerciseMediaData } from "@/components/ExerciseMedia";
 import { ExerciseCard } from "@/features/active-workout/ExerciseCard";
 import { RestTimerBar } from "@/features/active-workout/RestTimerBar";
 import { PrCelebration } from "@/features/active-workout/PrCelebration";
+import { SaveBackSheet, type SaveBackTarget } from "@/features/active-workout/SaveBackSheet";
 import { AddExercisePicker } from "@/features/routines/AddExercisePicker";
+
+interface SaveBackState {
+  diff: SessionDiff;
+  routineId: string;
+  routineName: string;
+  programName: string | null;
+  programDayId: string | null;
+}
 
 interface SessionExerciseRow {
   id: string;
@@ -45,6 +61,7 @@ export default function WorkoutPage() {
   );
 
   const [prs, setPrs] = useState<DetectedPR[] | null>(null);
+  const [saveBack, setSaveBack] = useState<SaveBackState | null>(null);
 
   // --- drag-and-drop reorder (pointer events: works on touch + mouse) ---
   const listRef = useRef<HTMLDivElement>(null);
@@ -109,14 +126,57 @@ export default function WorkoutPage() {
     setDragId(id);
   }
 
+  function goSummary() {
+    router.push(`/workout/${sessionId}/summary`);
+  }
+
+  /**
+   * After finishing (and any PR celebration): if the session came from a routine
+   * and diverged from its prescription, offer save-back before the summary.
+   */
+  async function afterFinish() {
+    const ctx = await getSaveBackContext(getClient(), sessionId);
+    if (!ctx) return goSummary();
+    const diff = diffSessionVsRoutine(ctx.prescription, ctx.performed);
+    if (!diff.exercisesChanged && !diff.numbersChanged) return goSummary();
+    setSaveBack({
+      diff,
+      routineId: ctx.routineId,
+      routineName: ctx.routineName,
+      programName: ctx.program?.programName ?? null,
+      programDayId: ctx.program?.programDayId ?? null,
+    });
+  }
+
   async function finish() {
     const found = await finishSession(getClient(), sessionId, Date.now());
     if (found && found.length > 0) {
       if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate([120, 60, 120]);
       setPrs(found);
     } else {
-      router.push(`/workout/${sessionId}/summary`);
+      await afterFinish();
     }
+  }
+
+  /** Save-back: "here" forks the routine into a copy this program points at; "everywhere" edits the shared routine. */
+  async function onSaveBack(mode: SaveBackMode, target: SaveBackTarget) {
+    const sb = saveBack;
+    if (!sb) return;
+    const client = getClient();
+    if (target === "here" && sb.programDayId) {
+      const copyId = await duplicateRoutine(client, {
+        routineId: sb.routineId,
+        ownerId: getCurrentUserId(),
+      });
+      if (copyId) {
+        await updateProgramDay(client, sb.programDayId, { routineId: copyId });
+        await applySessionToRoutine(client, { sessionId, routineId: copyId, mode });
+      }
+    } else {
+      await applySessionToRoutine(client, { sessionId, routineId: sb.routineId, mode });
+    }
+    setSaveBack(null);
+    goSummary();
   }
 
   async function onAddExercise(exerciseId: string) {
@@ -208,7 +268,20 @@ export default function WorkoutPage() {
           nameById={Object.fromEntries(
             sessionExercises.map((se) => [se.exerciseId, se.exercise?.name ?? "Exercise"]),
           )}
-          onClose={() => router.push(`/workout/${sessionId}/summary`)}
+          onClose={() => {
+            setPrs(null);
+            void afterFinish();
+          }}
+        />
+      )}
+
+      {saveBack && (
+        <SaveBackSheet
+          diff={saveBack.diff}
+          routineName={saveBack.routineName}
+          programName={saveBack.programName}
+          onSkip={goSummary}
+          onSave={onSaveBack}
         />
       )}
     </div>

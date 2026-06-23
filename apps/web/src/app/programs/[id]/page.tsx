@@ -8,6 +8,8 @@ import {
   startSessionFromRoutine,
   setProgramActive,
   setProgramSchedule,
+  duplicateRoutine,
+  updateProgramDay,
 } from "@rackd/db";
 import { Badge, Button, SegmentedControl } from "@rackd/ui";
 import { getClient } from "@/lib/triplit";
@@ -73,6 +75,23 @@ export default function ProgramEditorPage() {
     router.push(`/workout/${s.id}`);
   }
 
+  /**
+   * Edit a routine as used in THIS program only: fork it into an independent copy
+   * and point this day at the copy, leaving the shared routine (and other
+   * programs) untouched. Then open the copy's editor.
+   */
+  async function editHere(day: DayRow) {
+    if (!day.routineId) return;
+    const copyId = await duplicateRoutine(getClient(), {
+      routineId: day.routineId,
+      ownerId: getCurrentUserId(),
+    });
+    if (copyId) {
+      await updateProgramDay(getClient(), day.id, { routineId: copyId });
+      router.push(`/routines/${copyId}`);
+    }
+  }
+
   return (
     <div className="flex flex-col min-h-[100dvh]">
       <header className="sticky top-0 z-10 flex items-center gap-3 py-3 px-4 bg-[var(--bg)] border-b border-[var(--border)]">
@@ -133,13 +152,27 @@ export default function ProgramEditorPage() {
         </p>
 
         {days.map((d) => (
-          <ProgramDayRow
-            key={d.id}
-            day={d}
-            routineOptions={routineOptions}
-            mode={mode}
-            onStart={start}
-          />
+          <div key={d.id}>
+            <ProgramDayRow day={d} routineOptions={routineOptions} mode={mode} onStart={start} />
+            {d.routineId && (
+              <div className="-mt-2 mb-4 flex gap-4 px-1 text-sm">
+                <button
+                  type="button"
+                  onClick={() => router.push(`/routines/${d.routineId}`)}
+                  className="font-semibold text-[var(--text-muted)]"
+                >
+                  Edit shared
+                </button>
+                <button
+                  type="button"
+                  onClick={() => editHere(d)}
+                  className="font-semibold text-[var(--accent)]"
+                >
+                  Edit here only ›
+                </button>
+              </div>
+            )}
+          </div>
         ))}
 
         <Button variant="secondary" size="lg" fullWidth onClick={addDay} style={{ borderStyle: "dashed", color: "var(--accent)" }}>

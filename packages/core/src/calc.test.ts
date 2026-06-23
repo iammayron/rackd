@@ -12,6 +12,7 @@ import {
   programTodaySlot,
   programNextSlot,
   advanceRotation,
+  diffSessionVsRoutine,
 } from "./calc";
 import { toKg, fromKg, formatWeight } from "./units";
 import { startTimer, pauseTimer, resumeTimer, remainingMs, addTime } from "./timer";
@@ -314,5 +315,61 @@ describe("advanceRotation", () => {
   });
   it("is safe for a zero-day program", () => {
     expect(advanceRotation(0, 0)).toBe(0);
+  });
+});
+
+describe("diffSessionVsRoutine", () => {
+  const presc = [
+    { exerciseId: "a", sets: [{ weight: 100, reps: 8 }, { weight: 100, reps: 8 }] },
+    { exerciseId: "b", sets: [{ weight: 50, reps: 10 }] },
+  ];
+
+  it("reports no change when performed matches the plan", () => {
+    expect(diffSessionVsRoutine(presc, presc)).toEqual({
+      exercisesChanged: false,
+      numbersChanged: false,
+    });
+  });
+
+  it("flags numbersChanged when a weight differs", () => {
+    const performed = [
+      { exerciseId: "a", sets: [{ weight: 102.5, reps: 8 }, { weight: 100, reps: 8 }] },
+      { exerciseId: "b", sets: [{ weight: 50, reps: 10 }] },
+    ];
+    expect(diffSessionVsRoutine(presc, performed)).toEqual({
+      exercisesChanged: false,
+      numbersChanged: true,
+    });
+  });
+
+  it("flags numbersChanged when set count differs", () => {
+    const performed = [
+      { exerciseId: "a", sets: [{ weight: 100, reps: 8 }] },
+      { exerciseId: "b", sets: [{ weight: 50, reps: 10 }] },
+    ];
+    expect(diffSessionVsRoutine(presc, performed).numbersChanged).toBe(true);
+  });
+
+  it("flags exercisesChanged on a swapped/added exercise (new exercise alone is not a number change)", () => {
+    const performed = [
+      { exerciseId: "a", sets: [{ weight: 100, reps: 8 }, { weight: 100, reps: 8 }] },
+      { exerciseId: "b", sets: [{ weight: 50, reps: 10 }] },
+      { exerciseId: "c", sets: [{ weight: 30, reps: 12 }] },
+    ];
+    expect(diffSessionVsRoutine(presc, performed)).toEqual({
+      exercisesChanged: true,
+      numbersChanged: false,
+    });
+  });
+
+  it("flags exercisesChanged on reorder", () => {
+    const performed = [presc[1]!, presc[0]!];
+    expect(diffSessionVsRoutine(presc, performed).exercisesChanged).toBe(true);
+  });
+
+  it("treats missing weight/reps as zero", () => {
+    const p = [{ exerciseId: "a", sets: [{ reps: 8 }] }];
+    const q = [{ exerciseId: "a", sets: [{ weight: 0, reps: 8 }] }];
+    expect(diffSessionVsRoutine(p, q).numbersChanged).toBe(false);
   });
 });
