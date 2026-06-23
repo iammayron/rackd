@@ -10,13 +10,18 @@ interface ExerciseRow {
   equipment: string;
 }
 
-/** Inline searchable list to add an exercise. Calls onPick with the id. */
+/**
+ * "+ Add exercise" trigger that opens a full-screen modal with search.
+ * Stays open after a pick (multi-add) and flashes the chosen row; calls
+ * onPick(exerciseId) each time. Used by the routine editor and active workout.
+ */
 export function AddExercisePicker({ onPick }: { onPick: (exerciseId: string) => void }) {
   const { results: exercises } = useQuery<ExerciseRow>((c) =>
     c.query("exercises").Order("name", "ASC"),
   );
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [added, setAdded] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -26,8 +31,14 @@ export function AddExercisePicker({ onPick }: { onPick: (exerciseId: string) => 
     );
   }, [exercises, search]);
 
-  if (!open) {
-    return (
+  function pick(id: string) {
+    onPick(id);
+    setAdded(id);
+    setTimeout(() => setAdded((cur) => (cur === id ? null : cur)), 600);
+  }
+
+  return (
+    <>
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -35,41 +46,49 @@ export function AddExercisePicker({ onPick }: { onPick: (exerciseId: string) => 
       >
         + Add exercise
       </button>
-    );
-  }
 
-  return (
-    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-3">
-      <div className="flex gap-2 mb-2">
-        <input
-          autoFocus
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search…"
-          className="flex-1 min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-        />
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text-muted)] border border-[var(--border)] rounded-lg"
-        >
-          Done
-        </button>
-      </div>
-      <ul className="list-none p-0 m-0 max-h-[280px] overflow-y-auto">
-        {filtered.map((ex) => (
-          <li key={ex.id}>
+      {open && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]">
+          <header className="flex items-center gap-2 p-4 border-b border-[var(--border)]">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search exercises…"
+              className="flex-1 min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            />
             <button
               type="button"
-              onClick={() => onPick(ex.id)}
-              className="w-full text-left flex gap-2 min-h-11 py-2 px-3 bg-transparent text-[var(--text)] border-none border-b border-[var(--border)]"
+              onClick={() => {
+                setOpen(false);
+                setSearch("");
+              }}
+              className="min-h-11 px-4 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-lg font-semibold"
             >
-              <span className="font-semibold">{ex.name}</span>
-              <span className="ms-auto text-sm text-[var(--text-muted)]">{ex.primaryMuscle}</span>
+              Done
             </button>
-          </li>
-        ))}
-      </ul>
-    </div>
+          </header>
+
+          <ul className="list-none p-4 m-0 flex-1 overflow-y-auto">
+            {filtered.map((ex) => (
+              <li key={ex.id}>
+                <button
+                  type="button"
+                  onClick={() => pick(ex.id)}
+                  className={`w-full text-left flex items-center gap-2 min-h-12 py-3 px-4 mb-2 rounded-lg border border-[var(--border)] ${
+                    added === ex.id ? "bg-[var(--success)] text-[#06231a]" : "bg-[var(--surface)] text-[var(--text)]"
+                  }`}
+                >
+                  <span className="font-semibold">{ex.name}</span>
+                  <span className="ms-auto text-sm text-[var(--text-muted)]">
+                    {added === ex.id ? "added ✓" : `${ex.primaryMuscle} · ${ex.equipment}`}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
   );
 }
