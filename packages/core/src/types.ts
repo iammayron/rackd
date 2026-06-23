@@ -84,6 +84,12 @@ export interface Routine {
   folderId?: string;
   notes?: string;
   order: number;
+  /**
+   * Weekdays this routine is scheduled for — 0=Sun … 6=Sat (matches
+   * `Date.getDay()`). Drives the dashboard's "today's workout". Empty/absent =
+   * not scheduled. Stored as a Set in the DB.
+   */
+  scheduledDays?: number[];
 }
 
 export interface RoutineExercise {

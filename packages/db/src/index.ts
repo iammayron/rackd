@@ -469,6 +469,18 @@ export async function renameRoutine(client: Client, id: string, name: string) {
   });
 }
 
+/**
+ * Set the weekdays a routine is scheduled for (0=Sun … 6=Sat) — the
+ * "today's workout" mechanism. Assigning a fresh Set overwrites the old days
+ * (Triplit's update proxy clears removed members). Owner-scoped via the row.
+ */
+export async function setRoutineSchedule(client: Client, id: string, days: number[]) {
+  const clean = [...new Set(days)].filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
+  return client.update("routines", id, (r) => {
+    r.scheduledDays = new Set(clean);
+  });
+}
+
 export async function deleteRoutine(client: Client, id: string) {
   // remove children first (no cascade)
   const exs = await client.fetch(

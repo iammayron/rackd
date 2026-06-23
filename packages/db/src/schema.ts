@@ -64,6 +64,9 @@ export const schema = S.Collections({
       folderId: S.Optional(S.String()),
       notes: S.Optional(S.String()),
       order: S.Number({ default: 0 }),
+      // Weekdays this routine is scheduled for (0=Sun … 6=Sat). Drives the
+      // dashboard's "today's workout". Optional set; absent = unscheduled.
+      scheduledDays: S.Optional(S.Set(S.Number())),
     }),
     permissions: ownerOnly,
   },

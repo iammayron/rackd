@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { estimate1RM, plateBreakdown, nextWeight, sessionVolume, warmupSets } from "./calc";
+import {
+  estimate1RM,
+  plateBreakdown,
+  nextWeight,
+  sessionVolume,
+  warmupSets,
+  todaysRoutine,
+} from "./calc";
 import { toKg, fromKg, formatWeight } from "./units";
 import { startTimer, pauseTimer, resumeTimer, remainingMs, addTime } from "./timer";
 import type { SetLog } from "./types";
@@ -93,5 +100,24 @@ describe("timer FSM", () => {
     let t = startTimer(60, 0);
     t = addTime(t, 15);
     expect(remainingMs(t, 0)).toBe(75_000);
+  });
+});
+
+describe("todaysRoutine", () => {
+  const push = { order: 0, scheduledDays: [1, 4], name: "Push" }; // Mon, Thu
+  const pull = { order: 1, scheduledDays: [2, 5], name: "Pull" }; // Tue, Fri
+  const legs = { order: 2, scheduledDays: [1], name: "Legs" }; // also Mon
+
+  it("returns the routine scheduled for the weekday", () => {
+    expect(todaysRoutine([push, pull, legs], 2)?.name).toBe("Pull");
+  });
+  it("picks the lowest-order routine when several share the day", () => {
+    expect(todaysRoutine([legs, push, pull], 1)?.name).toBe("Push");
+  });
+  it("returns undefined when nothing is scheduled today", () => {
+    expect(todaysRoutine([push, pull, legs], 0)).toBeUndefined();
+  });
+  it("ignores routines with no schedule", () => {
+    expect(todaysRoutine([{ order: 0, name: "Any" }], 3)).toBeUndefined();
   });
 });

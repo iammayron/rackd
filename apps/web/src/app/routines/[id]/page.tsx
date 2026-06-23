@@ -11,12 +11,14 @@ import {
   setRoutineExerciseSuperset,
   reorderRoutineExercises,
   publishRoutine,
+  setRoutineSchedule,
 } from "@myfit/db";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId, useAuth } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
 import { RoutineExerciseEditor } from "@/features/routines/RoutineExerciseEditor";
 import { AddExercisePicker } from "@/features/routines/AddExercisePicker";
+import { WeekdayPicker } from "@/features/routines/WeekdayPicker";
 
 interface RoutineExerciseRow {
   id: string;
@@ -30,11 +32,13 @@ export default function RoutineEditorPage() {
   const router = useRouter();
   const routineId = params.id;
 
-  const { results: routine } = useQuery<{ id: string; name: string }>(
-    (c) => c.query("routines").Where("id", "=", routineId),
-    [routineId],
-  );
+  const { results: routine } = useQuery<{
+    id: string;
+    name: string;
+    scheduledDays?: Set<number> | number[];
+  }>((c) => c.query("routines").Where("id", "=", routineId), [routineId]);
   const name = routine[0]?.name ?? "";
+  const scheduledDays = [...(routine[0]?.scheduledDays ?? [])];
 
   const { results: exercises } = useQuery<RoutineExerciseRow>(
     (c) =>
@@ -220,6 +224,19 @@ export default function RoutineEditorPage() {
       </header>
 
       <main className="flex-1 p-4">
+        <div className="mb-4">
+          <p className="text-sm font-semibold text-[var(--text-muted)] mb-2">
+            Scheduled days
+          </p>
+          <WeekdayPicker
+            value={scheduledDays}
+            onChange={(days) => setRoutineSchedule(getClient(), routineId, days)}
+          />
+          <p className="text-xs text-[var(--text-muted)] mt-2">
+            Picked days surface this routine as “Today’s workout” on the dashboard.
+          </p>
+        </div>
+
         <div ref={listRef}>
           {ordered.map((re, i) => (
             <RoutineExerciseEditor

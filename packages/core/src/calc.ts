@@ -95,3 +95,18 @@ export function nextWeight(
   // double progression: bump weight only once top of rep range is hit
   return lastReps >= targetReps ? lastWeight + increment : lastWeight;
 }
+
+/**
+ * Today's workout rule: the routine scheduled for `weekday` (0=Sun … 6=Sat,
+ * matching `Date.getDay()`). When several routines share the day, the
+ * lowest-`order` one wins (the user's preferred ordering). Returns undefined
+ * when nothing is scheduled — the dashboard then shows the "pick a routine" CTA.
+ */
+export function todaysRoutine<T extends { order: number; scheduledDays?: number[] }>(
+  routines: readonly T[],
+  weekday: number,
+): T | undefined {
+  return routines
+    .filter((r) => r.scheduledDays?.includes(weekday))
+    .sort((a, b) => a.order - b.order)[0];
+}

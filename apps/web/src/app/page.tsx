@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { startSession, addSessionExercise } from "@myfit/db";
+import { startSession, addSessionExercise, startSessionFromRoutine } from "@myfit/db";
+import { todaysRoutine } from "@myfit/core";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
@@ -23,6 +24,13 @@ interface ProfileRow {
   photoUrl?: string;
 }
 
+interface RoutineRow {
+  id: string;
+  name: string;
+  order: number;
+  scheduledDays?: Set<number> | number[];
+}
+
 export default function Home() {
   const router = useRouter();
   const { results: exercises } = useQuery<ExerciseRow>((c) =>
@@ -30,6 +38,14 @@ export default function Home() {
   );
   const { results: profiles } = useQuery<ProfileRow>((c) => c.query("userProfile"));
   const profile = profiles[0];
+
+  const { results: routines } = useQuery<RoutineRow>((c) =>
+    c.query("routines").Order("order", "ASC"),
+  );
+  const today = useMemo(() => {
+    const normalized = routines.map((r) => ({ ...r, scheduledDays: [...(r.scheduledDays ?? [])] }));
+    return todaysRoutine(normalized, new Date().getDay());
+  }, [routines]);
 
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
@@ -64,6 +80,17 @@ export default function Home() {
     router.push(`/workout/${session.id}`);
   }
 
+  async function startToday() {
+    if (!today || starting) return;
+    setStarting(true);
+    const s = await startSessionFromRoutine(getClient(), {
+      routineId: today.id,
+      ownerId: getCurrentUserId(),
+      now: Date.now(),
+    });
+    router.push(`/workout/${s.id}`);
+  }
+
   return (
     <div className="flex flex-col min-h-[100dvh]">
       <main className="flex-1 p-6 pb-24">
@@ -76,6 +103,37 @@ export default function Home() {
             <Avatar src={profile?.photoUrl || null} name={profile?.displayName} size={44} />
           </Link>
         </div>
+
+        <section className="mb-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+            Today’s workout
+          </p>
+          {today ? (
+            <>
+              <h2 className="mt-1 text-xl font-bold text-[var(--text)]">{today.name}</h2>
+              <button
+                type="button"
+                onClick={startToday}
+                disabled={starting}
+                className="mt-3 min-h-11 w-full rounded-xl bg-[var(--accent)] text-white font-bold disabled:opacity-60"
+              >
+                {starting ? "Starting…" : "Start today’s workout"}
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="mt-1 text-[var(--text-muted)]">
+                Nothing scheduled for today.
+              </p>
+              <Link
+                href="/routines"
+                className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-2)] font-bold text-[var(--accent)] no-underline"
+              >
+                Pick a routine to start
+              </Link>
+            </>
+          )}
+        </section>
 
         <input
           value={search}
