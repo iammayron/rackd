@@ -16,7 +16,8 @@ Living backlog. Done work lives in git history; this tracks what's next.
 ### Phase 3 — Programs
 - [x] Programs = ordered named days, each mapped to a routine (PPL-style)
 - [ ] Multi-week progression (weeks, percentage/RPE schemes)
-- [ ] Built-in programs (PPL, 5/3/1, nSuns)
+- [x] Built-in program templates (PPL, Full Body) — clone into own data
+- [ ] More built-ins (5/3/1, nSuns)
 - [ ] Scheduled / calendar workouts
 
 ### Phase 4 — Social + AI
