@@ -1,5 +1,6 @@
 import { TriplitClient } from "@triplit/client";
 import { estimate1RM } from "@myfit/core";
+import type { TrainingGoal, UnitPreference } from "@myfit/core";
 import { schema, roles } from "./schema";
 
 export { schema, roles } from "./schema";
@@ -321,6 +322,68 @@ export async function latestBodyWeightLog(client: Client, ownerId: string) {
       .Where("ownerId", "=", ownerId)
       .Order("loggedAt", "DESC"),
   );
+}
+
+/* ---------------------------------------------------------------------------
+ * Profile + settings — one row per user. UI goes through these, never the
+ * client directly. Weights canonical (kg), height cm.
+ * ------------------------------------------------------------------------- */
+
+/** Fields a caller may update; id/ownerId are immutable. */
+export interface ProfilePatch {
+  displayName?: string;
+  photoUrl?: string;
+  heightCm?: number;
+  currentWeightKg?: number;
+  goalWeightKg?: number;
+  trainingGoal?: TrainingGoal;
+  unitPreference?: UnitPreference;
+  defaultRestSec?: number;
+  defaultSets?: number;
+  defaultReps?: number;
+}
+
+/**
+ * The current user's profile, creating a default row if none exists.
+ * Defaults (unitPreference "metric", restSec 120, sets 3, reps 10) come from
+ * the schema, so a bare insert is enough.
+ */
+export async function getProfile(client: Client, ownerId: string) {
+  const existing = await client.fetchOne(
+    client.query("userProfile").Where("ownerId", "=", ownerId),
+  );
+  if (existing) return existing;
+  return client.insert("userProfile", { ownerId });
+}
+
+/** Update allowed profile fields. Ensures the row exists first. */
+export async function updateProfile(client: Client, ownerId: string, patch: ProfilePatch) {
+  const profile = await getProfile(client, ownerId);
+  return client.update("userProfile", profile.id, (p) => {
+    if (patch.displayName !== undefined) p.displayName = patch.displayName;
+    if (patch.photoUrl !== undefined) p.photoUrl = patch.photoUrl;
+    if (patch.heightCm !== undefined) p.heightCm = patch.heightCm;
+    if (patch.currentWeightKg !== undefined) p.currentWeightKg = patch.currentWeightKg;
+    if (patch.goalWeightKg !== undefined) p.goalWeightKg = patch.goalWeightKg;
+    if (patch.trainingGoal !== undefined) p.trainingGoal = patch.trainingGoal;
+    if (patch.unitPreference !== undefined) p.unitPreference = patch.unitPreference;
+    if (patch.defaultRestSec !== undefined) p.defaultRestSec = patch.defaultRestSec;
+    if (patch.defaultSets !== undefined) p.defaultSets = patch.defaultSets;
+    if (patch.defaultReps !== undefined) p.defaultReps = patch.defaultReps;
+  });
+}
+
+/**
+ * Log a body-weight entry and mirror it onto the profile's currentWeightKg.
+ * Writes a bodyWeightLogs row (history) + updates the profile (latest value).
+ */
+export async function logBodyWeight(
+  client: Client,
+  args: { ownerId: string; weightKg: number; loggedAt: number },
+) {
+  const log = await addBodyWeightLog(client, args);
+  await updateProfile(client, args.ownerId, { currentWeightKg: args.weightKg });
+  return log;
 }
 
 export interface ExerciseStatPoint {
