@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { startSession, addSessionExercise } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
 import { useQuery } from "@/lib/use-query";
+import { Nav } from "@/components/Nav";
 
 interface ExerciseRow {
   id: string;
@@ -53,8 +54,9 @@ export default function Home() {
   }
 
   return (
-    <main style={{ padding: "var(--space-6)", paddingBottom: 96 }}>
-      <h1 style={{ fontSize: "var(--text-xl)", fontWeight: 700 }}>FitNow</h1>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
+      <main style={{ flex: 1, padding: "var(--space-6)", paddingBottom: 96 }}>
+        <h1 style={{ fontSize: "var(--text-xl)", fontWeight: 700 }}>FitNow</h1>
       <p style={{ color: "var(--text-muted)", marginBottom: "var(--space-4)" }}>
         Pick exercises, start your workout.
       </p>
@@ -122,7 +124,7 @@ export default function Home() {
             position: "fixed",
             left: "50%",
             transform: "translateX(-50%)",
-            bottom: "var(--space-4)",
+            bottom: 72,
             width: "min(440px, calc(100% - 32px))",
             minHeight: 52,
             background: "var(--accent)",
@@ -136,6 +138,8 @@ export default function Home() {
           {starting ? "Starting…" : `Start workout (${selected.length})`}
         </button>
       )}
-    </main>
+      </main>
+      <Nav />
+    </div>
   );
 }

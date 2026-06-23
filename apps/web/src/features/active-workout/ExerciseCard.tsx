@@ -1,12 +1,15 @@
 "use client";
 
-import { addSet } from "@fitnow/db";
+import { useEffect, useState } from "react";
+import { addSet, lastPerformance, type PrevSet } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
 import { useQuery } from "@/lib/use-query";
 import { SetRow, type SetRowData } from "./SetRow";
 
 interface SessionExerciseRow {
   id: string;
+  sessionId: string;
+  exerciseId: string;
   order: number;
   restSec: number;
   exercise?: { name: string } | null;
@@ -26,14 +29,35 @@ export function ExerciseCard({ sessionExercise }: { sessionExercise: SessionExer
     [sessionExercise.id],
   );
 
+  // "prev" = this exercise's last completed performance in a finished session.
+  const [prev, setPrev] = useState<PrevSet[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    lastPerformance(getClient(), {
+      exerciseId: sessionExercise.exerciseId,
+      excludeSessionId: sessionExercise.sessionId,
+    }).then((p) => {
+      if (!cancelled) setPrev(p);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionExercise.exerciseId, sessionExercise.sessionId]);
+
+  function prevFor(order: number): PrevSet | undefined {
+    return prev?.find((p) => p.order === order);
+  }
+
   async function onAddSet() {
+    const order = sets.length + 1;
     const last = sets[sets.length - 1];
+    const fallback = prevFor(order) ?? prev?.[prev.length - 1];
     await addSet(getClient(), {
       sessionExerciseId: sessionExercise.id,
-      order: sets.length + 1,
-      // prefill from the previous set (auto-fill — progressive overload starts here)
-      weight: last?.weight ?? 0,
-      reps: last?.reps ?? 0,
+      order,
+      // prefill from the last set this session, else last time's performance
+      weight: last?.weight ?? fallback?.weight ?? 0,
+      reps: last?.reps ?? fallback?.reps ?? 0,
     });
   }
 
@@ -65,9 +89,17 @@ export function ExerciseCard({ sessionExercise }: { sessionExercise: SessionExer
         <span style={{ width: 64, textAlign: "center" }}>reps</span>
       </div>
 
-      {sets.map((s) => (
-        <SetRow key={s.id} data={s} restSec={sessionExercise.restSec} />
-      ))}
+      {sets.map((s) => {
+        const p = prevFor(s.order);
+        return (
+          <SetRow
+            key={s.id}
+            data={s}
+            restSec={sessionExercise.restSec}
+            prevLabel={p ? `${p.weight}×${p.reps}` : undefined}
+          />
+        );
+      })}
 
       <button
         onClick={onAddSet}

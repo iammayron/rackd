@@ -9,6 +9,8 @@ import { RestTimerBar } from "@/features/active-workout/RestTimerBar";
 
 interface SessionExerciseRow {
   id: string;
+  sessionId: string;
+  exerciseId: string;
   order: number;
   restSec: number;
   exercise?: { name: string } | null;
