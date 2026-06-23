@@ -127,6 +127,29 @@ export const schema = S.Collections({
       note: S.Optional(S.String()),
     }),
   },
+
+  programs: {
+    schema: S.Schema({
+      id: S.Id(),
+      ownerId: S.String(),
+      name: S.String(),
+      notes: S.Optional(S.String()),
+      order: S.Number({ default: 0 }),
+    }),
+  },
+
+  programDays: {
+    schema: S.Schema({
+      id: S.Id(),
+      programId: S.String(),
+      order: S.Number(),
+      name: S.String({ default: "Day" }),
+      routineId: S.Optional(S.String()),
+    }),
+    relationships: {
+      routine: S.RelationById("routines", "$routineId"),
+    },
+  },
 });
 
 export type Schema = typeof schema;

@@ -443,6 +443,60 @@ export async function startSessionFromRoutine(
 }
 
 /* ---------------------------------------------------------------------------
+ * Programs (ordered named days, each mapped to a routine)
+ * ------------------------------------------------------------------------- */
+
+export async function createProgram(
+  client: Client,
+  args: { ownerId: string; name: string; order?: number },
+) {
+  return client.insert("programs", {
+    ownerId: args.ownerId,
+    name: args.name,
+    order: args.order ?? 0,
+  });
+}
+
+export async function renameProgram(client: Client, id: string, name: string) {
+  return client.update("programs", id, (p) => {
+    p.name = name;
+  });
+}
+
+export async function deleteProgram(client: Client, id: string) {
+  const days = await client.fetch(client.query("programDays").Where("programId", "=", id));
+  for (const d of days) await client.delete("programDays", d.id);
+  await client.delete("programs", id);
+}
+
+export async function addProgramDay(
+  client: Client,
+  args: { programId: string; order: number; name?: string; routineId?: string },
+) {
+  return client.insert("programDays", {
+    programId: args.programId,
+    order: args.order,
+    name: args.name ?? `Day ${args.order}`,
+    routineId: args.routineId,
+  });
+}
+
+export async function updateProgramDay(
+  client: Client,
+  id: string,
+  patch: { name?: string; routineId?: string },
+) {
+  return client.update("programDays", id, (d) => {
+    if (patch.name !== undefined) d.name = patch.name;
+    if (patch.routineId !== undefined) d.routineId = patch.routineId;
+  });
+}
+
+export async function removeProgramDay(client: Client, id: string) {
+  return client.delete("programDays", id);
+}
+
+/* ---------------------------------------------------------------------------
  * History / progression helpers
  * ------------------------------------------------------------------------- */
 

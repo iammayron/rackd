@@ -128,6 +128,22 @@ export interface SetLog extends SetShape {
   isPr: boolean;
 }
 
+export interface Program {
+  id: string;
+  ownerId: string;
+  name: string;
+  notes?: string;
+  order: number;
+}
+
+export interface ProgramDay {
+  id: string;
+  programId: string;
+  order: number;
+  name: string;
+  routineId?: string;
+}
+
 export interface BodyMetric {
   id: string;
   ownerId: string;
