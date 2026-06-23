@@ -74,5 +74,5 @@ Schema is the Triplit schema in `packages/db/src/schema.ts`. When you change it,
 ## Workflow
 
 - Default to Plan mode for non-trivial work; agree on the plan before editing.
-- Don't commit or push unless asked. Solo project on `master`, no remote yet — commit directly; switch to short-lived branches + PRs once a GitHub remote exists.
+- Don't commit or push unless asked. Default branch `main` (remote: `origin`, github.com/iammayron/myfit). For non-trivial work, use a short-lived branch + PR rather than pushing straight to `main`.
 - After changes, run the gate; verify UI/behavior in the running app when practical.
