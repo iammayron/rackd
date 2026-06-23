@@ -45,7 +45,10 @@ export function RestTimerBar() {
         {fired ? "Rest over" : mmss(remaining)}
       </span>
       <div style={{ marginLeft: "auto", display: "flex", gap: "var(--space-2)" }}>
-        <button style={btn} onClick={() => add(15)}>
+        <button style={btn} onClick={() => add(-15)} disabled={fired}>
+          -15s
+        </button>
+        <button style={btn} onClick={() => add(15)} disabled={fired}>
           +15s
         </button>
         <button style={btn} onClick={skip}>
