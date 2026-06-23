@@ -93,6 +93,21 @@ export async function setRoutineExerciseOrder(client: Client, id: string, order:
   });
 }
 
+/**
+ * Persist a full reorder of a session's exercises: `order` becomes the 1-based
+ * position in `orderedIds`. Only mutates `sessionExercises` — the source routine
+ * is untouched (session is a deep copy of the plan).
+ */
+export async function reorderSessionExercises(client: Client, orderedIds: string[]) {
+  await Promise.all(
+    orderedIds.map((id, i) =>
+      client.update("sessionExercises", id, (e) => {
+        e.order = i + 1;
+      }),
+    ),
+  );
+}
+
 /** Persist a full reorder: `order` becomes the 1-based position in `orderedIds`. */
 export async function reorderRoutineExercises(client: Client, orderedIds: string[]) {
   await Promise.all(

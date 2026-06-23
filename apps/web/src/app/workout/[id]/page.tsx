@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { PointerEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   finishSession,
   addSessionExercise,
   addSet,
   setSessionExerciseOrder,
+  reorderSessionExercises,
   type DetectedPR,
 } from "@myfit/db";
 import { getClient } from "@/lib/triplit";
@@ -43,6 +45,69 @@ export default function WorkoutPage() {
   );
 
   const [prs, setPrs] = useState<DetectedPR[] | null>(null);
+
+  // --- drag-and-drop reorder (pointer events: works on touch + mouse) ---
+  const listRef = useRef<HTMLDivElement>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  // local id ordering; mirrors the query unless a drag is in progress
+  const [orderIds, setOrderIds] = useState<string[]>([]);
+  const orderRef = useRef<string[]>([]);
+  useEffect(() => {
+    if (!dragId) setOrderIds(sessionExercises.map((e) => e.id));
+  }, [sessionExercises, dragId]);
+  orderRef.current = orderIds;
+
+  const byId = new Map(sessionExercises.map((e) => [e.id, e]));
+  const ordered = dragId
+    ? (orderIds.map((id) => byId.get(id)).filter(Boolean) as SessionExerciseRow[])
+    : sessionExercises;
+
+  function onDragMove(clientY: number) {
+    const id = dragId;
+    const container = listRef.current;
+    if (!id || !container) return;
+    const nodes = Array.from(container.querySelectorAll<HTMLElement>("[data-sex]"));
+    let target = nodes.findIndex((n) => {
+      const r = n.getBoundingClientRect();
+      return clientY < r.top + r.height / 2;
+    });
+    if (target === -1) target = nodes.length - 1;
+    setOrderIds((prev) => {
+      const from = prev.indexOf(id);
+      if (from === -1 || from === target) return prev;
+      const next = prev.slice();
+      next.splice(from, 1);
+      next.splice(target, 0, id);
+      return next;
+    });
+  }
+
+  useEffect(() => {
+    if (!dragId) return;
+    const onMovePtr = (e: globalThis.PointerEvent) => {
+      e.preventDefault();
+      onDragMove(e.clientY);
+    };
+    const onUp = () => {
+      const ids = orderRef.current;
+      setDragId(null);
+      void reorderSessionExercises(getClient(), ids);
+    };
+    window.addEventListener("pointermove", onMovePtr, { passive: false });
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMovePtr);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragId]);
+
+  function startDrag(id: string, e: PointerEvent) {
+    e.preventDefault();
+    setDragId(id);
+  }
 
   async function finish() {
     const found = await finishSession(getClient(), sessionId, Date.now());
@@ -103,25 +168,29 @@ export default function WorkoutPage() {
         {!fetching && sessionExercises.length === 0 && (
           <p className="text-[var(--text-muted)]">No exercises in this session.</p>
         )}
-        {sessionExercises.map((se, i) => {
-          const prev = sessionExercises[i - 1];
-          const next = sessionExercises[i + 1];
-          const g = se.supersetGroup;
-          const inGroup = g != null && (prev?.supersetGroup === g || next?.supersetGroup === g);
-          // skip rest when the next exercise is your superset partner (go straight to it)
-          const startsRest = g == null || next?.supersetGroup !== g;
-          return (
-            <ExerciseCard
-              key={se.id}
-              sessionExercise={se}
-              index={i}
-              total={sessionExercises.length}
-              onMove={(dir) => move(i, dir)}
-              inGroup={inGroup}
-              startsRest={startsRest}
-            />
-          );
-        })}
+        <div ref={listRef}>
+          {ordered.map((se, i) => {
+            const prev = ordered[i - 1];
+            const next = ordered[i + 1];
+            const g = se.supersetGroup;
+            const inGroup = g != null && (prev?.supersetGroup === g || next?.supersetGroup === g);
+            // skip rest when the next exercise is your superset partner (go straight to it)
+            const startsRest = g == null || next?.supersetGroup !== g;
+            return (
+              <ExerciseCard
+                key={se.id}
+                sessionExercise={se}
+                index={i}
+                total={ordered.length}
+                onMove={(dir) => move(i, dir)}
+                inGroup={inGroup}
+                startsRest={startsRest}
+                dragging={dragId === se.id}
+                onDragHandleDown={(e) => startDrag(se.id, e)}
+              />
+            );
+          })}
+        </div>
         {!fetching && <AddExercisePicker onPick={onAddExercise} />}
       </main>
 

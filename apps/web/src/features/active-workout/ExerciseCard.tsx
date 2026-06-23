@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { PointerEvent } from "react";
 import { nextWeight } from "@myfit/core";
 import { addSet, lastPerformance, removeSessionExercise, type PrevSet } from "@myfit/db";
 import { getClient } from "@/lib/triplit";
@@ -31,6 +32,8 @@ export function ExerciseCard({
   onMove,
   inGroup = false,
   startsRest = true,
+  dragging = false,
+  onDragHandleDown,
 }: {
   sessionExercise: SessionExerciseRow;
   index: number;
@@ -38,6 +41,8 @@ export function ExerciseCard({
   onMove: (dir: -1 | 1) => void;
   inGroup?: boolean;
   startsRest?: boolean;
+  dragging?: boolean;
+  onDragHandleDown?: (e: PointerEvent) => void;
 }) {
   const { unit, display } = useUnit();
   const [showMedia, setShowMedia] = useState(false);
@@ -92,9 +97,10 @@ export function ExerciseCard({
 
   return (
     <section
+      data-sex={sessionExercise.id}
       className={`bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 mb-4 ${
         inGroup ? "border-l-4 border-l-[var(--accent)]" : ""
-      }`}
+      } ${dragging ? "opacity-60 ring-2 ring-[var(--accent)]" : ""}`}
     >
       {inGroup && (
         <div className="text-xs font-bold uppercase tracking-wide text-[var(--accent)] mb-1">
@@ -103,6 +109,17 @@ export function ExerciseCard({
       )}
       <div className="flex items-center gap-2 mb-2">
         <MoveButtons index={index} total={total} onMove={onMove} />
+        {onDragHandleDown && (
+          <button
+            type="button"
+            onPointerDown={onDragHandleDown}
+            aria-label="Drag to reorder"
+            style={{ touchAction: "none", cursor: "grab" }}
+            className="flex items-center justify-center w-6 text-[var(--text-muted)] select-none"
+          >
+            ⠿
+          </button>
+        )}
         {sessionExercise.exercise && (
           <ExerciseThumb ex={sessionExercise.exercise} size={40} onClick={() => setShowMedia(true)} />
         )}
