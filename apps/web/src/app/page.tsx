@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startSession, addSessionExercise } from "@myfit/db";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
 import { Nav } from "@/components/Nav";
+import { Avatar } from "@/components/Avatar";
 
 interface ExerciseRow {
   id: string;
@@ -15,11 +17,19 @@ interface ExerciseRow {
   equipment: string;
 }
 
+interface ProfileRow {
+  id: string;
+  displayName?: string;
+  photoUrl?: string;
+}
+
 export default function Home() {
   const router = useRouter();
   const { results: exercises } = useQuery<ExerciseRow>((c) =>
     c.query("exercises").Order("name", "ASC"),
   );
+  const { results: profiles } = useQuery<ProfileRow>((c) => c.query("userProfile"));
+  const profile = profiles[0];
 
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
@@ -57,8 +67,15 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-[100dvh]">
       <main className="flex-1 p-6 pb-24">
-        <h1 className="text-2xl font-bold">MyFit</h1>
-        <p className="text-[var(--text-muted)] mb-4">Pick exercises, start your workout.</p>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold">MyFit</h1>
+            <p className="text-[var(--text-muted)]">Pick exercises, start your workout.</p>
+          </div>
+          <Link href="/settings" aria-label="Profile and settings">
+            <Avatar src={profile?.photoUrl || null} name={profile?.displayName} size={44} />
+          </Link>
+        </div>
 
         <input
           value={search}

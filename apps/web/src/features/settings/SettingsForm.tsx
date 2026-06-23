@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TrainingGoal } from "@myfit/core";
 import { getProfile, updateProfile, type ProfilePatch } from "@myfit/db";
 import { mmss } from "@myfit/ui";
@@ -8,6 +8,8 @@ import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useUnit, useUnitStore } from "@/lib/units-store";
 import { AdvancedSelect } from "@/components/AdvancedSelect";
+import { Avatar } from "@/components/Avatar";
+import { uploadProfilePhoto, PHOTO_ACCEPT } from "@/lib/upload-photo";
 
 const GOAL_OPTIONS: { value: TrainingGoal; label: string }[] = [
   { value: "weight_loss", label: "Weight loss" },
@@ -75,6 +77,9 @@ export function SettingsForm() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   // Load (and create if missing) the profile once, into display units.
   useEffect(() => {
@@ -102,6 +107,35 @@ export function SettingsForm() {
     // Re-read display values when the unit toggle changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [metric]);
+
+  /**
+   * Upload a chosen image to MinIO and persist its URL immediately. Isolated
+   * from `save()` — a failed upload only sets `photoError` and never blocks
+   * saving the rest of the settings.
+   */
+  async function onPickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
+    if (!file) return;
+    setPhotoError(null);
+    setUploading(true);
+    try {
+      const url = await uploadProfilePhoto(file);
+      setPhotoUrl(url);
+      // Persist just the photo so it survives even if the user never hits Save.
+      await updateProfile(getClient(), getCurrentUserId(), { photoUrl: url });
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function removePhoto() {
+    setPhotoError(null);
+    setPhotoUrl("");
+    await updateProfile(getClient(), getCurrentUserId(), { photoUrl: "" });
+  }
 
   /** Flip the measurement system: re-displays weights/heights app-wide live. */
   function chooseSystem(nextMetric: boolean) {
@@ -166,8 +200,42 @@ export function SettingsForm() {
         <Input value={name} onChange={setName} placeholder="Your name" />
       </Field>
 
-      <Field label="Photo URL">
-        <Input value={photoUrl} onChange={setPhotoUrl} placeholder="https://…" inputMode="url" />
+      <Field label="Profile photo">
+        <div className="flex items-center gap-4">
+          <Avatar src={photoUrl || null} name={name} size={64} />
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileInput}
+                type="file"
+                accept={PHOTO_ACCEPT}
+                onChange={onPickPhoto}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInput.current?.click()}
+                disabled={uploading}
+                className="min-h-10 px-4 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)] font-semibold disabled:opacity-50"
+              >
+                {uploading ? "Uploading…" : photoUrl ? "Change photo" : "Upload photo"}
+              </button>
+              {photoUrl && !uploading && (
+                <button
+                  type="button"
+                  onClick={removePhoto}
+                  className="min-h-10 px-3 rounded-lg text-sm text-[var(--text-muted)] hover:text-[var(--text)]"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-[var(--text-muted)]">JPEG, PNG, WebP or GIF · up to 5 MB</p>
+          </div>
+        </div>
+        {photoError && (
+          <p className="mt-2 text-sm text-[var(--danger,#dc2626)]">{photoError}</p>
+        )}
       </Field>
 
       <Field label={`Height (${heightUnit})`}>

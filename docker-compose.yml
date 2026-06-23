@@ -1,9 +1,10 @@
 # MyFit self-host (home box + Tailscale). See DEPLOY.md for the full flow.
 #
 # Supabase runs separately via the CLI on the box (`supabase start` — it manages
-# its own containers). This compose runs the two app services:
-#   sync — Triplit sync server (durable sqlite volume)
-#   web  — Next.js PWA (standalone)
+# its own containers). This compose runs the app services:
+#   sync  — Triplit sync server (durable sqlite volume)
+#   web   — Next.js PWA (standalone)
+#   minio — S3-compatible object store for profile photos (durable volume)
 #
 # 1. cp .env.example .env  and fill every value (see DEPLOY.md)
 # 2. docker compose up -d --build
@@ -36,10 +37,39 @@ services:
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?}
         NEXT_PUBLIC_TRIPLIT_URL: ${NEXT_PUBLIC_TRIPLIT_URL:?}
     restart: unless-stopped
+    environment:
+      # Server-side only (read at runtime by the upload route handler) — NOT baked
+      # into the client bundle. The browser never sees the S3 secret.
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+      S3_PUBLIC_URL: ${S3_PUBLIC_URL:?set S3_PUBLIC_URL in .env}
+      S3_BUCKET: ${S3_BUCKET:-myfit}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?set S3_ACCESS_KEY in .env}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?set S3_SECRET_KEY in .env}
     ports:
       - "3000:3000"
     depends_on:
       - sync
+      - minio
+
+  # S3-compatible object store for profile photos. Console on :9001, API on :9000.
+  # The bucket must allow anonymous downloads so <img> can load photos; create it
+  # and set the policy once (see DEPLOY.md):
+  #   mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+  #   mc mb local/myfit && mc anonymous set download local/myfit
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - myfit-minio-data:/data
 
 volumes:
   myfit-sync-data:
+  myfit-minio-data:
