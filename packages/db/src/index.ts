@@ -676,6 +676,67 @@ export async function startSessionFromRoutine(
   return session;
 }
 
+/**
+ * Duplicate a routine into the user's library under a fresh "(copy)" name,
+ * deep-cloning its exercises + sets (incl. superset groups, rest, targets). The
+ * copy is fully independent — editing it never touches the original. Returns the
+ * new routine id (or null when the source is missing).
+ */
+export async function duplicateRoutine(
+  client: Client,
+  args: { routineId: string; ownerId: string },
+): Promise<string | null> {
+  const src = await client.fetchById("routines", args.routineId);
+  if (!src) return null;
+
+  // Unique "(copy)" name within the owner's routines.
+  const existing = await client.fetch(
+    client.query("routines").Where("ownerId", "=", args.ownerId),
+  );
+  const names = new Set(existing.map((r) => r.name));
+  let name = `${src.name} (copy)`;
+  for (let n = 2; names.has(name); n++) name = `${src.name} (copy ${n})`;
+
+  const copy = await client.insert("routines", {
+    ownerId: args.ownerId,
+    name,
+    notes: src.notes,
+    order: src.order ?? 0,
+    scheduledDays: src.scheduledDays ? new Set(src.scheduledDays) : undefined,
+  });
+
+  const exs = await client.fetch(
+    client.query("routineExercises").Where("routineId", "=", args.routineId).Order("order", "ASC"),
+  );
+  for (const ex of exs) {
+    const re = await client.insert("routineExercises", {
+      ownerId: args.ownerId,
+      routineId: copy.id,
+      exerciseId: ex.exerciseId,
+      order: ex.order,
+      supersetGroup: ex.supersetGroup,
+      restSec: ex.restSec,
+      notes: ex.notes,
+    });
+    const sets = await client.fetch(
+      client.query("routineSets").Where("routineExerciseId", "=", ex.id).Order("order", "ASC"),
+    );
+    for (const s of sets) {
+      await client.insert("routineSets", {
+        ownerId: args.ownerId,
+        routineExerciseId: re.id,
+        order: s.order,
+        type: s.type,
+        targetReps: s.targetReps,
+        targetWeight: s.targetWeight,
+        targetRpe: s.targetRpe,
+        tempo: s.tempo,
+      });
+    }
+  }
+  return copy.id;
+}
+
 /* ---------------------------------------------------------------------------
  * Programs (ordered named days, each mapped to a routine)
  * ------------------------------------------------------------------------- */
@@ -697,6 +758,39 @@ export async function renameProgram(client: Client, id: string, name: string) {
   });
 }
 
+/**
+ * Mark one program as the active one (drives the dashboard "today's workout"),
+ * clearing the flag on the owner's other programs. Only one active at a time.
+ */
+export async function setProgramActive(
+  client: Client,
+  args: { programId: string; ownerId: string },
+) {
+  const all = await client.fetch(
+    client.query("programs").Where("ownerId", "=", args.ownerId),
+  );
+  for (const p of all) {
+    const shouldBe = p.id === args.programId;
+    if (!!p.active !== shouldBe) {
+      await client.update("programs", p.id, (x) => {
+        x.active = shouldBe;
+      });
+    }
+  }
+}
+
+/** Set a program's schedule mode and/or rotation cursor. */
+export async function setProgramSchedule(
+  client: Client,
+  id: string,
+  patch: { scheduleMode?: "rotation" | "weekly"; rotationCursor?: number },
+) {
+  return client.update("programs", id, (p) => {
+    if (patch.scheduleMode !== undefined) p.scheduleMode = patch.scheduleMode;
+    if (patch.rotationCursor !== undefined) p.rotationCursor = patch.rotationCursor;
+  });
+}
+
 export async function deleteProgram(client: Client, id: string) {
   const days = await client.fetch(client.query("programDays").Where("programId", "=", id));
   for (const d of days) await client.delete("programDays", d.id);
@@ -705,7 +799,13 @@ export async function deleteProgram(client: Client, id: string) {
 
 export async function addProgramDay(
   client: Client,
-  args: { programId: string; order: number; name?: string; routineId?: string },
+  args: {
+    programId: string;
+    order: number;
+    name?: string;
+    routineId?: string;
+    weekday?: number;
+  },
 ) {
   return client.insert("programDays", {
     ownerId: await ownerOf(client, "programs", args.programId),
@@ -713,17 +813,19 @@ export async function addProgramDay(
     order: args.order,
     name: args.name ?? `Day ${args.order}`,
     routineId: args.routineId,
+    weekday: args.weekday,
   });
 }
 
 export async function updateProgramDay(
   client: Client,
   id: string,
-  patch: { name?: string; routineId?: string },
+  patch: { name?: string; routineId?: string; weekday?: number },
 ) {
   return client.update("programDays", id, (d) => {
     if (patch.name !== undefined) d.name = patch.name;
     if (patch.routineId !== undefined) d.routineId = patch.routineId;
+    if (patch.weekday !== undefined) d.weekday = patch.weekday;
   });
 }
 

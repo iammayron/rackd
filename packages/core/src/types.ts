@@ -134,12 +134,28 @@ export interface SetLog extends SetShape {
   isPr: boolean;
 }
 
+/**
+ * A program groups routines into a schedule. Two scheduling models, both built
+ * on the ordered `ProgramDay` children:
+ *  - "rotation": cycle the ordered days irrespective of the calendar. `rotationCursor`
+ *    is the index of today's day; a day with no `routineId` is a rest day (skipped
+ *    when advancing to the next workout).
+ *  - "weekly": each day is pinned to a `weekday` (0=Sun … 6=Sat); today's day is the
+ *    one whose `weekday` matches the current day.
+ * `active` marks the single program that drives the dashboard's "today's workout".
+ * All scheduling fields are optional so existing programs stay valid (no schedule).
+ */
 export interface Program {
   id: string;
   ownerId: string;
   name: string;
   notes?: string;
   order: number;
+  /** The one active program — drives the dashboard "today's workout". */
+  active?: boolean;
+  scheduleMode?: "rotation" | "weekly";
+  /** Rotation mode: index into the ordered ProgramDays for "today". */
+  rotationCursor?: number;
 }
 
 export interface ProgramDay {
@@ -148,6 +164,8 @@ export interface ProgramDay {
   order: number;
   name: string;
   routineId?: string;
+  /** Weekly mode: the weekday this day is pinned to (0=Sun … 6=Sat). */
+  weekday?: number;
 }
 
 export interface BodyMetric {

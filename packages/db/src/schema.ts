@@ -193,6 +193,12 @@ export const schema = S.Collections({
       name: S.String(),
       notes: S.Optional(S.String()),
       order: S.Number({ default: 0 }),
+      // Scheduling (all optional — absent = unscheduled program). See @rackd/core
+      // Program docs: rotation cycles ordered days via rotationCursor; weekly pins
+      // each day to a weekday. `active` = the program driving "today's workout".
+      active: S.Optional(S.Boolean()),
+      scheduleMode: S.Optional(S.String()),
+      rotationCursor: S.Optional(S.Number()),
     }),
     permissions: ownerOnly,
   },
@@ -247,6 +253,8 @@ export const schema = S.Collections({
       order: S.Number(),
       name: S.String({ default: "Day" }),
       routineId: S.Optional(S.String()),
+      // Weekly mode: weekday this day is pinned to (0=Sun … 6=Sat).
+      weekday: S.Optional(S.Number()),
     }),
     relationships: {
       routine: S.RelationById("routines", "$routineId"),

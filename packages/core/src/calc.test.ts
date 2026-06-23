@@ -9,6 +9,9 @@ import {
   suggestReplacements,
   currentStreak,
   weekStartIndex,
+  programTodaySlot,
+  programNextSlot,
+  advanceRotation,
 } from "./calc";
 import { toKg, fromKg, formatWeight } from "./units";
 import { startTimer, pauseTimer, resumeTimer, remainingMs, addTime } from "./timer";
@@ -236,5 +239,80 @@ describe("weekStartIndex", () => {
   });
   it("treats Sunday as the last day of the week (6 days back)", () => {
     expect(weekStartIndex(100, 0)).toBe(94); // Sunday → Monday is 6 days earlier
+  });
+});
+
+describe("programTodaySlot", () => {
+  const weekly = [
+    { order: 0, weekday: 1, routineId: "push" },
+    { order: 1, weekday: 3, routineId: "legs" },
+    { order: 2, weekday: 5, routineId: undefined }, // Fri rest
+  ];
+  it("weekly: returns the day pinned to today's weekday", () => {
+    expect(programTodaySlot(weekly, "weekly", 0, 1)?.routineId).toBe("push");
+  });
+  it("weekly: null on an unscheduled weekday", () => {
+    expect(programTodaySlot(weekly, "weekly", 0, 2)).toBeNull();
+  });
+  it("weekly: null when the matched day is a rest day", () => {
+    expect(programTodaySlot(weekly, "weekly", 0, 5)).toBeNull();
+  });
+
+  const rot = [
+    { order: 0, routineId: "push" },
+    { order: 1, routineId: "pull" },
+    { order: 2, routineId: undefined }, // rest
+  ];
+  it("rotation: returns the day at the cursor", () => {
+    expect(programTodaySlot(rot, "rotation", 1, 0)?.routineId).toBe("pull");
+  });
+  it("rotation: null when the cursor lands on a rest day", () => {
+    expect(programTodaySlot(rot, "rotation", 2, 0)).toBeNull();
+  });
+  it("rotation: cursor wraps past the end", () => {
+    expect(programTodaySlot(rot, "rotation", 3, 0)?.routineId).toBe("push");
+  });
+  it("returns null for an empty program", () => {
+    expect(programTodaySlot([], "rotation", 0, 0)).toBeNull();
+  });
+});
+
+describe("programNextSlot", () => {
+  const weekly = [
+    { order: 0, weekday: 1, routineId: "push" },
+    { order: 1, weekday: 4, routineId: "legs" },
+  ];
+  it("weekly: finds the next training weekday, skipping rest", () => {
+    expect(programNextSlot(weekly, "weekly", 0, 1)?.routineId).toBe("legs");
+  });
+  it("weekly: wraps around the week back to the first day", () => {
+    expect(programNextSlot(weekly, "weekly", 0, 4)?.routineId).toBe("push");
+  });
+
+  const rot = [
+    { order: 0, routineId: "push" },
+    { order: 1, routineId: undefined }, // rest
+    { order: 2, routineId: "legs" },
+  ];
+  it("rotation: skips rest days to the next workout", () => {
+    expect(programNextSlot(rot, "rotation", 0, 0)?.routineId).toBe("legs");
+  });
+  it("rotation: wraps to the first workout", () => {
+    expect(programNextSlot(rot, "rotation", 2, 0)?.routineId).toBe("push");
+  });
+  it("returns null when every day is rest", () => {
+    expect(programNextSlot([{ order: 0 }], "rotation", 0, 0)).toBeNull();
+  });
+});
+
+describe("advanceRotation", () => {
+  it("steps to the next index", () => {
+    expect(advanceRotation(0, 4)).toBe(1);
+  });
+  it("wraps at the end", () => {
+    expect(advanceRotation(3, 4)).toBe(0);
+  });
+  it("is safe for a zero-day program", () => {
+    expect(advanceRotation(0, 0)).toBe(0);
   });
 });

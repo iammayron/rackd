@@ -150,6 +150,71 @@ export function currentStreak(workoutDays: readonly number[], todayIndex: number
 }
 
 /**
+ * Program scheduling — pure helpers over a program's ordered days. A day with no
+ * `routineId` is a rest day. Two modes (see @rackd/core `Program`):
+ *  - "weekly": each day pinned to a `weekday` (0=Sun … 6=Sat); today = the day whose
+ *    `weekday` matches.
+ *  - "rotation": cycle the order-sorted days; today = days[rotationCursor].
+ * All Date-handling stays in the caller — pass `weekday`/`rotationCursor` in.
+ */
+export interface ScheduleDay {
+  order: number;
+  weekday?: number;
+  routineId?: string;
+}
+export type ScheduleMode = "rotation" | "weekly";
+
+const isRestDay = (d: ScheduleDay) => d.routineId == null;
+const mod = (n: number, m: number) => ((n % m) + m) % m;
+
+/** The day scheduled for today, or null when it's a rest day / nothing is set. */
+export function programTodaySlot<T extends ScheduleDay>(
+  days: readonly T[],
+  mode: ScheduleMode,
+  rotationCursor: number,
+  weekday: number,
+): T | null {
+  if (days.length === 0) return null;
+  if (mode === "weekly") {
+    const d = days.find((x) => x.weekday === weekday);
+    return d && !isRestDay(d) ? d : null;
+  }
+  const ordered = [...days].sort((a, b) => a.order - b.order);
+  const d = ordered[mod(rotationCursor, ordered.length)]!;
+  return isRestDay(d) ? null : d;
+}
+
+/** The next non-rest day after today (for the "next up" hint / skip). */
+export function programNextSlot<T extends ScheduleDay>(
+  days: readonly T[],
+  mode: ScheduleMode,
+  rotationCursor: number,
+  weekday: number,
+): T | null {
+  if (days.length === 0) return null;
+  if (mode === "weekly") {
+    for (let k = 1; k <= 7; k++) {
+      const wd = mod(weekday + k, 7);
+      const d = days.find((x) => x.weekday === wd && !isRestDay(x));
+      if (d) return d;
+    }
+    return null;
+  }
+  const ordered = [...days].sort((a, b) => a.order - b.order);
+  for (let k = 1; k <= ordered.length; k++) {
+    const d = ordered[mod(rotationCursor + k, ordered.length)]!;
+    if (!isRestDay(d)) return d;
+  }
+  return null;
+}
+
+/** Next rotation cursor (simple wrap-around step). Skipping rest is the caller's job. */
+export function advanceRotation(cursor: number, dayCount: number): number {
+  if (dayCount <= 0) return 0;
+  return mod(cursor + 1, dayCount);
+}
+
+/**
  * Day index of this week's start (Monday) on or before today. `todayIndex` =
  * today's local-midnight day index (days since the epoch, computed in local
  * time); `todayWeekday` = `Date.getDay()` (0=Sun … 6=Sat). A session whose day
