@@ -64,24 +64,13 @@ export default function RoutineEditorPage() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
-      <header
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 1,
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--space-3)",
-          padding: "var(--space-3) var(--space-4)",
-          background: "var(--bg)",
-          borderBottom: "1px solid var(--border)",
-        }}
-      >
+    <div className="flex flex-col min-h-[100dvh]">
+      <header className="sticky top-0 z-10 flex items-center gap-3 py-3 px-4 bg-[var(--bg)] border-b border-[var(--border)]">
         <button
+          type="button"
           onClick={() => router.push("/routines")}
           aria-label="Back"
-          style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: "var(--text-lg)" }}
+          className="bg-transparent border-none text-lg text-[var(--text-muted)]"
         >
           ←
         </button>
@@ -90,33 +79,23 @@ export default function RoutineEditorPage() {
           onChange={(e) => setDraftName(e.target.value)}
           onBlur={() => draftName.trim() && renameRoutine(getClient(), routineId, draftName.trim())}
           aria-label="Routine name"
-          style={{
-            flex: 1,
-            background: "transparent",
-            color: "var(--text)",
-            border: "none",
-            fontSize: "var(--text-lg)",
-            fontWeight: 700,
-          }}
+          className="flex-1 bg-transparent border-none text-lg font-bold text-[var(--text)] focus:outline-none"
         />
         <button
+          type="button"
           onClick={start}
           disabled={exercises.length === 0}
-          style={{
-            minHeight: 40,
-            padding: "0 var(--space-4)",
-            background: exercises.length ? "var(--accent)" : "var(--surface-2)",
-            color: exercises.length ? "#fff" : "var(--text-muted)",
-            border: "none",
-            borderRadius: "var(--radius)",
-            fontWeight: 700,
-          }}
+          className={`inline-flex items-center min-h-10 px-4 rounded-lg font-bold ${
+            exercises.length
+              ? "bg-[var(--accent)] text-white"
+              : "bg-[var(--surface-2)] text-[var(--text-muted)]"
+          }`}
         >
           Start
         </button>
       </header>
 
-      <main style={{ flex: 1, padding: "var(--space-4)" }}>
+      <main className="flex-1 p-4">
         {exercises.map((re) => (
           <RoutineExerciseEditor key={re.id} routineExercise={re} />
         ))}

@@ -22,16 +22,8 @@ interface RoutineSetRow {
   targetReps?: number;
 }
 
-const cell: React.CSSProperties = {
-  width: 72,
-  textAlign: "center",
-  background: "var(--surface-2)",
-  color: "var(--text)",
-  border: "1px solid var(--border)",
-  borderRadius: "var(--radius-sm)",
-  fontSize: "var(--text-base)",
-  padding: "var(--space-2)",
-};
+const CELL =
+  "w-[72px] text-center bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-md text-base p-2 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]";
 
 export function RoutineExerciseEditor({
   routineExercise,
@@ -55,55 +47,32 @@ export function RoutineExerciseEditor({
   }
 
   return (
-    <section
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-lg)",
-        padding: "var(--space-4)",
-        marginBottom: "var(--space-4)",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", marginBottom: "var(--space-2)" }}>
-        <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700 }}>
+    <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 mb-4">
+      <div className="flex items-center mb-2">
+        <h2 className="text-lg font-bold">
           {routineExercise.exercise?.name ?? "Exercise"}
         </h2>
         <button
+          type="button"
           onClick={() => removeRoutineExercise(getClient(), routineExercise.id)}
           aria-label="Remove exercise"
-          style={{
-            marginLeft: "auto",
-            background: "transparent",
-            color: "var(--text-muted)",
-            border: "none",
-            fontSize: "var(--text-lg)",
-          }}
+          className="ms-auto bg-transparent border-none text-lg text-[var(--text-muted)]"
         >
           ×
         </button>
       </div>
 
-      <div
-        style={{
-          display: "flex",
-          gap: "var(--space-3)",
-          fontSize: "var(--text-sm)",
-          color: "var(--text-muted)",
-        }}
-      >
-        <span style={{ width: 24 }}>set</span>
-        <span style={{ width: 72, textAlign: "center" }}>kg</span>
-        <span style={{ width: 72, textAlign: "center" }}>reps</span>
+      <div className="flex gap-3 text-sm text-[var(--text-muted)]">
+        <span className="w-6">set</span>
+        <span className="w-[72px] text-center">kg</span>
+        <span className="w-[72px] text-center">reps</span>
       </div>
 
       {sets.map((s) => (
-        <div
-          key={s.id}
-          style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", padding: "var(--space-2) 0" }}
-        >
-          <span style={{ width: 24, color: "var(--text-muted)", fontWeight: 600 }}>{s.order}</span>
+        <div key={s.id} className="flex items-center gap-3 py-2">
+          <span className="w-6 font-semibold text-[var(--text-muted)]">{s.order}</span>
           <input
-            style={cell}
+            className={CELL}
             inputMode="decimal"
             placeholder="kg"
             defaultValue={s.targetWeight ?? ""}
@@ -113,7 +82,7 @@ export function RoutineExerciseEditor({
             aria-label={`Set ${s.order} target weight`}
           />
           <input
-            style={cell}
+            className={CELL}
             inputMode="numeric"
             placeholder="reps"
             defaultValue={s.targetReps ?? ""}
@@ -123,16 +92,10 @@ export function RoutineExerciseEditor({
             aria-label={`Set ${s.order} target reps`}
           />
           <button
+            type="button"
             onClick={() => deleteRoutineSet(getClient(), s.id)}
             aria-label="Delete set"
-            style={{
-              marginLeft: "auto",
-              width: 32,
-              background: "transparent",
-              color: "var(--text-muted)",
-              border: "none",
-              fontSize: "var(--text-lg)",
-            }}
+            className="ms-auto w-8 bg-transparent border-none text-lg text-[var(--text-muted)]"
           >
             ×
           </button>
@@ -140,17 +103,9 @@ export function RoutineExerciseEditor({
       ))}
 
       <button
+        type="button"
         onClick={onAddSet}
-        style={{
-          marginTop: "var(--space-2)",
-          minHeight: "var(--tap-min)",
-          width: "100%",
-          background: "var(--surface-2)",
-          color: "var(--accent)",
-          border: "1px dashed var(--border)",
-          borderRadius: "var(--radius)",
-          fontWeight: 600,
-        }}
+        className="mt-2 min-h-11 w-full rounded-lg bg-[var(--surface-2)] text-[var(--accent)] border border-dashed border-[var(--border)] font-semibold"
       >
         + Add set
       </button>

@@ -29,17 +29,9 @@ export function AddExercisePicker({ onPick }: { onPick: (exerciseId: string) => 
   if (!open) {
     return (
       <button
+        type="button"
         onClick={() => setOpen(true)}
-        style={{
-          minHeight: 52,
-          width: "100%",
-          background: "var(--accent)",
-          color: "#fff",
-          border: "none",
-          borderRadius: "var(--radius-lg)",
-          fontSize: "var(--text-lg)",
-          fontWeight: 700,
-        }}
+        className="min-h-[52px] w-full rounded-2xl bg-[var(--accent)] text-white border-none text-lg font-bold hover:bg-[var(--accent-press)]"
       >
         + Add exercise
       </button>
@@ -47,66 +39,33 @@ export function AddExercisePicker({ onPick }: { onPick: (exerciseId: string) => 
   }
 
   return (
-    <div
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-lg)",
-        padding: "var(--space-3)",
-      }}
-    >
-      <div style={{ display: "flex", gap: "var(--space-2)", marginBottom: "var(--space-2)" }}>
+    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-3">
+      <div className="flex gap-2 mb-2">
         <input
           autoFocus
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search…"
-          style={{
-            flex: 1,
-            minHeight: "var(--tap-min)",
-            padding: "0 var(--space-3)",
-            background: "var(--surface-2)",
-            color: "var(--text)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius)",
-          }}
+          className="flex-1 min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
         />
         <button
+          type="button"
           onClick={() => setOpen(false)}
-          style={{
-            minHeight: "var(--tap-min)",
-            padding: "0 var(--space-3)",
-            background: "var(--surface-2)",
-            color: "var(--text-muted)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius)",
-          }}
+          className="min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text-muted)] border border-[var(--border)] rounded-lg"
         >
           Done
         </button>
       </div>
-      <ul style={{ listStyle: "none", padding: 0, margin: 0, maxHeight: 280, overflowY: "auto" }}>
+      <ul className="list-none p-0 m-0 max-h-[280px] overflow-y-auto">
         {filtered.map((ex) => (
           <li key={ex.id}>
             <button
+              type="button"
               onClick={() => onPick(ex.id)}
-              style={{
-                width: "100%",
-                textAlign: "left",
-                display: "flex",
-                gap: "var(--space-2)",
-                minHeight: "var(--tap-min)",
-                padding: "var(--space-2) var(--space-3)",
-                background: "transparent",
-                color: "var(--text)",
-                border: "none",
-                borderBottom: "1px solid var(--border)",
-              }}
+              className="w-full text-left flex gap-2 min-h-11 py-2 px-3 bg-transparent text-[var(--text)] border-none border-b border-[var(--border)]"
             >
-              <span style={{ fontWeight: 600 }}>{ex.name}</span>
-              <span style={{ marginLeft: "auto", color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
-                {ex.primaryMuscle}
-              </span>
+              <span className="font-semibold">{ex.name}</span>
+              <span className="ms-auto text-sm text-[var(--text-muted)]">{ex.primaryMuscle}</span>
             </button>
           </li>
         ))}

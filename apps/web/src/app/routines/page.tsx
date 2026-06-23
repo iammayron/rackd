@@ -43,64 +43,40 @@ export default function RoutinesPage() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
-      <main style={{ flex: 1, padding: "var(--space-6)" }}>
-        <h1 style={{ fontSize: "var(--text-xl)", fontWeight: 700, marginBottom: "var(--space-4)" }}>
-          Routines
-        </h1>
+    <div className="flex flex-col min-h-[100dvh]">
+      <main className="flex-1 p-6">
+        <h1 className="text-2xl font-bold mb-4">Routines</h1>
 
         {routines.length === 0 && (
-          <p style={{ color: "var(--text-muted)", marginBottom: "var(--space-4)" }}>
+          <p className="text-[var(--text-muted)] mb-4">
             No routines yet. Create one to run the same workout each week.
           </p>
         )}
 
-        <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+        <ul className="list-none p-0 m-0">
           {routines.map((r) => (
             <li
               key={r.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "var(--space-3)",
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius)",
-                padding: "var(--space-3) var(--space-4)",
-                marginBottom: "var(--space-2)",
-              }}
+              className="flex items-center gap-3 bg-[var(--surface)] border border-[var(--border)] rounded-lg py-3 px-4 mb-2"
             >
               <Link
                 href={`/routines/${r.id}`}
-                style={{ flex: 1, color: "var(--text)", fontWeight: 600, textDecoration: "none" }}
+                className="flex-1 font-semibold text-[var(--text)] no-underline"
               >
                 {r.name}
               </Link>
               <button
+                type="button"
                 onClick={() => start(r.id)}
-                style={{
-                  minHeight: 40,
-                  padding: "0 var(--space-4)",
-                  background: "var(--accent)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "var(--radius)",
-                  fontWeight: 700,
-                }}
+                className="inline-flex items-center min-h-10 px-4 rounded-lg bg-[var(--accent)] text-white font-bold hover:bg-[var(--accent-press)]"
               >
                 Start
               </button>
               <button
+                type="button"
                 onClick={() => deleteRoutine(getClient(), r.id)}
                 aria-label="Delete routine"
-                style={{
-                  minHeight: 40,
-                  width: 36,
-                  background: "transparent",
-                  color: "var(--text-muted)",
-                  border: "none",
-                  fontSize: "var(--text-lg)",
-                }}
+                className="min-h-10 w-9 bg-transparent border-none text-lg text-[var(--text-muted)]"
               >
                 ×
               </button>
@@ -109,18 +85,9 @@ export default function RoutinesPage() {
         </ul>
 
         <button
+          type="button"
           onClick={create}
-          style={{
-            marginTop: "var(--space-4)",
-            minHeight: 52,
-            width: "100%",
-            background: "var(--surface-2)",
-            color: "var(--accent)",
-            border: "1px dashed var(--border)",
-            borderRadius: "var(--radius-lg)",
-            fontSize: "var(--text-lg)",
-            fontWeight: 700,
-          }}
+          className="mt-4 min-h-[52px] w-full rounded-2xl bg-[var(--surface-2)] text-[var(--accent)] border border-dashed border-[var(--border)] text-lg font-bold"
         >
           + New routine
         </button>
