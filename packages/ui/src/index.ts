@@ -50,3 +50,5 @@ export { SetRow } from "./components/SetRow";
 export type { SetRowProps } from "./components/SetRow";
 export { MuscleVisualizer, muscleHue, exerciseGradient } from "./components/MuscleVisualizer";
 export type { MuscleVisualizerProps } from "./components/MuscleVisualizer";
+export { ShareCard } from "./components/ShareCard";
+export type { ShareCardProps, ShareCardData, ShareCardTheme } from "./components/ShareCard";

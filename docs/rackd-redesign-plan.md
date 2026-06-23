@@ -48,7 +48,11 @@ Genuinely-new surfaces: exercise **detail page**, **workout summary + share card
 
 - **Phase 0 — done** (`dd37c39`): tokens, `[data-theme]` + no-FOUC + `useTheme` + Settings toggle, Hanken Grotesk via next/font, manifest/metadata rebrand, `@myfit/*`→`@rackd/*` rename. Storage IDs (`dbName`, localStorage keys) intentionally left as `"myfit"` — renaming orphans local-first data; migrate separately.
 - **Phase 1 — done** (`e30d04d`): 12 kit components ported to TSX in `packages/ui`; brand icons regenerated (PNG arc simplified by ImageMagick; SVG source exact).
-- **Phase 2 — in progress**: 3-tab nav (Home/Plans/Progress, Settings → header), restyle screens to kit.
+- **Phase 2 — done** (`fab2eb5`): 3-tab nav (Home/Plans/Progress, Settings → header), screens restyled to kit.
+- **Phase 3 — done** (`cd6773b`): live-workout overhaul — RestTimerRing rest UI, per-set RPE, Workout Summary, MiniWorkoutBar minimize/resume. Save-back sheet deferred to Phase 5 (needs override model).
+- **Phase 4 — done** (`6c4c396`): exercise detail route, MuscleVisualizer, PRs list, cross-screen links. Gaps: `cues` field, real media (gradient placeholders), PR delta/rep-string not stored.
+- **Phase 5 — in progress (scoped)**: additive schedule fields + active flag + `duplicateRoutine` + pure helpers/tests. Program-local override (#25) + save-back "here" deferred to a dedicated design pass. ⚠️ restart sync server after merge.
+- **Phase 6 — in progress**: ShareCard + image/Web-Share export from the summary.
 
 ## Phases
 
