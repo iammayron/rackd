@@ -3,6 +3,7 @@ import { Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { PrelineInit } from "@/components/PrelineInit";
+import { MiniWorkoutBar } from "@/features/active-workout/MiniWorkoutBar";
 
 // Brand face — self-hosted at build by next/font, exposed as --font-hanken
 // (wired into --font-sans in tokens.css). Weights match the Rackd type scale.
@@ -45,7 +46,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <div className="app-shell">
-          <Providers>{children}</Providers>
+          <Providers>
+            {children}
+            <MiniWorkoutBar />
+          </Providers>
         </div>
         <PrelineInit />
       </body>

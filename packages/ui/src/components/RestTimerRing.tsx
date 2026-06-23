@@ -14,6 +14,9 @@ export interface RestTimerRingProps extends React.HTMLAttributes<HTMLDivElement>
   total?: number;
   /** Controlled remaining seconds. When set, the ring does not self-run. */
   remaining?: number;
+  /** Controlled "rest is over" flag. When set, overrides the remaining<=0 check
+   *  (lets a wall-clock FSM own the fired state). */
+  fired?: boolean;
   /** Self-running countdown when uncontrolled. @default false */
   running?: boolean;
   onComplete?: () => void;
@@ -28,15 +31,14 @@ export interface RestTimerRingProps extends React.HTMLAttributes<HTMLDivElement>
  * sweeps coral as rest ticks down and flips to green when rest is over. The
  * same arc shape is the Rackd logo.
  *
- * Controlled: pass `remaining` (seconds) + `total`. Self-running: pass `total`
- * + `running` and it counts down on its own, calling `onComplete` at zero.
- *
- * TODO(phase-3): wire to @rackd/core timer FSM (remainingMs) so the self-running
- * mode shares the wall-clock state instead of its own rAF loop.
+ * Controlled: pass `remaining` (seconds) + `total` (and optionally `fired`, when
+ * a wall-clock FSM owns the rest-over state). Self-running: pass `total` +
+ * `running` and it counts down on its own, calling `onComplete` at zero.
  */
 export function RestTimerRing({
   total = 90,
   remaining,
+  fired: firedProp,
   running = false,
   onComplete,
   size = 200,
@@ -67,7 +69,7 @@ export function RestTimerRing({
   }, [running, total, controlled, onComplete]);
 
   const left = controlled ? (remaining as number) : internal;
-  const fired = left <= 0;
+  const fired = firedProp ?? left <= 0;
   const frac = Math.max(0, Math.min(1, left / total));
 
   const r = (size - strokeWidth) / 2;

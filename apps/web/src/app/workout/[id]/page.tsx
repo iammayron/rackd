@@ -115,7 +115,7 @@ export default function WorkoutPage() {
       if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate([120, 60, 120]);
       setPrs(found);
     } else {
-      router.push("/");
+      router.push(`/workout/${sessionId}/summary`);
     }
   }
 
@@ -202,7 +202,7 @@ export default function WorkoutPage() {
           nameById={Object.fromEntries(
             sessionExercises.map((se) => [se.exerciseId, se.exercise?.name ?? "Exercise"]),
           )}
-          onClose={() => router.push("/")}
+          onClose={() => router.push(`/workout/${sessionId}/summary`)}
         />
       )}
     </div>

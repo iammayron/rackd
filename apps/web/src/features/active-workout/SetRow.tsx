@@ -13,7 +13,11 @@ export interface SetRowData {
   weight: number;
   reps: number;
   completed: boolean;
+  rpe?: number;
 }
+
+/** Effort options — RPE 6–10, the fast-to-tap range that actually gets logged. */
+const RPE_OPTIONS = [6, 7, 8, 9, 10];
 
 const CELL =
   "w-16 text-center bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-md text-lg p-2 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]";
@@ -38,6 +42,14 @@ export function SetRow({
   const { unit, display, toKg } = useUnit();
   const [weight, setWeight] = useState(data.weight ? String(display(data.weight)) : "");
   const [reps, setReps] = useState(String(data.reps || ""));
+  const [rpe, setRpe] = useState<number | undefined>(data.rpe);
+
+  /** Tap to set effort; tap the active chip again to clear. Optional, never blocks. */
+  async function chooseRpe(v: number) {
+    const next = rpe === v ? undefined : v;
+    setRpe(next);
+    await updateSet(getClient(), data.id, { rpe: next });
+  }
 
   async function toggle() {
     const client = getClient();
@@ -51,7 +63,8 @@ export function SetRow({
   }
 
   return (
-    <div className={`flex items-center gap-3 py-2 ${data.completed ? "opacity-70" : ""}`}>
+    <div className={data.completed ? "opacity-70" : ""}>
+      <div className="flex items-center gap-3 py-2">
       <span className="w-6 font-semibold text-[var(--text-muted)]">{data.order}</span>
       <span className="w-[88px] text-sm text-[var(--text-muted)]">{prevLabel ?? "—"}</span>
       <input
@@ -95,6 +108,28 @@ export function SetRow({
       >
         ×
       </button>
+      </div>
+      <div className="flex items-center gap-1.5 pb-2 ps-1">
+        <span className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] me-1">
+          RPE
+        </span>
+        {RPE_OPTIONS.map((v) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => chooseRpe(v)}
+            aria-label={`Effort ${v}`}
+            aria-pressed={rpe === v}
+            className={`inline-flex items-center justify-center min-h-9 min-w-9 rounded-md text-sm font-bold border ${
+              rpe === v
+                ? "bg-[var(--accent)] text-[var(--text-on-accent)] border-transparent"
+                : "bg-[var(--surface-2)] text-[var(--text-muted)] border-[var(--border)]"
+            }`}
+          >
+            {v}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
