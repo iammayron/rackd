@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { PointerEvent } from "react";
 import { nextWeight } from "@rackd/core";
+import { Badge } from "@rackd/ui";
 import {
   addSet,
   lastPerformance,
@@ -105,15 +106,10 @@ export function ExerciseCard({
   return (
     <section
       data-sex={sessionExercise.id}
-      className={`bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 mb-4 ${
-        inGroup ? "border-l-4 border-l-[var(--accent)]" : ""
+      className={`bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 ${
+        startsRest ? "mb-4" : "mb-1"
       } ${dragging ? "opacity-60 ring-2 ring-[var(--accent)]" : ""}`}
     >
-      {inGroup && (
-        <div className="text-xs font-bold uppercase tracking-wide text-[var(--accent)] mb-1">
-          Superset{!startsRest ? " → no rest, go to next" : ""}
-        </div>
-      )}
       <div className="flex items-center gap-2 mb-2">
         <MoveButtons index={index} total={total} onMove={onMove} />
         {onDragHandleDown && (
@@ -133,6 +129,9 @@ export function ExerciseCard({
         <h2 className="text-lg font-bold">
           {sessionExercise.exercise?.name ?? "Exercise"}
         </h2>
+        {inGroup && (
+          <Badge tone="accent">{startsRest ? "Superset" : "Superset · no rest"}</Badge>
+        )}
         <div className="ms-auto flex items-center gap-2">
           <ReplaceExercisePicker
             currentExerciseId={sessionExercise.exerciseId}

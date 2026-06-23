@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -177,17 +177,23 @@ export default function WorkoutPage() {
             // skip rest when the next exercise is your superset partner (go straight to it)
             const startsRest = g == null || next?.supersetGroup !== g;
             return (
-              <ExerciseCard
-                key={se.id}
-                sessionExercise={se}
-                index={i}
-                total={ordered.length}
-                onMove={(dir) => move(i, dir)}
-                inGroup={inGroup}
-                startsRest={startsRest}
-                dragging={dragId === se.id}
-                onDragHandleDown={(e) => startDrag(se.id, e)}
-              />
+              <Fragment key={se.id}>
+                <ExerciseCard
+                  sessionExercise={se}
+                  index={i}
+                  total={ordered.length}
+                  onMove={(dir) => move(i, dir)}
+                  inGroup={inGroup}
+                  startsRest={startsRest}
+                  dragging={dragId === se.id}
+                  onDragHandleDown={(e) => startDrag(se.id, e)}
+                />
+                {!startsRest && (
+                  <div aria-hidden="true" className="flex justify-center mb-1">
+                    <span className="w-[3px] h-5 rounded-full bg-[var(--accent)]" />
+                  </div>
+                )}
+              </Fragment>
             );
           })}
         </div>

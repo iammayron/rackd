@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -12,6 +12,7 @@ import {
   reorderRoutineExercises,
   publishRoutine,
   setRoutineSchedule,
+  duplicateRoutine,
 } from "@rackd/db";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId, useAuth } from "@/lib/auth";
@@ -192,6 +193,14 @@ export default function RoutineEditorPage() {
     router.push(`/workout/${s.id}`);
   }
 
+  async function duplicate() {
+    const newId = await duplicateRoutine(getClient(), {
+      routineId,
+      ownerId: getCurrentUserId(),
+    });
+    if (newId) router.push(`/routines/${newId}`);
+  }
+
   return (
     <div className="flex flex-col min-h-[100dvh]">
       <header className="sticky top-0 z-10 flex items-center gap-3 py-3 px-4 bg-[var(--bg)] border-b border-[var(--border)]">
@@ -240,18 +249,24 @@ export default function RoutineEditorPage() {
 
         <div ref={listRef}>
           {ordered.map((re, i) => (
-            <RoutineExerciseEditor
-              key={re.id}
-              routineExercise={re}
-              index={i}
-              total={ordered.length}
-              onMove={(dir) => move(i, dir)}
-              inGroup={inGroup(i)}
-              linkedNext={linkedNext(i)}
-              onToggleNext={() => toggleSupersetNext(i)}
-              dragging={dragId === re.id}
-              onDragHandleDown={(e) => startDrag(re.id, e)}
-            />
+            <Fragment key={re.id}>
+              <RoutineExerciseEditor
+                routineExercise={re}
+                index={i}
+                total={ordered.length}
+                onMove={(dir) => move(i, dir)}
+                inGroup={inGroup(i)}
+                linkedNext={linkedNext(i)}
+                onToggleNext={() => toggleSupersetNext(i)}
+                dragging={dragId === re.id}
+                onDragHandleDown={(e) => startDrag(re.id, e)}
+              />
+              {linkedNext(i) && (
+                <div aria-hidden="true" className="flex justify-center mb-1">
+                  <span className="w-[3px] h-5 rounded-full bg-[var(--accent)]" />
+                </div>
+              )}
+            </Fragment>
           ))}
         </div>
         <AddExercisePicker onPick={onPick} />
@@ -265,6 +280,17 @@ export default function RoutineEditorPage() {
             {published ? "Published to Discover ✓" : "Publish to Discover"}
           </button>
         )}
+
+        <button
+          type="button"
+          onClick={duplicate}
+          className="mt-2 min-h-11 w-full rounded-lg bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] font-semibold"
+        >
+          Duplicate routine
+        </button>
+        <p className="mt-2 text-xs text-[var(--text-muted)]">
+          Makes an independent copy — edits to it don’t touch the original.
+        </p>
       </main>
     </div>
   );

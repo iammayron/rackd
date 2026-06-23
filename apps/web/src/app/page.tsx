@@ -3,9 +3,14 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { startSession, addSessionExercise, startSessionFromRoutine } from "@rackd/db";
-import { todaysRoutine } from "@rackd/core";
-import { Card, Button, Avatar, Input, SelectableRow } from "@rackd/ui";
+import {
+  startSession,
+  addSessionExercise,
+  startSessionFromRoutine,
+  setProgramSchedule,
+} from "@rackd/db";
+import { todaysRoutine, programTodaySlot, programNextSlot, advanceRotation } from "@rackd/core";
+import { Card, Button, Badge, Avatar, Input, SelectableRow } from "@rackd/ui";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
@@ -34,6 +39,22 @@ interface RoutineRow {
   scheduledDays?: Set<number> | number[];
 }
 
+interface ProgramRow {
+  id: string;
+  name: string;
+  active?: boolean;
+  scheduleMode?: "rotation" | "weekly";
+  rotationCursor?: number;
+}
+
+interface ProgramDayRow {
+  id: string;
+  order: number;
+  name: string;
+  routineId?: string;
+  weekday?: number;
+}
+
 const EYEBROW =
   "text-[var(--text-muted)] text-xs font-semibold uppercase tracking-[0.06em]";
 
@@ -48,10 +69,37 @@ export default function Home() {
   const { results: routines } = useQuery<RoutineRow>((c) =>
     c.query("routines").Order("order", "ASC"),
   );
-  const today = useMemo(() => {
+
+  // The active program (if any) drives "today"; otherwise fall back to a
+  // routine scheduled for today's weekday.
+  const { results: programs } = useQuery<ProgramRow>((c) => c.query("programs"));
+  const activeProgram = programs.find((p) => p.active);
+  const { results: programDays } = useQuery<ProgramDayRow>(
+    (c) => c.query("programDays").Where("programId", "=", activeProgram?.id ?? "__none__"),
+    [activeProgram?.id],
+  );
+
+  const weekday = new Date().getDay();
+  const fallbackToday = useMemo(() => {
     const normalized = routines.map((r) => ({ ...r, scheduledDays: [...(r.scheduledDays ?? [])] }));
-    return todaysRoutine(normalized, new Date().getDay());
-  }, [routines]);
+    return todaysRoutine(normalized, weekday);
+  }, [routines, weekday]);
+
+  const routineName = (id?: string) => routines.find((r) => r.id === id)?.name;
+
+  const slot = activeProgram
+    ? programTodaySlot(programDays, activeProgram.scheduleMode ?? "rotation", activeProgram.rotationCursor ?? 0, weekday)
+    : null;
+  const nextSlot = activeProgram
+    ? programNextSlot(programDays, activeProgram.scheduleMode ?? "rotation", activeProgram.rotationCursor ?? 0, weekday)
+    : null;
+
+  // slot is null on a rest day (or no active program → use the weekday fallback).
+  const heroRoutineId = activeProgram ? slot?.routineId : fallbackToday?.id;
+  const heroName = activeProgram ? routineName(slot?.routineId) : fallbackToday?.name;
+  const nextName = routineName(nextSlot?.routineId);
+  const isRest = !heroRoutineId;
+  const canSkip = !!activeProgram && (activeProgram.scheduleMode ?? "rotation") === "rotation" && programDays.length > 0;
 
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
@@ -87,15 +135,21 @@ export default function Home() {
     router.push(`/workout/${session.id}`);
   }
 
-  async function startToday() {
-    if (!today || starting) return;
+  async function startRoutine(routineId?: string) {
+    if (!routineId || starting) return;
     setStarting(true);
     const s = await startSessionFromRoutine(getClient(), {
-      routineId: today.id,
+      routineId,
       ownerId: getCurrentUserId(),
       now: Date.now(),
     });
     router.push(`/workout/${s.id}`);
+  }
+
+  async function skipDay() {
+    if (!activeProgram) return;
+    const next = advanceRotation(activeProgram.rotationCursor ?? 0, programDays.length);
+    await setProgramSchedule(getClient(), activeProgram.id, { rotationCursor: next });
   }
 
   return (
@@ -114,18 +168,42 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* Today — the one hero action, or a Rest day */}
-        {today ? (
-          <Card variant="accent" style={{ marginBottom: 24 }}>
-            <div className="text-xs font-bold uppercase tracking-[0.06em] opacity-85 whitespace-nowrap">
-              Today&apos;s workout
+        {/* Active program → drives today's workout */}
+        {activeProgram && (
+          <Link href={`/programs/${activeProgram.id}`} className="no-underline block mb-3.5">
+            <div className="flex items-center gap-2.5 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius)] px-3.5 py-3">
+              <Badge tone="accent" solid>
+                Program
+              </Badge>
+              <span className="font-bold text-[15px] text-[var(--text)]">{activeProgram.name}</span>
+              <span className="ml-auto text-[var(--text-muted)] text-[13px]">Change ›</span>
             </div>
-            <div className="mt-2 text-3xl font-extrabold leading-[1.05]">{today.name}</div>
+          </Link>
+        )}
+
+        {/* Today — the one hero action, or a Rest day */}
+        {!isRest ? (
+          <Card variant="accent" style={{ marginBottom: 24 }}>
+            <div className="flex items-center gap-2.5">
+              <div className="text-xs font-bold uppercase tracking-[0.06em] opacity-85 whitespace-nowrap">
+                Today&apos;s workout
+              </div>
+              {canSkip && (
+                <button
+                  type="button"
+                  onClick={skipDay}
+                  className="ml-auto shrink-0 border-none bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-[var(--radius-pill)] cursor-pointer whitespace-nowrap"
+                >
+                  Skip ›
+                </button>
+              )}
+            </div>
+            <div className="mt-2 text-3xl font-extrabold leading-[1.05]">{heroName}</div>
             <Button
               variant="secondary"
               size="lg"
               fullWidth
-              onClick={startToday}
+              onClick={() => startRoutine(heroRoutineId)}
               disabled={starting}
               style={{ marginTop: 18, background: "#fff", color: "var(--accent)", border: "none" }}
             >
@@ -144,16 +222,28 @@ export default function Home() {
             <div className={EYEBROW}>Today</div>
             <div className="mt-1.5 text-3xl font-extrabold leading-[1.1]">Rest day</div>
             <div className="mt-1 text-sm text-[var(--text-muted)]">
-              Nothing scheduled — recovery is where you grow.
+              {nextName ? `Recovery is where you grow. Next up: ${nextName}.` : "Nothing scheduled — recovery is where you grow."}
             </div>
-            <Button
-              variant="primary"
-              fullWidth
-              onClick={() => setQuickOpen(true)}
-              style={{ marginTop: 18 }}
-            >
-              Start quick workout
-            </Button>
+            {nextSlot?.routineId ? (
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={() => startRoutine(nextSlot.routineId)}
+                disabled={starting}
+                style={{ marginTop: 18, color: "var(--accent)" }}
+              >
+                Train anyway · {nextName} ›
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                fullWidth
+                onClick={() => setQuickOpen(true)}
+                style={{ marginTop: 18 }}
+              >
+                Start quick workout
+              </Button>
+            )}
           </Card>
         )}
 
