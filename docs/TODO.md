@@ -14,7 +14,8 @@ Living backlog. Done work lives in git history; this tracks what's next.
 - [x] **Real auth** — self-hosted Supabase (RS256), login/signup/signout/account, auth-gated app, Supabase token → Triplit session.
 - [ ] Social login (Google/Apple) via Supabase
 - [ ] Email confirmation flow + password reset
-- [ ] Deploy Supabase + sync server on the Tailscale box
+- [x] Docker deploy flow (web + sync images, compose, DEPLOY.md) — validated locally
+- [ ] Run it on the Tailscale box (your step) + bind Supabase to the tailnet
 
 ### Phase 3 — Programs
 - [x] Programs = ordered named days, each mapped to a routine (PPL-style)
