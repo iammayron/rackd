@@ -171,6 +171,18 @@ export const schema = S.Collections({
     permissions: ownerOnly,
   },
 
+  // Timestamped weight history for the progress chart. Weight canonical (kg);
+  // loggedAt is epoch ms. Many rows per user, owner-scoped.
+  bodyWeightLogs: {
+    schema: S.Schema({
+      id: S.Id(),
+      ownerId: S.String(),
+      weightKg: S.Number(),
+      loggedAt: S.Number(),
+    }),
+    permissions: ownerOnly,
+  },
+
   programs: {
     schema: S.Schema({
       id: S.Id(),

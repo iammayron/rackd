@@ -152,6 +152,17 @@ export interface BodyMetric {
   note?: string;
 }
 
+/**
+ * Timestamped body-weight entry for the progress chart. Weight canonical (kg);
+ * `loggedAt` is epoch ms. Owner-scoped, many rows per user.
+ */
+export interface BodyWeightLog {
+  id: string;
+  ownerId: string;
+  weightKg: number;
+  loggedAt: number;
+}
+
 export type TrainingGoal =
   | "weight_loss"
   | "hypertrophy"

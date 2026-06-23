@@ -282,6 +282,47 @@ export async function logBodyweight(
   });
 }
 
+/* ---------------------------------------------------------------------------
+ * Body-weight log — timestamped weight history for the progress chart.
+ * ------------------------------------------------------------------------- */
+
+/** Add a body-weight entry. Weight canonical (kg); loggedAt epoch ms. */
+export async function addBodyWeightLog(
+  client: Client,
+  args: { ownerId: string; weightKg: number; loggedAt: number },
+) {
+  return client.insert("bodyWeightLogs", {
+    ownerId: args.ownerId,
+    weightKg: args.weightKg,
+    loggedAt: args.loggedAt,
+  });
+}
+
+/** Body-weight entries within [from, to] epoch ms (inclusive), oldest→newest. */
+export async function bodyWeightLogsInRange(
+  client: Client,
+  args: { ownerId: string; from: number; to: number },
+) {
+  return client.fetch(
+    client
+      .query("bodyWeightLogs")
+      .Where("ownerId", "=", args.ownerId)
+      .Where("loggedAt", ">=", args.from)
+      .Where("loggedAt", "<=", args.to)
+      .Order("loggedAt", "ASC"),
+  );
+}
+
+/** Most recent body-weight entry, or null if none. */
+export async function latestBodyWeightLog(client: Client, ownerId: string) {
+  return client.fetchOne(
+    client
+      .query("bodyWeightLogs")
+      .Where("ownerId", "=", ownerId)
+      .Order("loggedAt", "DESC"),
+  );
+}
+
 export interface ExerciseStatPoint {
   sessionId: string;
   date: number;
