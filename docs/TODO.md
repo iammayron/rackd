@@ -14,7 +14,8 @@ Living backlog. Done work lives in git history; this tracks what's next.
 - [ ] **Real auth** — login UI; `getCurrentUserId()` returns the authenticated id; claim anon-owned data on first login; token-mint endpoint (so the JWT secret never reaches the client).
 
 ### Phase 3 — Programs
-- [ ] Multi-week program structure (weeks → days → routines)
+- [x] Programs = ordered named days, each mapped to a routine (PPL-style)
+- [ ] Multi-week progression (weeks, percentage/RPE schemes)
 - [ ] Built-in programs (PPL, 5/3/1, nSuns)
 - [ ] Scheduled / calendar workouts
 
