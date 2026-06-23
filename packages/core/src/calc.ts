@@ -128,3 +128,23 @@ export function suggestReplacements<
     .filter((e) => e.id !== target.id && score(e) > 0)
     .sort((a, b) => score(b) - score(a) || a.name.localeCompare(b.name));
 }
+
+/**
+ * Current workout streak in days. `workoutDays` = day indices (e.g. days since
+ * the epoch, computed in local time) that have at least one completed workout;
+ * `todayIndex` = today's day index. Counts consecutive days backward from
+ * today, or from yesterday when today has no workout yet (so an in-progress day
+ * never breaks the streak). Returns 0 when the most recent workout predates
+ * yesterday. Pure — the UI maps session timestamps to local-midnight day
+ * indices and passes them in.
+ */
+export function currentStreak(workoutDays: readonly number[], todayIndex: number): number {
+  const days = new Set(workoutDays);
+  let cursor = days.has(todayIndex) ? todayIndex : todayIndex - 1;
+  let streak = 0;
+  while (days.has(cursor)) {
+    streak++;
+    cursor--;
+  }
+  return streak;
+}

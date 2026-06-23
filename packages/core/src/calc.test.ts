@@ -7,6 +7,7 @@ import {
   warmupSets,
   todaysRoutine,
   suggestReplacements,
+  currentStreak,
 } from "./calc";
 import { toKg, fromKg, formatWeight } from "./units";
 import { startTimer, pauseTimer, resumeTimer, remainingMs, addTime } from "./timer";
@@ -145,5 +146,26 @@ describe("suggestReplacements", () => {
   });
   it("returns empty when nothing matches", () => {
     expect(suggestReplacements([bench], bench)).toEqual([]);
+  });
+});
+
+describe("currentStreak", () => {
+  it("counts consecutive days ending today", () => {
+    expect(currentStreak([100, 99, 98], 100)).toBe(3);
+  });
+  it("counts from yesterday when today has no workout", () => {
+    expect(currentStreak([99, 98], 100)).toBe(2);
+  });
+  it("is 0 when the latest workout predates yesterday", () => {
+    expect(currentStreak([98, 97], 100)).toBe(0);
+  });
+  it("stops at the first gap", () => {
+    expect(currentStreak([100, 99, 97, 96], 100)).toBe(2);
+  });
+  it("is 0 with no workouts", () => {
+    expect(currentStreak([], 100)).toBe(0);
+  });
+  it("dedupes multiple workouts on the same day", () => {
+    expect(currentStreak([100, 100, 99], 100)).toBe(2);
   });
 });

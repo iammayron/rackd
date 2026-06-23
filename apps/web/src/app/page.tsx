@@ -11,6 +11,7 @@ import { useQuery } from "@/lib/use-query";
 import { Nav } from "@/components/Nav";
 import { Avatar } from "@/components/Avatar";
 import { WeightProgressCard } from "@/features/dashboard/WeightProgressCard";
+import { HistoryStreakCard } from "@/features/dashboard/HistoryStreakCard";
 
 interface ExerciseRow {
   id: string;
@@ -148,6 +149,8 @@ export default function Home() {
         </section>
 
         <WeightProgressCard />
+
+        <HistoryStreakCard />
 
         <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">
           Quick workout
