@@ -45,7 +45,15 @@ export default function RoutinesPage() {
   return (
     <div className="flex flex-col min-h-[100dvh]">
       <main className="flex-1 p-6">
-        <h1 className="text-2xl font-bold mb-4">Routines</h1>
+        <div className="flex items-center mb-4">
+          <h1 className="text-2xl font-bold">Routines</h1>
+          <Link
+            href="/discover"
+            className="ms-auto text-sm font-semibold text-[var(--accent)] no-underline"
+          >
+            Discover →
+          </Link>
+        </div>
 
         {routines.length === 0 && (
           <p className="text-[var(--text-muted)] mb-4">

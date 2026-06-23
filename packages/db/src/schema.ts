@@ -182,6 +182,28 @@ export const schema = S.Collections({
     permissions: ownerOnly,
   },
 
+  // Public catalog of shared routines (a self-contained snapshot for discovery).
+  // Read-open to all authed users; only the author can edit/remove their own.
+  sharedRoutines: {
+    schema: S.Schema({
+      id: S.Id(),
+      ownerId: S.String(),
+      authorName: S.String({ default: "Someone" }),
+      name: S.String(),
+      exercisesJson: S.String(),
+      exerciseCount: S.Number({ default: 0 }),
+      createdAt: S.Number(),
+    }),
+    permissions: {
+      user: {
+        read: { filter: [["id", "isDefined", true]] },
+        insert: { filter: [["ownerId", "=", "$role.userId"]] },
+        update: { filter: [["ownerId", "=", "$role.userId"]] },
+        delete: { filter: [["ownerId", "=", "$role.userId"]] },
+      },
+    } as never,
+  },
+
   programDays: {
     schema: S.Schema({
       id: S.Id(),

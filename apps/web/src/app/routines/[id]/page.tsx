@@ -9,9 +9,10 @@ import {
   startSessionFromRoutine,
   setRoutineExerciseOrder,
   setRoutineExerciseSuperset,
+  publishRoutine,
 } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
-import { getCurrentUserId } from "@/lib/auth";
+import { getCurrentUserId, useAuth } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
 import { RoutineExerciseEditor } from "@/features/routines/RoutineExerciseEditor";
 import { AddExercisePicker } from "@/features/routines/AddExercisePicker";
@@ -46,6 +47,20 @@ export default function RoutineEditorPage() {
 
   const [draftName, setDraftName] = useState(name);
   useEffect(() => setDraftName(name), [name]);
+
+  const { user } = useAuth();
+  const [published, setPublished] = useState(false);
+  async function publish() {
+    if (exercises.length === 0) return;
+    await publishRoutine(getClient(), {
+      routineId,
+      ownerId: getCurrentUserId(),
+      authorName: user?.email?.split("@")[0] ?? "Someone",
+      now: Date.now(),
+    });
+    setPublished(true);
+    setTimeout(() => setPublished(false), 2500);
+  }
 
   async function onPick(exerciseId: string) {
     const re = await addRoutineExercise(getClient(), {
@@ -154,6 +169,16 @@ export default function RoutineEditorPage() {
           />
         ))}
         <AddExercisePicker onPick={onPick} />
+
+        {exercises.length > 0 && (
+          <button
+            type="button"
+            onClick={publish}
+            className="mt-3 min-h-11 w-full rounded-lg bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] font-semibold"
+          >
+            {published ? "Published to Discover ✓" : "Publish to Discover"}
+          </button>
+        )}
       </main>
     </div>
   );

@@ -528,6 +528,88 @@ export async function removeProgramDay(client: Client, id: string) {
 }
 
 /* ---------------------------------------------------------------------------
+ * Social — publish a routine to the shared catalog; clone someone else's.
+ * ------------------------------------------------------------------------- */
+
+interface SharedSnapshotExercise {
+  exerciseId: string;
+  name: string;
+  sets: { reps: number; weight: number }[];
+}
+
+/** Snapshot a routine into the public catalog so others can discover + clone it. */
+export async function publishRoutine(
+  client: Client,
+  args: { routineId: string; ownerId: string; authorName: string; now: number },
+) {
+  const routine = await client.fetchById("routines", args.routineId);
+  if (!routine) return null;
+
+  const exs = await client.fetch(
+    client
+      .query("routineExercises")
+      .Where("routineId", "=", args.routineId)
+      .Include("exercise")
+      .Order("order", "ASC"),
+  );
+  const snapshot: SharedSnapshotExercise[] = [];
+  for (const ex of exs) {
+    const sets = await client.fetch(
+      client.query("routineSets").Where("routineExerciseId", "=", ex.id).Order("order", "ASC"),
+    );
+    snapshot.push({
+      exerciseId: ex.exerciseId,
+      name: (ex as { exercise?: { name?: string } }).exercise?.name ?? "Exercise",
+      sets: sets.map((s) => ({ reps: s.targetReps ?? 0, weight: s.targetWeight ?? 0 })),
+    });
+  }
+
+  return client.insert("sharedRoutines", {
+    ownerId: args.ownerId,
+    authorName: args.authorName,
+    name: routine.name,
+    exercisesJson: JSON.stringify(snapshot),
+    exerciseCount: snapshot.length,
+    createdAt: args.now,
+  });
+}
+
+export interface SharedRoutineRow {
+  id: string;
+  name: string;
+  authorName: string;
+  exercisesJson: string;
+  exerciseCount: number;
+}
+
+/** Clone a shared routine into the user's own routines. Returns the new routine id. */
+export async function cloneSharedRoutine(
+  client: Client,
+  args: { shared: SharedRoutineRow; ownerId: string },
+): Promise<string> {
+  const snapshot = JSON.parse(args.shared.exercisesJson) as SharedSnapshotExercise[];
+  const routine = await createRoutine(client, { ownerId: args.ownerId, name: args.shared.name });
+  for (let i = 0; i < snapshot.length; i++) {
+    const ex = snapshot[i]!;
+    const re = await addRoutineExercise(client, {
+      routineId: routine.id,
+      exerciseId: ex.exerciseId,
+      order: i + 1,
+    });
+    for (let s = 0; s < ex.sets.length; s++) {
+      const set = ex.sets[s]!;
+      await addRoutineSet(client, {
+        routineExerciseId: re.id,
+        order: s + 1,
+        targetReps: set.reps,
+        targetWeight: set.weight || undefined,
+      });
+    }
+  }
+  return routine.id;
+}
+
+/* ---------------------------------------------------------------------------
  * History / progression helpers
  * ------------------------------------------------------------------------- */
 
