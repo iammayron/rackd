@@ -1,4 +1,4 @@
-import type { SetLog } from "./types.js";
+import type { SetLog } from "./types";
 
 /**
  * Estimate one-rep max (Epley). Pure, the single 1RM source for the whole app.

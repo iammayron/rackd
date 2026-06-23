@@ -1,4 +1,4 @@
-import type { Unit } from "./types.js";
+import type { Unit } from "./types";
 
 const KG_PER_LB = 0.45359237;
 

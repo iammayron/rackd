@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { estimate1RM, plateBreakdown, nextWeight, sessionVolume } from "./calc.js";
-import { toKg, fromKg, formatWeight } from "./units.js";
-import { startTimer, pauseTimer, resumeTimer, remainingMs, addTime } from "./timer.js";
-import type { SetLog } from "./types.js";
+import { estimate1RM, plateBreakdown, nextWeight, sessionVolume } from "./calc";
+import { toKg, fromKg, formatWeight } from "./units";
+import { startTimer, pauseTimer, resumeTimer, remainingMs, addTime } from "./timer";
+import type { SetLog } from "./types";
 
 describe("estimate1RM", () => {
   it("returns the weight for a single rep", () => {
