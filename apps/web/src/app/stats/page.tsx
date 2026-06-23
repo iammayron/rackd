@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { exerciseStats, logBodyweight, type ExerciseStatPoint } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
-import { getCurrentUserId } from "@/lib/auth";
+import { getCurrentUserId, useAuth } from "@/lib/auth";
 import { useUnit, useUnitStore } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";
 import { LineChart, BarChart } from "@/components/Chart";
@@ -65,6 +65,7 @@ export default function StatsPage() {
 
   const { unit, display, toKg } = useUnit();
   const setUnit = useUnitStore((s) => s.setUnit);
+  const { user, signOut } = useAuth();
 
   const { results: body } = useQuery<BodyRow>((c) => c.query("bodyMetrics").Order("date", "ASC"));
   const [bw, setBw] = useState("");
@@ -95,6 +96,19 @@ export default function StatsPage() {
             ))}
           </div>
         </div>
+
+        <Card title="Account">
+          <div className="flex items-center gap-3">
+            <span className="flex-1 text-sm text-[var(--text-muted)] truncate">{user?.email}</span>
+            <button
+              type="button"
+              onClick={() => signOut()}
+              className="min-h-10 px-4 rounded-lg bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)] font-semibold"
+            >
+              Sign out
+            </button>
+          </div>
+        </Card>
 
         <Card title="Bodyweight">
           <div className="flex gap-2 mb-3">

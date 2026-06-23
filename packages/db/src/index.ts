@@ -1,8 +1,8 @@
 import { TriplitClient } from "@triplit/client";
 import { estimate1RM } from "@fitnow/core";
-import { schema } from "./schema";
+import { schema, roles } from "./schema";
 
-export { schema } from "./schema";
+export { schema, roles } from "./schema";
 export type { Schema } from "./schema";
 export { SEED_EXERCISES, seedExercises } from "./seed";
 export type { SeedExercise } from "./seed";
@@ -23,6 +23,7 @@ export function createClient(opts?: {
 }) {
   return new TriplitClient({
     schema,
+    roles,
     serverUrl: opts?.serverUrl,
     token: opts?.token,
     storage:
@@ -43,6 +44,16 @@ export type Client = ReturnType<typeof createClient>;
  * not the client. Keeps mutations in one place and the engine swappable.
  */
 
+/** Derive ownerId from a parent row so child collections stay owner-scoped (DRY). */
+async function ownerOf(
+  client: Client,
+  collection: "sessions" | "sessionExercises" | "routines" | "routineExercises" | "programs",
+  id: string,
+): Promise<string> {
+  const row = await client.fetchById(collection, id);
+  return (row as { ownerId?: string } | null)?.ownerId ?? "";
+}
+
 export async function startSession(
   client: Client,
   args: { ownerId: string; routineId?: string; name: string; now: number },
@@ -61,6 +72,7 @@ export async function addSessionExercise(
   args: { sessionId: string; exerciseId: string; order: number; restSec?: number },
 ) {
   return client.insert("sessionExercises", {
+    ownerId: await ownerOf(client, "sessions", args.sessionId),
     sessionId: args.sessionId,
     exerciseId: args.exerciseId,
     order: args.order,
@@ -105,6 +117,7 @@ export async function addSet(
   args: { sessionExerciseId: string; order: number; type?: string; weight?: number; reps?: number },
 ) {
   return client.insert("setLogs", {
+    ownerId: await ownerOf(client, "sessionExercises", args.sessionExerciseId),
     sessionExerciseId: args.sessionExerciseId,
     order: args.order,
     type: args.type ?? "normal",
@@ -143,6 +156,7 @@ export async function logSet(
   },
 ) {
   return client.insert("setLogs", {
+    ownerId: await ownerOf(client, "sessionExercises", args.sessionExerciseId),
     sessionExerciseId: args.sessionExerciseId,
     order: args.order,
     weight: args.weight,
@@ -360,6 +374,7 @@ export async function addRoutineExercise(
   args: { routineId: string; exerciseId: string; order: number; restSec?: number },
 ) {
   return client.insert("routineExercises", {
+    ownerId: await ownerOf(client, "routines", args.routineId),
     routineId: args.routineId,
     exerciseId: args.exerciseId,
     order: args.order,
@@ -386,6 +401,7 @@ export async function addRoutineSet(
   },
 ) {
   return client.insert("routineSets", {
+    ownerId: await ownerOf(client, "routineExercises", args.routineExerciseId),
     routineExerciseId: args.routineExerciseId,
     order: args.order,
     type: args.type ?? "normal",
@@ -431,6 +447,7 @@ export async function startSessionFromRoutine(
   );
   for (const ex of exs) {
     const se = await client.insert("sessionExercises", {
+      ownerId: args.ownerId,
       sessionId: session.id,
       exerciseId: ex.exerciseId,
       order: ex.order,
@@ -442,6 +459,7 @@ export async function startSessionFromRoutine(
     );
     for (const rs of sets) {
       await client.insert("setLogs", {
+        ownerId: args.ownerId,
         sessionExerciseId: se.id,
         order: rs.order,
         type: rs.type,
@@ -486,6 +504,7 @@ export async function addProgramDay(
   args: { programId: string; order: number; name?: string; routineId?: string },
 ) {
   return client.insert("programDays", {
+    ownerId: await ownerOf(client, "programs", args.programId),
     programId: args.programId,
     order: args.order,
     name: args.name ?? `Day ${args.order}`,

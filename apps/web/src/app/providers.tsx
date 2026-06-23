@@ -1,36 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { seedExercises } from "@fitnow/db";
-import { getClient } from "@/lib/triplit";
+import { useEffect } from "react";
+import { AuthProvider, useAuth } from "@/lib/auth";
 import { hydrateUnit } from "@/lib/units-store";
+import { LoginScreen } from "@/components/LoginScreen";
 
-/**
- * Boots the local-first client and seeds the exercise library once.
- * Renders children only after the client is ready so queries never race seeding.
- */
-export function Providers({ children }: { children: React.ReactNode }) {
-  const [ready, setReady] = useState(false);
-
+/** Auth gate: spinner while resolving, login when signed out, app when signed in. */
+function Gate({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
   useEffect(() => {
-    let cancelled = false;
     hydrateUnit();
-    (async () => {
-      try {
-        await seedExercises(getClient());
-      } catch (e) {
-        console.error("[fitnow] seed failed", e);
-      } finally {
-        if (!cancelled) setReady(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
-  if (!ready) {
+  if (loading) {
     return <div className="p-8 text-[var(--text-muted)]">Loading FitNow…</div>;
   }
+  if (!user) return <LoginScreen />;
   return <>{children}</>;
+}
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <Gate>{children}</Gate>
+    </AuthProvider>
+  );
 }

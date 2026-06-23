@@ -14,6 +14,7 @@
     "@fitnow/core": "workspace:*",
     "@fitnow/db": "workspace:*",
     "@fitnow/ui": "workspace:*",
+    "@supabase/supabase-js": "^2.108.2",
     "next": "^15.1.3",
     "preline": "^4.2.0",
     "react": "^19.0.0",

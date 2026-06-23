@@ -1,5 +1,5 @@
 import { createServer, createTriplitStorageProvider } from "@triplit/server";
-import { schema } from "@fitnow/db";
+import { schema, roles } from "@fitnow/db";
 
 /**
  * FitNow self-hosted Triplit sync server.
@@ -28,9 +28,11 @@ const storage =
 
 const startServer = await createServer({
   jwtSecret,
+  // Validate user tokens issued by Supabase (signed with its JWT secret).
+  externalJwtSecret: process.env.SUPABASE_JWT_SECRET,
   projectId: process.env.PROJECT_ID,
   storage,
-  dbOptions: { schema: { collections: schema } as never },
+  dbOptions: { schema: { collections: schema, roles } as never },
 });
 
 startServer(port, () => {

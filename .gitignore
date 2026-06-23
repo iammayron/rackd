@@ -10,6 +10,11 @@ coverage/
 .DS_Store
 .vercel
 
+# Supabase — never commit private signing keys or local volumes
+supabase/signing_keys.json
+supabase/.branches/
+supabase/.temp/
+
 # Serwist-generated service worker
 **/public/sw.js
 **/public/sw.js.map

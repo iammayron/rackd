@@ -1,9 +1,10 @@
 import { createClient, type Client } from "@fitnow/db";
 
 /**
- * Browser-only Triplit client (IndexedDB). Phase 1 = local-only, no serverUrl,
- * so everything works fully offline. Cloud sync (serverUrl + token) lands in
- * Phase 2 — wiring it here is the only change the rest of the app needs.
+ * Browser-only Triplit client (IndexedDB). The auth token is NOT set here —
+ * AuthProvider calls client.startSession(supabaseAccessToken) on login and
+ * client.endSession() on logout. serverUrl enables cloud sync when configured;
+ * unset = local-only (still requires a session token for permissions).
  */
 let client: Client | null = null;
 
@@ -12,14 +13,10 @@ export function getClient(): Client {
     throw new Error("Triplit client is browser-only");
   }
   if (!client) {
-    // Cloud sync is opt-in via env: set both to connect, otherwise local-only.
-    const serverUrl = process.env.NEXT_PUBLIC_TRIPLIT_URL;
-    const token = process.env.NEXT_PUBLIC_TRIPLIT_TOKEN;
     client = createClient({
       storage: "indexeddb",
       dbName: "fitnow",
-      serverUrl,
-      token,
+      serverUrl: process.env.NEXT_PUBLIC_TRIPLIT_URL,
     });
   }
   return client;

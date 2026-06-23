@@ -3,9 +3,31 @@ import { Schema as S } from "@triplit/client";
 /**
  * Triplit schema — the local-first + sync source of truth for persisted data.
  * Domain TYPES live in @fitnow/core; this maps them to storage/sync.
- * Media (clipUrl/thumbnailUrl) are URLs only — binaries live on the CDN,
- * never in the synced DB.
+ * Media (clipUrl/thumbnailUrl) are URLs only — binaries live on the CDN.
+ *
+ * Authorization: the "user" role binds `userId` from the auth token's `sub`
+ * claim (Supabase user id). Every collection carries `ownerId` and is scoped to
+ * the owner. Exercises are an exception — the shared library is world-readable
+ * (read has no filter); only the owner can write their custom exercises, and the
+ * library itself is seeded server-side with a service token.
  */
+export const roles = {
+  user: {
+    match: { sub: "$userId" },
+  },
+};
+
+// Triplit's permission generics are finicky about tuple/readonly filters;
+// the runtime shape is what matters and Triplit validates it. Cast at use.
+const ownerOnly = {
+  user: {
+    read: { filter: [["ownerId", "=", "$role.userId"]] },
+    insert: { filter: [["ownerId", "=", "$role.userId"]] },
+    update: { filter: [["ownerId", "=", "$role.userId"]] },
+    delete: { filter: [["ownerId", "=", "$role.userId"]] },
+  },
+} as never;
+
 export const schema = S.Collections({
   exercises: {
     schema: S.Schema({
@@ -23,6 +45,15 @@ export const schema = S.Collections({
       isCustom: S.Boolean({ default: false }),
       ownerId: S.Optional(S.String()),
     }),
+    permissions: {
+      user: {
+        // [id isDefined] is always-true → allow-all (shared library read + seed).
+        read: { filter: [["id", "isDefined", true]] },
+        insert: { filter: [["id", "isDefined", true]] },
+        update: { filter: [["ownerId", "=", "$role.userId"]] }, // library has no owner → immutable
+        delete: { filter: [["ownerId", "=", "$role.userId"]] },
+      },
+    } as never,
   },
 
   routines: {
@@ -34,11 +65,13 @@ export const schema = S.Collections({
       notes: S.Optional(S.String()),
       order: S.Number({ default: 0 }),
     }),
+    permissions: ownerOnly,
   },
 
   routineExercises: {
     schema: S.Schema({
       id: S.Id(),
+      ownerId: S.String({ default: "" }),
       routineId: S.String(),
       exerciseId: S.String(),
       order: S.Number(),
@@ -49,11 +82,13 @@ export const schema = S.Collections({
     relationships: {
       exercise: S.RelationById("exercises", "$exerciseId"),
     },
+    permissions: ownerOnly,
   },
 
   routineSets: {
     schema: S.Schema({
       id: S.Id(),
+      ownerId: S.String({ default: "" }),
       routineExerciseId: S.String(),
       order: S.Number(),
       type: S.String({ default: "normal" }),
@@ -62,6 +97,7 @@ export const schema = S.Collections({
       targetRpe: S.Optional(S.Number()),
       tempo: S.Optional(S.String()),
     }),
+    permissions: ownerOnly,
   },
 
   sessions: {
@@ -75,11 +111,13 @@ export const schema = S.Collections({
       notes: S.Optional(S.String()),
       bodyweight: S.Optional(S.Number()),
     }),
+    permissions: ownerOnly,
   },
 
   sessionExercises: {
     schema: S.Schema({
       id: S.Id(),
+      ownerId: S.String({ default: "" }),
       sessionId: S.String(),
       exerciseId: S.String(),
       order: S.Number(),
@@ -89,11 +127,13 @@ export const schema = S.Collections({
     relationships: {
       exercise: S.RelationById("exercises", "$exerciseId"),
     },
+    permissions: ownerOnly,
   },
 
   setLogs: {
     schema: S.Schema({
       id: S.Id(),
+      ownerId: S.String({ default: "" }),
       sessionExerciseId: S.String(),
       order: S.Number(),
       type: S.String({ default: "normal" }),
@@ -104,6 +144,7 @@ export const schema = S.Collections({
       restTakenSec: S.Optional(S.Number()),
       isPr: S.Boolean({ default: false }),
     }),
+    permissions: ownerOnly,
   },
 
   personalRecords: {
@@ -116,6 +157,7 @@ export const schema = S.Collections({
       sessionId: S.String(),
       achievedAt: S.Number(),
     }),
+    permissions: ownerOnly,
   },
 
   bodyMetrics: {
@@ -126,6 +168,7 @@ export const schema = S.Collections({
       weightKg: S.Number(),
       note: S.Optional(S.String()),
     }),
+    permissions: ownerOnly,
   },
 
   programs: {
@@ -136,11 +179,13 @@ export const schema = S.Collections({
       notes: S.Optional(S.String()),
       order: S.Number({ default: 0 }),
     }),
+    permissions: ownerOnly,
   },
 
   programDays: {
     schema: S.Schema({
       id: S.Id(),
+      ownerId: S.String({ default: "" }),
       programId: S.String(),
       order: S.Number(),
       name: S.String({ default: "Day" }),
@@ -149,6 +194,7 @@ export const schema = S.Collections({
     relationships: {
       routine: S.RelationById("routines", "$routineId"),
     },
+    permissions: ownerOnly,
   },
 });
 
