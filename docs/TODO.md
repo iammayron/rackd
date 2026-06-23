@@ -25,7 +25,9 @@ Living backlog. Done work lives in git history; this tracks what's next.
 ### Content & polish
 - [ ] Exercise media — clips/thumbnails (schema fields exist; CDN + cache-on-view)
 - [ ] Preline upgrades — add-exercise modal/combobox, PR toast, tooltips
-- [ ] Supersets UI; kg/lb units toggle (core ready); edit/reorder exercises mid-workout
+- [x] kg/lb units toggle (canonical kg storage, unit-aware plate calc)
+- [x] Add/remove exercises during an active workout
+- [ ] Supersets UI; reorder exercises (drag) in routines + active workout
 
 ### Infra
 - [ ] Deploy — build sync Docker image on the Tailscale box, set web env, ship frontend
