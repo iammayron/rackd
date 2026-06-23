@@ -25,7 +25,8 @@ Living backlog. Done work lives in git history; this tracks what's next.
 - [ ] AI suggestions (Claude API) grounded in history — workout gen, weak-point analysis
 
 ### Content & polish
-- [ ] Exercise media — clips/thumbnails (schema fields exist; CDN + cache-on-view)
+- [x] Exercise media system — thumbnails + detail modal (clip plays when clipUrl set)
+- [ ] Source/host real exercise clips (CDN) + populate exercise URLs
 - [x] Add-exercise full-screen modal
 - [x] PR celebration on finish
 - [ ] Preline upgrades — combobox, tooltips, toasts
