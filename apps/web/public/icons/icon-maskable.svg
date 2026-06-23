@@ -1,0 +1,8 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Rackd app icon">
+  <rect width="512" height="512" fill="#ff5a3c"></rect>
+  <g transform="translate(256 256)">
+    <circle r="120" stroke="#ffffff" stroke-opacity="0.28" stroke-width="34"></circle>
+    <circle r="120" stroke="#ffffff" stroke-width="34" stroke-linecap="round" stroke-dasharray="580 754" transform="rotate(-78)"></circle>
+    <text x="0" y="0" dy="0.355em" text-anchor="middle" font-family="'Hanken Grotesk', system-ui, sans-serif" font-weight="800" font-size="150" fill="#ffffff" letter-spacing="-0.02em">R</text>
+  </g>
+</svg>
