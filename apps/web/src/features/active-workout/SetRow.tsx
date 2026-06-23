@@ -4,6 +4,7 @@ import { useState } from "react";
 import { estimate1RM } from "@fitnow/core";
 import { updateSet, deleteSet } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
+import { useUnit } from "@/lib/units-store";
 import { useTimerStore } from "./timer-store";
 
 export interface SetRowData {
@@ -31,14 +32,15 @@ export function SetRow({
   prevLabel?: string;
 }) {
   const startTimer = useTimerStore((s) => s.start);
-  const [weight, setWeight] = useState(String(data.weight || ""));
+  const { unit, display, toKg } = useUnit();
+  const [weight, setWeight] = useState(data.weight ? String(display(data.weight)) : "");
   const [reps, setReps] = useState(String(data.reps || ""));
 
   async function toggle() {
     const client = getClient();
     const next = !data.completed;
     await updateSet(client, data.id, {
-      weight: Number(weight) || 0,
+      weight: weight ? toKg(Number(weight)) : 0,
       reps: Number(reps) || 0,
       completed: next,
     });
@@ -52,7 +54,7 @@ export function SetRow({
       <input
         className={CELL}
         inputMode="decimal"
-        placeholder="kg"
+        placeholder={unit}
         value={weight}
         onChange={(e) => setWeight(e.target.value)}
         aria-label={`Set ${data.order} weight`}
@@ -71,7 +73,7 @@ export function SetRow({
         aria-label={data.completed ? "Mark set incomplete" : "Complete set"}
         title={
           weight && reps
-            ? `est 1RM ${Math.round(estimate1RM(Number(weight), Number(reps)))} kg`
+            ? `est 1RM ${Math.round(estimate1RM(Number(weight), Number(reps)))} ${unit}`
             : undefined
         }
         className={`ms-auto inline-flex items-center justify-center min-h-11 min-w-11 rounded-lg border border-[var(--border)] text-lg font-bold ${

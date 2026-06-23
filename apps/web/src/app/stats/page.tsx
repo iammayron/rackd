@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { exerciseStats, logBodyweight, type ExerciseStatPoint } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
+import { useUnit, useUnitStore } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";
 import { LineChart, BarChart } from "@/components/Chart";
 import { AdvancedSelect } from "@/components/AdvancedSelect";
@@ -62,19 +63,38 @@ export default function StatsPage() {
     [selected],
   );
 
+  const { unit, display, toKg } = useUnit();
+  const setUnit = useUnitStore((s) => s.setUnit);
+
   const { results: body } = useQuery<BodyRow>((c) => c.query("bodyMetrics").Order("date", "ASC"));
   const [bw, setBw] = useState("");
   async function logBw() {
     const v = Number(bw);
     if (!v) return;
-    await logBodyweight(getClient(), { ownerId: getCurrentUserId(), weightKg: v, now: Date.now() });
+    await logBodyweight(getClient(), { ownerId: getCurrentUserId(), weightKg: toKg(v), now: Date.now() });
     setBw("");
   }
 
   return (
     <div className="flex flex-col min-h-[100dvh]">
       <main className="flex-1 p-6">
-        <h1 className="text-2xl font-bold mb-4">Stats</h1>
+        <div className="flex items-center mb-4">
+          <h1 className="text-2xl font-bold">Stats</h1>
+          <div className="ms-auto inline-flex rounded-lg border border-[var(--border)] overflow-hidden">
+            {(["kg", "lb"] as const).map((u) => (
+              <button
+                key={u}
+                type="button"
+                onClick={() => setUnit(u)}
+                className={`px-3 py-2 text-sm font-semibold ${
+                  unit === u ? "bg-[var(--accent)] text-white" : "bg-[var(--surface)] text-[var(--text-muted)]"
+                }`}
+              >
+                {u}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <Card title="Bodyweight">
           <div className="flex gap-2 mb-3">
@@ -82,7 +102,7 @@ export default function StatsPage() {
               value={bw}
               onChange={(e) => setBw(e.target.value)}
               inputMode="decimal"
-              placeholder="kg"
+              placeholder={unit}
               aria-label="Bodyweight"
               className="flex-1 min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             />
@@ -94,7 +114,7 @@ export default function StatsPage() {
               Log
             </button>
           </div>
-          <LineChart data={body.map((b) => b.weightKg)} unit="kg" />
+          <LineChart data={body.map((b) => display(b.weightKg))} unit={unit} />
         </Card>
 
         {withHistory.length === 0 ? (
@@ -120,17 +140,19 @@ export default function StatsPage() {
                     className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg py-2 px-3 text-sm"
                   >
                     🏆 {pr.type === "1rm" ? "Est 1RM" : "Top weight"}{" "}
-                    <strong className="text-[var(--accent)]">{pr.value} kg</strong>
+                    <strong className="text-[var(--accent)]">
+                      {display(pr.value)} {unit}
+                    </strong>
                   </span>
                 ))}
               </div>
             )}
 
             <Card title="Est 1RM over time">
-              <LineChart data={points.map((p) => p.best1rm)} unit="kg" />
+              <LineChart data={points.map((p) => display(p.best1rm))} unit={unit} />
             </Card>
             <Card title="Volume per session">
-              <BarChart data={points.map((p) => p.volume)} unit="kg" />
+              <BarChart data={points.map((p) => display(p.volume))} unit={unit} />
             </Card>
           </>
         )}

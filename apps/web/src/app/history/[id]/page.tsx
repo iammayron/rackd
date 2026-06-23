@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { estimate1RM } from "@fitnow/core";
+import { useUnit } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";
 
 interface SessionExerciseRow {
@@ -25,6 +26,7 @@ function ExerciseSummary({ se }: { se: SessionExerciseRow }) {
       c.query("setLogs").Where("sessionExerciseId", "=", se.id).Order("order", "ASC"),
     [se.id],
   );
+  const { unit, display } = useUnit();
   const done = sets.filter((s) => s.completed);
   const best = done.reduce((m, s) => Math.max(m, estimate1RM(s.weight, s.reps)), 0);
 
@@ -35,13 +37,15 @@ function ExerciseSummary({ se }: { se: SessionExerciseRow }) {
         <div key={s.id} className="flex gap-3 text-[var(--text-muted)] py-0.5">
           <span className="w-6">{s.order}</span>
           <span className="text-[var(--text)]">
-            {s.weight} kg × {s.reps}
+            {display(s.weight)} {unit} × {s.reps}
           </span>
           {s.isPr && <span title="Personal record">🏆</span>}
         </div>
       ))}
       {best > 0 && (
-        <div className="mt-2 text-sm text-[var(--accent)]">est 1RM {Math.round(best)} kg</div>
+        <div className="mt-2 text-sm text-[var(--accent)]">
+          est 1RM {display(best)} {unit}
+        </div>
       )}
     </section>
   );

@@ -7,6 +7,7 @@ import {
   removeRoutineExercise,
 } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
+import { useUnit } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";
 
 interface RoutineExerciseRow {
@@ -30,6 +31,7 @@ export function RoutineExerciseEditor({
 }: {
   routineExercise: RoutineExerciseRow;
 }) {
+  const { unit, display, toKg } = useUnit();
   const { results: sets } = useQuery<RoutineSetRow>(
     (c) =>
       c.query("routineSets").Where("routineExerciseId", "=", routineExercise.id).Order("order", "ASC"),
@@ -64,7 +66,7 @@ export function RoutineExerciseEditor({
 
       <div className="flex gap-3 text-sm text-[var(--text-muted)]">
         <span className="w-6">set</span>
-        <span className="w-[72px] text-center">kg</span>
+        <span className="w-[72px] text-center">{unit}</span>
         <span className="w-[72px] text-center">reps</span>
       </div>
 
@@ -74,10 +76,12 @@ export function RoutineExerciseEditor({
           <input
             className={CELL}
             inputMode="decimal"
-            placeholder="kg"
-            defaultValue={s.targetWeight ?? ""}
+            placeholder={unit}
+            defaultValue={s.targetWeight != null ? display(s.targetWeight) : ""}
             onBlur={(e) =>
-              updateRoutineSet(getClient(), s.id, { targetWeight: Number(e.target.value) || 0 })
+              updateRoutineSet(getClient(), s.id, {
+                targetWeight: e.target.value ? toKg(Number(e.target.value)) : 0,
+              })
             }
             aria-label={`Set ${s.order} target weight`}
           />

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { seedExercises } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
+import { hydrateUnit } from "@/lib/units-store";
 
 /**
  * Boots the local-first client and seeds the exercise library once.
@@ -13,6 +14,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    hydrateUnit();
     (async () => {
       try {
         await seedExercises(getClient());

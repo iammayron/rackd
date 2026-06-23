@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { nextWeight } from "@fitnow/core";
 import { addSet, lastPerformance, removeSessionExercise, type PrevSet } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
+import { useUnit } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";
 import { SetRow, type SetRowData } from "./SetRow";
 import { PlatesPanel } from "./PlatesPanel";
@@ -22,6 +23,7 @@ interface SessionExerciseRow {
  * Owns its own reactive query for its sets (composes cleanly per card).
  */
 export function ExerciseCard({ sessionExercise }: { sessionExercise: SessionExerciseRow }) {
+  const { unit, display } = useUnit();
   const { results: sets } = useQuery<SetRowData>(
     (c) =>
       c
@@ -91,10 +93,10 @@ export function ExerciseCard({ sessionExercise }: { sessionExercise: SessionExer
         <div className="flex items-center gap-2 bg-[var(--surface-2)] border border-[var(--border)] rounded-lg py-2 px-3 mb-3 text-sm">
           <span>📈 Try</span>
           <strong className="text-[var(--accent)]">
-            {suggestedWeight} kg × {prevTop.reps}
+            {display(suggestedWeight)} {unit} × {prevTop.reps}
           </strong>
           <span className="text-[var(--text-muted)]">
-            (last {prevTop.weight}×{prevTop.reps})
+            (last {display(prevTop.weight)}×{prevTop.reps})
           </span>
         </div>
       )}
@@ -113,7 +115,7 @@ export function ExerciseCard({ sessionExercise }: { sessionExercise: SessionExer
             key={s.id}
             data={s}
             restSec={sessionExercise.restSec}
-            prevLabel={p ? `${p.weight}×${p.reps}` : undefined}
+            prevLabel={p ? `${display(p.weight)}×${p.reps}` : undefined}
           />
         );
       })}
