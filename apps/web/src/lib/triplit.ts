@@ -12,7 +12,15 @@ export function getClient(): Client {
     throw new Error("Triplit client is browser-only");
   }
   if (!client) {
-    client = createClient({ storage: "indexeddb", dbName: "fitnow" });
+    // Cloud sync is opt-in via env: set both to connect, otherwise local-only.
+    const serverUrl = process.env.NEXT_PUBLIC_TRIPLIT_URL;
+    const token = process.env.NEXT_PUBLIC_TRIPLIT_TOKEN;
+    client = createClient({
+      storage: "indexeddb",
+      dbName: "fitnow",
+      serverUrl,
+      token,
+    });
   }
   return client;
 }

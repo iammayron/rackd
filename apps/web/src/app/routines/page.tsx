@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createRoutine, startSessionFromRoutine, deleteRoutine } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
+import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
 import { Nav } from "@/components/Nav";
 
@@ -23,7 +24,7 @@ export default function RoutinesPage() {
 
   async function create() {
     const r = await createRoutine(getClient(), {
-      ownerId: "local",
+      ownerId: getCurrentUserId(),
       name: "New Routine",
       order: routines.length,
     });
@@ -35,7 +36,7 @@ export default function RoutinesPage() {
     setBusy(true);
     const s = await startSessionFromRoutine(getClient(), {
       routineId: id,
-      ownerId: "local",
+      ownerId: getCurrentUserId(),
       now: Date.now(),
     });
     router.push(`/workout/${s.id}`);

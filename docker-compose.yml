@@ -1,0 +1,24 @@
+# FitNow self-host (home box + Tailscale).
+# 1. cp .env.example .env  and set JWT_SECRET to a long random string
+# 2. docker compose up -d
+# 3. generate a token:  docker compose exec sync node gen-token.mjs "$JWT_SECRET" service
+# 4. point the web app at this box over your tailnet:
+#      NEXT_PUBLIC_TRIPLIT_URL=http://<tailscale-host>:8787
+#      NEXT_PUBLIC_TRIPLIT_TOKEN=<token from step 3>
+services:
+  sync:
+    build: ./apps/sync
+    restart: unless-stopped
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      PORT: 8787
+      STORAGE: sqlite
+      LOCAL_DATABASE_URL: /data/triplit.db
+      PROJECT_ID: fitnow
+    ports:
+      - "8787:8787"
+    volumes:
+      - fitnow-sync-data:/data
+
+volumes:
+  fitnow-sync-data:

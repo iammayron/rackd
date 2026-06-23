@@ -28,6 +28,9 @@ export function createClient(opts?: {
         ? { type: "indexeddb", name: opts?.dbName ?? "fitnow" }
         : opts?.storage,
     autoConnect: Boolean(opts?.serverUrl),
+    // Push the client schema (incl. relationships) so server-side queries like
+    // .Include("exercise") are valid. Needed for our self-hosted schemaless server.
+    syncSchema: Boolean(opts?.serverUrl),
   });
 }
 

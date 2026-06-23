@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { exerciseStats, logBodyweight, type ExerciseStatPoint } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
+import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
 import { LineChart, BarChart } from "@/components/Chart";
 import { Nav } from "@/components/Nav";
@@ -65,7 +66,7 @@ export default function StatsPage() {
   async function logBw() {
     const v = Number(bw);
     if (!v) return;
-    await logBodyweight(getClient(), { ownerId: "local", weightKg: v, now: Date.now() });
+    await logBodyweight(getClient(), { ownerId: getCurrentUserId(), weightKg: v, now: Date.now() });
     setBw("");
   }
 

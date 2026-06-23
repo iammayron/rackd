@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { startSession, addSessionExercise } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
+import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
 import { Nav } from "@/components/Nav";
 
@@ -41,7 +42,7 @@ export default function Home() {
     setStarting(true);
     const client = getClient();
     const session = await startSession(client, {
-      ownerId: "local",
+      ownerId: getCurrentUserId(),
       name: "Quick Workout",
       now: Date.now(),
     });

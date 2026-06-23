@@ -9,6 +9,7 @@ import {
   startSessionFromRoutine,
 } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
+import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
 import { RoutineExerciseEditor } from "@/features/routines/RoutineExerciseEditor";
 import { AddExercisePicker } from "@/features/routines/AddExercisePicker";
@@ -56,7 +57,7 @@ export default function RoutineEditorPage() {
   async function start() {
     const s = await startSessionFromRoutine(getClient(), {
       routineId,
-      ownerId: "local",
+      ownerId: getCurrentUserId(),
       now: Date.now(),
     });
     router.push(`/workout/${s.id}`);
