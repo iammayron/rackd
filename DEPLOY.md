@@ -14,10 +14,10 @@ no public internet). All free.
 
 ```bash
 supabase start                                   # first run pulls images
-supabase gen signing-key --algorithm RS256 \
-  --output-format json > supabase/_key.json      # then wrap as a JSON array:
-node -e "const k=require('./supabase/_key.json');require('fs').writeFileSync('supabase/signing_keys.json',JSON.stringify([k]))"
-# config.toml already sets: signing_keys_path = "./signing_keys.json"
+# config.toml already sets: signing_keys_path = "./signing_keys.json".
+# With that set, the CLI MANAGES that file — seed it empty, then append a key:
+printf '[]' > supabase/signing_keys.json
+supabase gen signing-key --algorithm RS256 --append
 supabase stop && supabase start                  # apply RS256
 ```
 
