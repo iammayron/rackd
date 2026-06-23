@@ -72,56 +72,28 @@ export function ExerciseCard({ sessionExercise }: { sessionExercise: SessionExer
   }
 
   return (
-    <section
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--radius-lg)",
-        padding: "var(--space-4)",
-        marginBottom: "var(--space-4)",
-      }}
-    >
-      <h2 style={{ fontSize: "var(--text-lg)", fontWeight: 700, marginBottom: "var(--space-2)" }}>
+    <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 mb-4">
+      <h2 className="text-lg font-bold mb-2">
         {sessionExercise.exercise?.name ?? "Exercise"}
       </h2>
 
       {prevTop && suggestedWeight !== undefined && noneCompleted && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "var(--space-2)",
-            background: "var(--surface-2)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius)",
-            padding: "var(--space-2) var(--space-3)",
-            marginBottom: "var(--space-3)",
-            fontSize: "var(--text-sm)",
-          }}
-        >
+        <div className="flex items-center gap-2 bg-[var(--surface-2)] border border-[var(--border)] rounded-lg py-2 px-3 mb-3 text-sm">
           <span>📈 Try</span>
-          <strong style={{ color: "var(--accent)" }}>
+          <strong className="text-[var(--accent)]">
             {suggestedWeight} kg × {prevTop.reps}
           </strong>
-          <span style={{ color: "var(--text-muted)" }}>
+          <span className="text-[var(--text-muted)]">
             (last {prevTop.weight}×{prevTop.reps})
           </span>
         </div>
       )}
 
-      <div
-        style={{
-          display: "flex",
-          gap: "var(--space-3)",
-          fontSize: "var(--text-sm)",
-          color: "var(--text-muted)",
-          paddingBottom: "var(--space-1)",
-        }}
-      >
-        <span style={{ width: 24 }}>#</span>
-        <span style={{ width: 88 }}>prev</span>
-        <span style={{ width: 64, textAlign: "center" }}>kg</span>
-        <span style={{ width: 64, textAlign: "center" }}>reps</span>
+      <div className="flex gap-3 text-sm text-[var(--text-muted)] pb-1">
+        <span className="w-6">#</span>
+        <span className="w-[88px]">prev</span>
+        <span className="w-16 text-center">kg</span>
+        <span className="w-16 text-center">reps</span>
       </div>
 
       {sets.map((s) => {
@@ -137,18 +109,9 @@ export function ExerciseCard({ sessionExercise }: { sessionExercise: SessionExer
       })}
 
       <button
+        type="button"
         onClick={onAddSet}
-        style={{
-          marginTop: "var(--space-2)",
-          minHeight: "var(--tap-min)",
-          width: "100%",
-          background: "var(--surface-2)",
-          color: "var(--accent)",
-          border: "1px dashed var(--border)",
-          borderRadius: "var(--radius)",
-          fontSize: "var(--text-base)",
-          fontWeight: 600,
-        }}
+        className="mt-2 min-h-11 w-full rounded-lg bg-[var(--surface-2)] text-[var(--accent)] border border-dashed border-[var(--border)] text-base font-semibold"
       >
         + Add set
       </button>

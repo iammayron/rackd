@@ -16,30 +16,22 @@ const PLATE_COLOR: Record<number, string> = {
 function PlateChips({ weight }: { weight: number }) {
   const { perSide, leftover } = plateBreakdown(weight);
   if (perSide.length === 0) {
-    return <span style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>bar only</span>;
+    return <span className="text-sm text-[var(--text-muted)]">bar only</span>;
   }
   return (
-    <span style={{ display: "inline-flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+    <span className="inline-flex gap-1 flex-wrap items-center">
       {perSide.map((p, i) => (
         <span
           key={i}
           title={`${p} kg`}
-          style={{
-            background: PLATE_COLOR[p] ?? "var(--surface-2)",
-            color: p === 5 ? "#06231a" : "#fff",
-            borderRadius: 4,
-            padding: "1px 6px",
-            fontSize: "var(--text-sm)",
-            fontWeight: 700,
-          }}
+          className="rounded px-1.5 py-px text-sm font-bold"
+          style={{ background: PLATE_COLOR[p] ?? "var(--surface-2)", color: p === 5 ? "#06231a" : "#fff" }}
         >
           {p}
         </span>
       ))}
-      {leftover > 0 && (
-        <span style={{ color: "var(--warning)", fontSize: "var(--text-sm)" }}>+{leftover}?</span>
-      )}
-      <span style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>/side</span>
+      {leftover > 0 && <span className="text-sm text-[var(--warning)]">+{leftover}?</span>}
+      <span className="text-sm text-[var(--text-muted)]">/side</span>
     </span>
   );
 }
@@ -53,53 +45,31 @@ export function PlatesPanel({ topWeight }: { topWeight: number }) {
   const warmups = warmupSets(topWeight);
 
   return (
-    <div style={{ marginTop: "var(--space-2)" }}>
+    <div className="mt-2">
       <button
+        type="button"
         onClick={() => setOpen((o) => !o)}
-        style={{
-          minHeight: 36,
-          width: "100%",
-          background: "transparent",
-          color: "var(--text-muted)",
-          border: "none",
-          fontSize: "var(--text-sm)",
-          fontWeight: 600,
-          textAlign: "left",
-        }}
+        className="min-h-9 w-full bg-transparent text-sm font-semibold text-[var(--text-muted)] text-start"
       >
         {open ? "▾" : "▸"} Plates &amp; warmup{topWeight > 0 ? ` · ${topWeight} kg` : ""}
       </button>
 
       {open && (
-        <div
-          style={{
-            background: "var(--surface-2)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius)",
-            padding: "var(--space-3)",
-          }}
-        >
+        <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg p-3">
           {topWeight <= 0 ? (
-            <p style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>
-              Enter a working weight to see plates.
-            </p>
+            <p className="text-sm text-[var(--text-muted)]">Enter a working weight to see plates.</p>
           ) : (
             <>
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", marginBottom: "var(--space-2)" }}>
-                <span style={{ fontWeight: 700 }}>Working {topWeight} kg</span>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="font-bold">Working {topWeight} kg</span>
                 <PlateChips weight={topWeight} />
               </div>
               {warmups.length > 0 && (
                 <div>
-                  <div style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)", marginBottom: 4 }}>
-                    Warmup ramp
-                  </div>
+                  <div className="text-sm text-[var(--text-muted)] mb-1">Warmup ramp</div>
                   {warmups.map((w, i) => (
-                    <div
-                      key={i}
-                      style={{ display: "flex", alignItems: "center", gap: "var(--space-3)", padding: "2px 0" }}
-                    >
-                      <span style={{ width: 90 }}>
+                    <div key={i} className="flex items-center gap-3 py-0.5">
+                      <span className="w-[90px]">
                         {w.weight} kg × {w.reps}
                       </span>
                       <PlateChips weight={w.weight} />

@@ -14,16 +14,8 @@ export interface SetRowData {
   completed: boolean;
 }
 
-const cell: React.CSSProperties = {
-  width: 64,
-  textAlign: "center",
-  background: "var(--surface-2)",
-  color: "var(--text)",
-  border: "1px solid var(--border)",
-  borderRadius: "var(--radius-sm)",
-  fontSize: "var(--text-lg)",
-  padding: "var(--space-2)",
-};
+const CELL =
+  "w-16 text-center bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-md text-lg p-2 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]";
 
 /**
  * One set row: weight, reps, complete toggle. Completing a set starts the
@@ -54,23 +46,11 @@ export function SetRow({
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "var(--space-3)",
-        padding: "var(--space-2) 0",
-        opacity: data.completed ? 0.7 : 1,
-      }}
-    >
-      <span style={{ width: 24, color: "var(--text-muted)", fontWeight: 600 }}>
-        {data.order}
-      </span>
-      <span style={{ width: 88, fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
-        {prevLabel ?? "—"}
-      </span>
+    <div className={`flex items-center gap-3 py-2 ${data.completed ? "opacity-70" : ""}`}>
+      <span className="w-6 font-semibold text-[var(--text-muted)]">{data.order}</span>
+      <span className="w-[88px] text-sm text-[var(--text-muted)]">{prevLabel ?? "—"}</span>
       <input
-        style={cell}
+        className={CELL}
         inputMode="decimal"
         placeholder="kg"
         value={weight}
@@ -78,7 +58,7 @@ export function SetRow({
         aria-label={`Set ${data.order} weight`}
       />
       <input
-        style={cell}
+        className={CELL}
         inputMode="numeric"
         placeholder="reps"
         value={reps}
@@ -86,6 +66,7 @@ export function SetRow({
         aria-label={`Set ${data.order} reps`}
       />
       <button
+        type="button"
         onClick={toggle}
         aria-label={data.completed ? "Mark set incomplete" : "Complete set"}
         title={
@@ -93,31 +74,19 @@ export function SetRow({
             ? `est 1RM ${Math.round(estimate1RM(Number(weight), Number(reps)))} kg`
             : undefined
         }
-        style={{
-          minHeight: "var(--tap-min)",
-          minWidth: "var(--tap-min)",
-          marginLeft: "auto",
-          background: data.completed ? "var(--success)" : "var(--surface-2)",
-          color: data.completed ? "#06231a" : "var(--text)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius)",
-          fontSize: "var(--text-lg)",
-          fontWeight: 700,
-        }}
-      >
+        className={`ms-auto inline-flex items-center justify-center min-h-11 min-w-11 rounded-lg border border-[var(--border)] text-lg font-bold ${
+          data.completed
+            ? "bg-[var(--success)] text-[#06231a]"
+            : "bg-[var(--surface-2)] text-[var(--text)]"
+        }`}
+    >
         ✓
       </button>
       <button
+        type="button"
         onClick={() => deleteSet(getClient(), data.id)}
         aria-label="Delete set"
-        style={{
-          minHeight: "var(--tap-min)",
-          width: 32,
-          background: "transparent",
-          color: "var(--text-muted)",
-          border: "none",
-          fontSize: "var(--text-lg)",
-        }}
+        className="min-h-11 w-8 bg-transparent border-none text-lg text-[var(--text-muted)]"
       >
         ×
       </button>

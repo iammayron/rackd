@@ -3,17 +3,8 @@
 import { mmss } from "@fitnow/ui";
 import { useTimerStore } from "./timer-store";
 
-const btn: React.CSSProperties = {
-  minHeight: "var(--tap-min)",
-  minWidth: "var(--tap-min)",
-  padding: "0 var(--space-4)",
-  background: "var(--surface-2)",
-  color: "var(--text)",
-  border: "1px solid var(--border)",
-  borderRadius: "var(--radius)",
-  fontSize: "var(--text-base)",
-  fontWeight: 600,
-};
+const BTN =
+  "inline-flex items-center justify-center min-h-11 min-w-11 px-4 rounded-lg bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] text-base font-semibold disabled:opacity-50";
 
 /** Sticky rest timer. Hidden when idle; turns green-ish on fire. */
 export function RestTimerBar() {
@@ -29,29 +20,21 @@ export function RestTimerBar() {
 
   return (
     <div
-      style={{
-        position: "sticky",
-        bottom: 0,
-        display: "flex",
-        alignItems: "center",
-        gap: "var(--space-3)",
-        padding: "var(--space-3) var(--space-4)",
-        background: fired ? "var(--success)" : "var(--surface)",
-        color: fired ? "#06231a" : "var(--text)",
-        borderTop: "1px solid var(--border)",
-      }}
+      className={`sticky bottom-0 flex items-center gap-3 py-3 px-4 border-t border-[var(--border)] ${
+        fired ? "bg-[var(--success)] text-[#06231a]" : "bg-[var(--surface)] text-[var(--text)]"
+      }`}
     >
-      <span style={{ fontSize: "var(--text-xl)", fontWeight: 700, minWidth: 84 }}>
+      <span className="text-xl font-bold min-w-[84px]">
         {fired ? "Rest over" : mmss(remaining)}
       </span>
-      <div style={{ marginLeft: "auto", display: "flex", gap: "var(--space-2)" }}>
-        <button style={btn} onClick={() => add(-15)} disabled={fired}>
+      <div className="ms-auto flex gap-2">
+        <button type="button" className={BTN} onClick={() => add(-15)} disabled={fired}>
           -15s
         </button>
-        <button style={btn} onClick={() => add(15)} disabled={fired}>
+        <button type="button" className={BTN} onClick={() => add(15)} disabled={fired}>
           +15s
         </button>
-        <button style={btn} onClick={skip}>
+        <button type="button" className={BTN} onClick={skip}>
           {fired ? "Dismiss" : "Skip"}
         </button>
       </div>

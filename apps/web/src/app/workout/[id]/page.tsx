@@ -37,49 +37,30 @@ export default function WorkoutPage() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
-      <header
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 1,
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--space-3)",
-          padding: "var(--space-3) var(--space-4)",
-          background: "var(--bg)",
-          borderBottom: "1px solid var(--border)",
-        }}
-      >
+    <div className="flex flex-col min-h-[100dvh]">
+      <header className="sticky top-0 z-10 flex items-center gap-3 py-3 px-4 bg-[var(--bg)] border-b border-[var(--border)]">
         <button
+          type="button"
           onClick={() => router.push("/")}
           aria-label="Back"
-          style={{ background: "transparent", border: "none", color: "var(--text-muted)", fontSize: "var(--text-lg)" }}
+          className="bg-transparent border-none text-lg text-[var(--text-muted)]"
         >
           ←
         </button>
-        <h1 style={{ fontSize: "var(--text-lg)", fontWeight: 700 }}>Active Workout</h1>
+        <h1 className="text-lg font-bold">Active Workout</h1>
         <button
+          type="button"
           onClick={finish}
-          style={{
-            marginLeft: "auto",
-            minHeight: 40,
-            padding: "0 var(--space-4)",
-            background: "var(--success)",
-            color: "#06231a",
-            border: "none",
-            borderRadius: "var(--radius)",
-            fontWeight: 700,
-          }}
+          className="ms-auto inline-flex items-center min-h-10 px-4 rounded-lg bg-[var(--success)] text-[#06231a] font-bold"
         >
           Finish
         </button>
       </header>
 
-      <main style={{ flex: 1, padding: "var(--space-4)" }}>
-        {fetching && <p style={{ color: "var(--text-muted)" }}>Loading…</p>}
+      <main className="flex-1 p-4">
+        {fetching && <p className="text-[var(--text-muted)]">Loading…</p>}
         {!fetching && sessionExercises.length === 0 && (
-          <p style={{ color: "var(--text-muted)" }}>No exercises in this session.</p>
+          <p className="text-[var(--text-muted)]">No exercises in this session.</p>
         )}
         {sessionExercises.map((se) => (
           <ExerciseCard key={se.id} sessionExercise={se} />
