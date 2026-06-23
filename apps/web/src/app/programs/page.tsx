@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createProgram, deleteProgram } from "@fitnow/db";
+import { createProgram, deleteProgram, PROGRAM_TEMPLATES, cloneProgramTemplate } from "@fitnow/db";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
@@ -20,6 +21,9 @@ export default function ProgramsPage() {
     c.query("programs").Order("order", "ASC"),
   );
 
+  const [browsing, setBrowsing] = useState(false);
+  const [cloning, setCloning] = useState(false);
+
   async function create() {
     const p = await createProgram(getClient(), {
       ownerId: getCurrentUserId(),
@@ -27,6 +31,15 @@ export default function ProgramsPage() {
       order: programs.length,
     });
     router.push(`/programs/${p.id}`);
+  }
+
+  async function useTemplate(templateId: string) {
+    if (cloning) return;
+    const tpl = PROGRAM_TEMPLATES.find((t) => t.id === templateId);
+    if (!tpl) return;
+    setCloning(true);
+    const id = await cloneProgramTemplate(getClient(), tpl, getCurrentUserId());
+    router.push(`/programs/${id}`);
   }
 
   return (
@@ -63,13 +76,57 @@ export default function ProgramsPage() {
 
         <button
           type="button"
+          onClick={() => setBrowsing(true)}
+          className="mt-4 min-h-[52px] w-full rounded-2xl bg-[var(--accent)] text-white border-none text-lg font-bold hover:bg-[var(--accent-press)]"
+        >
+          Browse templates
+        </button>
+        <button
+          type="button"
           onClick={create}
-          className="mt-4 min-h-[52px] w-full rounded-2xl bg-[var(--surface-2)] text-[var(--accent)] border border-dashed border-[var(--border)] text-lg font-bold"
+          className="mt-2 min-h-[52px] w-full rounded-2xl bg-[var(--surface-2)] text-[var(--accent)] border border-dashed border-[var(--border)] text-lg font-bold"
         >
           + New program
         </button>
       </main>
       <Nav />
+
+      {browsing && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]">
+          <header className="flex items-center gap-2 p-4 border-b border-[var(--border)]">
+            <h2 className="flex-1 text-lg font-bold">Templates</h2>
+            <button
+              type="button"
+              onClick={() => setBrowsing(false)}
+              className="min-h-11 px-4 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-lg font-semibold"
+            >
+              Close
+            </button>
+          </header>
+          <div className="flex-1 overflow-y-auto p-4">
+            {PROGRAM_TEMPLATES.map((t) => (
+              <section
+                key={t.id}
+                className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 mb-4"
+              >
+                <h3 className="text-lg font-bold">{t.name}</h3>
+                <p className="text-sm text-[var(--text-muted)] mb-2">{t.description}</p>
+                <p className="text-sm text-[var(--text-muted)] mb-3">
+                  {t.days.length} days · {t.days.map((d) => d.name).join(" · ")}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => useTemplate(t.id)}
+                  disabled={cloning}
+                  className="min-h-11 w-full rounded-lg bg-[var(--accent)] text-white font-bold disabled:opacity-60"
+                >
+                  {cloning ? "Adding…" : "Use this program"}
+                </button>
+              </section>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

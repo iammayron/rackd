@@ -6,6 +6,8 @@ export { schema } from "./schema";
 export type { Schema } from "./schema";
 export { SEED_EXERCISES, seedExercises } from "./seed";
 export type { SeedExercise } from "./seed";
+export { PROGRAM_TEMPLATES, cloneProgramTemplate } from "./templates";
+export type { ProgramTemplate } from "./templates";
 
 /**
  * Single client factory (DRY). Apps create one client; UI never touches
