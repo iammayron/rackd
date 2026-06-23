@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { plateBreakdown, warmupSets } from "@fitnow/core";
+import { plateBreakdown, warmupSets } from "@myfit/core";
 import { useUnit } from "@/lib/units-store";
 
 const PLATE_COLOR: Record<number, string> = {

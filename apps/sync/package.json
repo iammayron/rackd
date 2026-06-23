@@ -1,5 +1,5 @@
 {
-  "name": "@fitnow/sync",
+  "name": "@myfit/sync",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -8,8 +8,8 @@
     "gen-token": "node gen-token.mjs"
   },
   "dependencies": {
-    "@fitnow/core": "workspace:*",
-    "@fitnow/db": "workspace:*",
+    "@myfit/core": "workspace:*",
+    "@myfit/db": "workspace:*",
     "@triplit/server": "^1.1.8",
     "better-sqlite3": "^11.8.0",
     "tsx": "^4.19.2"

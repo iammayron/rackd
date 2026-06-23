@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { nextWeight } from "@fitnow/core";
-import { addSet, lastPerformance, removeSessionExercise, type PrevSet } from "@fitnow/db";
+import { nextWeight } from "@myfit/core";
+import { addSet, lastPerformance, removeSessionExercise, type PrevSet } from "@myfit/db";
 import { getClient } from "@/lib/triplit";
 import { useUnit } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";

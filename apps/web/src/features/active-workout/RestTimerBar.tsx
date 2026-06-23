@@ -1,6 +1,6 @@
 "use client";
 
-import { mmss } from "@fitnow/ui";
+import { mmss } from "@myfit/ui";
 import { useTimerStore } from "./timer-store";
 
 const BTN =

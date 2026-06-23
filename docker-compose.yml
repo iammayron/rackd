@@ -1,4 +1,4 @@
-# FitNow self-host (home box + Tailscale). See DEPLOY.md for the full flow.
+# MyFit self-host (home box + Tailscale). See DEPLOY.md for the full flow.
 #
 # Supabase runs separately via the CLI on the box (`supabase start` — it manages
 # its own containers). This compose runs the two app services:
@@ -21,11 +21,11 @@ services:
       PORT: 8787
       STORAGE: sqlite
       LOCAL_DATABASE_URL: /data/triplit.db
-      PROJECT_ID: fitnow
+      PROJECT_ID: myfit
     ports:
       - "8787:8787"
     volumes:
-      - fitnow-sync-data:/data
+      - myfit-sync-data:/data
 
   web:
     build:
@@ -42,4 +42,4 @@ services:
       - sync
 
 volumes:
-  fitnow-sync-data:
+  myfit-sync-data:

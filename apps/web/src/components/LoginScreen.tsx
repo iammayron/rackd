@@ -37,7 +37,7 @@ export function LoginScreen() {
 
   return (
     <main className="min-h-[100dvh] flex flex-col justify-center p-6">
-      <h1 className="text-3xl font-bold mb-1">FitNow</h1>
+      <h1 className="text-3xl font-bold mb-1">MyFit</h1>
       <p className="text-[var(--text-muted)] mb-6">
         {mode === "in" ? "Sign in to your workouts." : "Create your account."}
       </p>

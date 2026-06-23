@@ -1,4 +1,4 @@
-# FitNow — TODO
+# MyFit — TODO
 
 Living backlog. Done work lives in git history; this tracks what's next.
 

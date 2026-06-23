@@ -1,6 +1,6 @@
 "use client";
 
-import { updateProgramDay, removeProgramDay } from "@fitnow/db";
+import { updateProgramDay, removeProgramDay } from "@myfit/db";
 import { getClient } from "@/lib/triplit";
 import { AdvancedSelect, type SelectOption } from "@/components/AdvancedSelect";
 

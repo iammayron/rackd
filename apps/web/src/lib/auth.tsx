@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { seedExercises } from "@fitnow/db";
+import { seedExercises } from "@myfit/db";
 import { getSupabase } from "./supabase";
 import { getClient } from "./triplit";
 
@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           await seedExercises(client);
         } catch (e) {
-          console.error("[fitnow] seed failed", e);
+          console.error("[myfit] seed failed", e);
         }
       } else {
         await client.endSession();

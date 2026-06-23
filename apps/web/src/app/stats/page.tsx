@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { exerciseStats, logBodyweight, type ExerciseStatPoint } from "@fitnow/db";
+import { exerciseStats, logBodyweight, type ExerciseStatPoint } from "@myfit/db";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId, useAuth } from "@/lib/auth";
 import { useUnit, useUnitStore } from "@/lib/units-store";

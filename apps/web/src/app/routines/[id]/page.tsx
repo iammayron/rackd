@@ -10,7 +10,7 @@ import {
   setRoutineExerciseOrder,
   setRoutineExerciseSuperset,
   publishRoutine,
-} from "@fitnow/db";
+} from "@myfit/db";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId, useAuth } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";

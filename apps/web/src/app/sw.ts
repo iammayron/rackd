@@ -11,7 +11,7 @@ declare global {
 declare const self: ServiceWorkerGlobalScope;
 
 /**
- * FitNow service worker. Precaches the app shell (offline-first) and
+ * MyFit service worker. Precaches the app shell (offline-first) and
  * runtime-caches assets/data so a started workout keeps working with no signal.
  * Exercise media (added later) will be cached on view by defaultCache's
  * image strategy.

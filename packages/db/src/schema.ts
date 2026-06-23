@@ -2,7 +2,7 @@ import { Schema as S } from "@triplit/client";
 
 /**
  * Triplit schema — the local-first + sync source of truth for persisted data.
- * Domain TYPES live in @fitnow/core; this maps them to storage/sync.
+ * Domain TYPES live in @myfit/core; this maps them to storage/sync.
  * Media (clipUrl/thumbnailUrl) are URLs only — binaries live on the CDN.
  *
  * Authorization: the "user" role binds `userId` from the auth token's `sub`

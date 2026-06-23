@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { renameProgram, addProgramDay, startSessionFromRoutine } from "@fitnow/db";
+import { renameProgram, addProgramDay, startSessionFromRoutine } from "@myfit/db";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";

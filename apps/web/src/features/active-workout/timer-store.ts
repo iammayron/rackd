@@ -8,7 +8,7 @@ import {
   remainingMs,
   isFired,
   type TimerState,
-} from "@fitnow/core";
+} from "@myfit/core";
 
 /**
  * Global rest timer — one instance for the whole app, survives navigation.

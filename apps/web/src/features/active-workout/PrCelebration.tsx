@@ -1,6 +1,6 @@
 "use client";
 
-import type { DetectedPR } from "@fitnow/db";
+import type { DetectedPR } from "@myfit/db";
 import { useUnit } from "@/lib/units-store";
 
 /**

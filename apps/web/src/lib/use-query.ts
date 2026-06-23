@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getClient } from "./triplit";
-import type { Client } from "@fitnow/db";
+import type { Client } from "@myfit/db";
 
 type QueryBuilder = ReturnType<Client["query"]>;
 

@@ -1,8 +1,8 @@
 import { createServer, createTriplitStorageProvider } from "@triplit/server";
-import { schema, roles } from "@fitnow/db";
+import { schema, roles } from "@myfit/db";
 
 /**
- * FitNow self-hosted Triplit sync server.
+ * MyFit self-hosted Triplit sync server.
  * Run in Docker on a home box, expose over Tailscale. The web PWA connects via
  * NEXT_PUBLIC_TRIPLIT_URL + a token signed with the same JWT_SECRET.
  *
@@ -36,5 +36,5 @@ const startServer = await createServer({
 });
 
 startServer(port, () => {
-  console.log(`FitNow sync server listening on :${port} (storage: ${storageKind})`);
+  console.log(`MyFit sync server listening on :${port} (storage: ${storageKind})`);
 });

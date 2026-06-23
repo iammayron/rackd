@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createProgram, deleteProgram, PROGRAM_TEMPLATES, cloneProgramTemplate } from "@fitnow/db";
+import { createProgram, deleteProgram, PROGRAM_TEMPLATES, cloneProgramTemplate } from "@myfit/db";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";

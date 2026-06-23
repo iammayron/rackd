@@ -1,4 +1,4 @@
-# Deploying FitNow (home box + Tailscale)
+# Deploying MyFit (home box + Tailscale)
 
 Three services run on your always-on box: **Supabase** (auth), the **sync server**
 (Triplit), and the **web** PWA. Devices reach them over your **tailnet** (private,

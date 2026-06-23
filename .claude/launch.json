@@ -4,13 +4,13 @@
     {
       "name": "web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@fitnow/web", "dev"],
+      "runtimeArgs": ["--filter", "@myfit/web", "dev"],
       "port": 3000
     },
     {
       "name": "web-prod",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@fitnow/web", "start", "-p", "3100"],
+      "runtimeArgs": ["--filter", "@myfit/web", "start", "-p", "3100"],
       "port": 3100
     }
   ]

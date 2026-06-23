@@ -1,9 +1,9 @@
 "use client";
 
 import { create } from "zustand";
-import { fromKg, toKg as coreToKg, type Unit } from "@fitnow/core";
+import { fromKg, toKg as coreToKg, type Unit } from "@myfit/core";
 
-const KEY = "fitnow.unit";
+const KEY = "myfit.unit";
 
 interface UnitState {
   unit: Unit;

@@ -1,4 +1,4 @@
-# FitNow web (Next.js PWA) — standalone build for the monorepo.
+# MyFit web (Next.js PWA) — standalone build for the monorepo.
 # Build from the REPO ROOT:  docker build -f apps/web/Dockerfile .
 FROM node:22-slim AS base
 ENV PNPM_HOME=/pnpm
@@ -24,7 +24,7 @@ ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_TRIPLIT_URL=$NEXT_PUBLIC_TRIPLIT_URL
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN pnpm --filter @fitnow/web build
+RUN pnpm --filter @myfit/web build
 
 # --- runner: standalone server is self-contained ---
 FROM base AS runner

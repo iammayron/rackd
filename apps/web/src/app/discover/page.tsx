@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { cloneSharedRoutine, type SharedRoutineRow } from "@fitnow/db";
+import { cloneSharedRoutine, type SharedRoutineRow } from "@myfit/db";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";

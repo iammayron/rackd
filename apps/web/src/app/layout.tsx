@@ -4,10 +4,10 @@ import { Providers } from "./providers";
 import { PrelineInit } from "@/components/PrelineInit";
 
 export const metadata: Metadata = {
-  title: "FitNow",
+  title: "MyFit",
   description: "Plan and run your gym workouts. Local-first.",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "FitNow" },
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "MyFit" },
 };
 
 export const viewport: Viewport = {

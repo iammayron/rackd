@@ -21,10 +21,10 @@ importers:
 
   apps/sync:
     dependencies:
-      '@fitnow/core':
+      '@myfit/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@fitnow/db':
+      '@myfit/db':
         specifier: workspace:*
         version: link:../../packages/db
       '@triplit/server':
@@ -39,13 +39,13 @@ importers:
 
   apps/web:
     dependencies:
-      '@fitnow/core':
+      '@myfit/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@fitnow/db':
+      '@myfit/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@fitnow/ui':
+      '@myfit/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@supabase/supabase-js':
@@ -103,7 +103,7 @@ importers:
 
   packages/db:
     dependencies:
-      '@fitnow/core':
+      '@myfit/core':
         specifier: workspace:*
         version: link:../core
       '@triplit/client':

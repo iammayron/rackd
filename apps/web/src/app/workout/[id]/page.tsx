@@ -8,7 +8,7 @@ import {
   addSet,
   setSessionExerciseOrder,
   type DetectedPR,
-} from "@fitnow/db";
+} from "@myfit/db";
 import { getClient } from "@/lib/triplit";
 import { useQuery } from "@/lib/use-query";
 import type { ExerciseMediaData } from "@/components/ExerciseMedia";

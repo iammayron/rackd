@@ -1,4 +1,4 @@
-import { createClient, type Client } from "@fitnow/db";
+import { createClient, type Client } from "@myfit/db";
 
 /**
  * Browser-only Triplit client (IndexedDB). The auth token is NOT set here —
@@ -15,7 +15,7 @@ export function getClient(): Client {
   if (!client) {
     client = createClient({
       storage: "indexeddb",
-      dbName: "fitnow",
+      dbName: "myfit",
       serverUrl: process.env.NEXT_PUBLIC_TRIPLIT_URL,
     });
   }

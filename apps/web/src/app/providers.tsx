@@ -13,7 +13,7 @@ function Gate({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (loading) {
-    return <div className="p-8 text-[var(--text-muted)]">Loading FitNow…</div>;
+    return <div className="p-8 text-[var(--text-muted)]">Loading MyFit…</div>;
   }
   if (!user) return <LoginScreen />;
   return <>{children}</>;

@@ -1,6 +1,6 @@
 {
-  "name": "FitNow",
-  "short_name": "FitNow",
+  "name": "MyFit",
+  "short_name": "MyFit",
   "description": "Plan and run your gym workouts. Local-first.",
   "start_url": "/",
   "display": "standalone",

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { startSession, addSessionExercise } from "@fitnow/db";
+import { startSession, addSessionExercise } from "@myfit/db";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
@@ -57,7 +57,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-[100dvh]">
       <main className="flex-1 p-6 pb-24">
-        <h1 className="text-2xl font-bold">FitNow</h1>
+        <h1 className="text-2xl font-bold">MyFit</h1>
         <p className="text-[var(--text-muted)] mb-4">Pick exercises, start your workout.</p>
 
         <input

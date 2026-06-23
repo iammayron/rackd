@@ -1,5 +1,5 @@
 /**
- * Single source of truth for FitNow domain types (DRY).
+ * Single source of truth for MyFit domain types (DRY).
  * Every app/package imports these — never redeclare a domain shape elsewhere.
  */
 

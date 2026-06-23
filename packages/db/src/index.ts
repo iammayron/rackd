@@ -1,5 +1,5 @@
 import { TriplitClient } from "@triplit/client";
-import { estimate1RM } from "@fitnow/core";
+import { estimate1RM } from "@myfit/core";
 import { schema, roles } from "./schema";
 
 export { schema, roles } from "./schema";
@@ -28,7 +28,7 @@ export function createClient(opts?: {
     token: opts?.token,
     storage:
       opts?.storage === "indexeddb"
-        ? { type: "indexeddb", name: opts?.dbName ?? "fitnow" }
+        ? { type: "indexeddb", name: opts?.dbName ?? "myfit" }
         : opts?.storage,
     autoConnect: Boolean(opts?.serverUrl),
     // Push the client schema (incl. relationships) so server-side queries like

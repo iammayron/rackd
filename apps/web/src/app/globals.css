@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "../../node_modules/preline/variants.css";
-@import "@fitnow/ui/tokens.css";
+@import "@myfit/ui/tokens.css";
 
 /* Let Tailwind scan Preline's JS so its component classes are generated. */
 @source "../../node_modules/preline/dist/*.js";

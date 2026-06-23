@@ -1,14 +1,14 @@
-# FitNow — project rules for Claude Code
+# MyFit — project rules for Claude Code
 
 Local-first gym workout tracker (plan routines, run workouts, rest timer, history). PWA web first; React Native mobile later sharing the same core. pnpm + Turborepo monorepo, TypeScript strict, Next.js 15 / React 19, Triplit (local-first + sync). Keep changes small, typed, and tested.
 
 ## Commands
 
 - `pnpm dev` — run all apps (web on :3000)
-- `pnpm --filter @fitnow/web dev` — web only
+- `pnpm --filter @myfit/web dev` — web only
 - `pnpm typecheck` — type check all packages (run before every commit)
-- `pnpm test` — run tests (vitest in `@fitnow/core`)
-- `pnpm --filter @fitnow/core test` — fast core logic tests
+- `pnpm test` — run tests (vitest in `@myfit/core`)
+- `pnpm --filter @myfit/core test` — fast core logic tests
 - `pnpm build` — production build
 
 Before committing, run: `pnpm typecheck && pnpm test`.
@@ -32,8 +32,8 @@ Before committing, run: `pnpm typecheck && pnpm test`.
 
 ### Cloud sync (optional, self-hosted)
 
-- `pnpm --filter @fitnow/sync start` — run the Triplit sync server (env `JWT_SECRET`, `PORT` default 8787, `STORAGE` sqlite|memory).
-- `pnpm --filter @fitnow/sync gen-token "$JWT_SECRET" service` — mint a token.
+- `pnpm --filter @myfit/sync start` — run the Triplit sync server (env `JWT_SECRET`, `PORT` default 8787, `STORAGE` sqlite|memory).
+- `pnpm --filter @myfit/sync gen-token "$JWT_SECRET" service` — mint a token.
 - Enable in the web app by setting `NEXT_PUBLIC_TRIPLIT_URL` + `NEXT_PUBLIC_TRIPLIT_TOKEN` in `apps/web/.env.local` (unset = local-only). `NEXT_PUBLIC_*` is baked at build → rebuild after changing.
 - Deploy: `docker compose up -d` on a home box, expose over Tailscale. See `.env.example`.
 
@@ -50,8 +50,8 @@ Logic lives in `packages/`; apps are thin shells.
 
 ## Conventions
 
-- **Types live once in `@fitnow/core`** (`src/types.ts`). Import them everywhere; never redeclare a domain shape (DRY).
-- **DB access only through `@fitnow/db` repository functions** (`startSession`, `logSet`, `finishSession`, …). UI never calls the Triplit client directly — keeps mutations in one place and the engine swappable.
+- **Types live once in `@myfit/core`** (`src/types.ts`). Import them everywhere; never redeclare a domain shape (DRY).
+- **DB access only through `@myfit/db` repository functions** (`startSession`, `logSet`, `finishSession`, …). UI never calls the Triplit client directly — keeps mutations in one place and the engine swappable.
 - **Units stored canonical (kg)**, converted at the display edge via `formatWeight`/`fromKg`. Never store lb.
 - **Calculations** (1RM, plates, volume, progression) live in `packages/core/src/calc.ts` — pure, unit-tested. Add a test alongside any new pure function.
 - **Workspace packages ship TS source**, not built dist; `apps/web` lists them in `transpilePackages`.
@@ -69,7 +69,7 @@ Logic lives in `packages/`; apps are thin shells.
 
 ## Migrations / data
 
-Schema is the Triplit schema in `packages/db/src/schema.ts`. When you change it, keep it in sync with the `@fitnow/core` types it mirrors. No SQL migrations — Triplit handles the local store; sync wiring (server URL + auth) comes in Phase 2.
+Schema is the Triplit schema in `packages/db/src/schema.ts`. When you change it, keep it in sync with the `@myfit/core` types it mirrors. No SQL migrations — Triplit handles the local store; sync wiring (server URL + auth) comes in Phase 2.
 
 ## Workflow
 
