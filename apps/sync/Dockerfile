@@ -1,5 +1,5 @@
 # MyFit Triplit sync server. Runs server.ts (tsx) which imports the workspace
-# schema (@myfit/db), so it builds from the REPO ROOT:
+# schema (@rackd/db), so it builds from the REPO ROOT:
 #   docker build -f apps/sync/Dockerfile .
 FROM node:22-slim AS base
 ENV PNPM_HOME=/pnpm
@@ -13,7 +13,7 @@ COPY apps/sync/package.json apps/sync/package.json
 COPY packages/core/package.json packages/core/package.json
 COPY packages/db/package.json packages/db/package.json
 COPY packages/ui/package.json packages/ui/package.json
-RUN pnpm install --frozen-lockfile --filter @myfit/sync...
+RUN pnpm install --frozen-lockfile --filter @rackd/sync...
 
 # Source (node_modules kept out by .dockerignore, so the install above survives)
 COPY packages ./packages
