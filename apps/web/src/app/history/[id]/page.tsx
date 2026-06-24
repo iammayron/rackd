@@ -16,6 +16,7 @@ interface SetRow {
   order: number;
   weight: number;
   reps: number;
+  rpe?: number;
   completed: boolean;
   isPr: boolean;
 }
@@ -39,6 +40,9 @@ function ExerciseSummary({ se }: { se: SessionExerciseRow }) {
           <span className="text-[var(--text)]">
             {display(s.weight)} {unit} × {s.reps}
           </span>
+          {s.rpe != null && (
+            <span className="text-[var(--text-muted)]">@ RPE {s.rpe}</span>
+          )}
           {s.isPr && <span title="Personal record">🏆</span>}
         </div>
       ))}

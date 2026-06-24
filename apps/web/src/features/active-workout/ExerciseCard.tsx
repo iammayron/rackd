@@ -2,23 +2,29 @@
 
 import { useEffect, useState } from "react";
 import type { PointerEvent } from "react";
+import { useRouter } from "next/navigation";
 import { nextWeight } from "@rackd/core";
-import { Badge } from "@rackd/ui";
+import { Badge, mmss } from "@rackd/ui";
 import {
   addSet,
   lastPerformance,
   removeSessionExercise,
   replaceSessionExercise,
+  updateSessionExercise,
   type PrevSet,
 } from "@rackd/db";
 import { getClient } from "@/lib/triplit";
 import { useUnit } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";
-import { MoveButtons } from "@/components/MoveButtons";
-import { ExerciseThumb, ExerciseMediaModal, type ExerciseMediaData } from "@/components/ExerciseMedia";
+import { useToast } from "@/components/toast/ToastProvider";
+import { ExerciseThumb, type ExerciseMediaData } from "@/components/ExerciseMedia";
 import { ReplaceExercisePicker } from "@/features/routines/ReplaceExercisePicker";
 import { SetRow, type SetRowData } from "./SetRow";
 import { PlatesPanel } from "./PlatesPanel";
+import { RestSheet } from "./RestSheet";
+
+const cap = (s: string) =>
+  !s ? s : s.toLowerCase() === "fullbody" ? "Full body" : s.charAt(0).toUpperCase() + s.slice(1);
 
 interface SessionExerciseRow {
   id: string;
@@ -35,9 +41,6 @@ interface SessionExerciseRow {
  */
 export function ExerciseCard({
   sessionExercise,
-  index,
-  total,
-  onMove,
   inGroup = false,
   startsRest = true,
   dragging = false,
@@ -46,14 +49,19 @@ export function ExerciseCard({
   sessionExercise: SessionExerciseRow;
   index: number;
   total: number;
+  /** Still passed by the parent (kept for API stability); reordering is via the drag handle. */
   onMove: (dir: -1 | 1) => void;
   inGroup?: boolean;
   startsRest?: boolean;
   dragging?: boolean;
   onDragHandleDown?: (e: PointerEvent) => void;
 }) {
+  const router = useRouter();
+  const toast = useToast();
   const { unit, display } = useUnit();
-  const [showMedia, setShowMedia] = useState(false);
+  const [showRest, setShowRest] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showReplace, setShowReplace] = useState(false);
   const { results: sets } = useQuery<SetRowData>(
     (c) =>
       c
@@ -89,6 +97,14 @@ export function ExerciseCard({
     : undefined;
   const noneCompleted = sets.every((s) => !s.completed);
 
+  const ex = sessionExercise.exercise;
+  const subtitleRaw = ex?.primaryMuscle || ex?.equipment;
+  const subtitle = subtitleRaw ? cap(subtitleRaw) : undefined;
+
+  function goDetails() {
+    router.push(`/exercise/${sessionExercise.exerciseId}`);
+  }
+
   async function onAddSet() {
     const order = sets.length + 1;
     const last = sets[sets.length - 1];
@@ -111,42 +127,79 @@ export function ExerciseCard({
       } ${dragging ? "opacity-60 ring-2 ring-[var(--accent)]" : ""}`}
     >
       <div className="flex items-center gap-2 mb-2">
-        <MoveButtons index={index} total={total} onMove={onMove} />
         {onDragHandleDown && (
           <button
             type="button"
             onPointerDown={onDragHandleDown}
             aria-label="Drag to reorder"
             style={{ touchAction: "none", cursor: "grab" }}
-            className="flex items-center justify-center w-6 text-[var(--text-muted)] select-none"
+            className="flex items-center justify-center w-6 shrink-0 text-[var(--text-muted)] select-none"
           >
             ⠿
           </button>
         )}
         {sessionExercise.exercise && (
-          <ExerciseThumb ex={sessionExercise.exercise} size={40} onClick={() => setShowMedia(true)} />
+          <ExerciseThumb ex={sessionExercise.exercise} size={40} onClick={goDetails} />
         )}
-        <h2 className="text-lg font-bold">
-          {sessionExercise.exercise?.name ?? "Exercise"}
-        </h2>
+
+        <button
+          type="button"
+          onClick={goDetails}
+          className="min-w-0 flex-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] rounded-[var(--radius-sm)]"
+        >
+          <span className="flex items-center gap-1">
+            <span className="text-lg font-bold truncate">
+              {sessionExercise.exercise?.name ?? "Exercise"}
+            </span>
+            <span aria-hidden="true" className="text-[var(--text-muted)]">
+              ›
+            </span>
+          </span>
+          {subtitle && (
+            <span className="block text-sm text-[var(--text-muted)] truncate">{subtitle}</span>
+          )}
+        </button>
+
         {inGroup && (
           <Badge tone="accent">{startsRest ? "Superset" : "Superset · no rest"}</Badge>
         )}
-        <div className="ms-auto flex items-center gap-2">
-          <ReplaceExercisePicker
-            currentExerciseId={sessionExercise.exerciseId}
-            onReplace={(newId) => replaceSessionExercise(getClient(), sessionExercise.id, newId)}
-          />
-          <button
-            type="button"
-            onClick={() => removeSessionExercise(getClient(), sessionExercise.id)}
-            aria-label="Remove exercise"
-            className="bg-transparent border-none text-lg text-[var(--text-muted)]"
-          >
-            ×
-          </button>
-        </div>
+
+        <button
+          type="button"
+          onClick={() => setShowRest(true)}
+          aria-label={`Rest ${mmss(sessionExercise.restSec * 1000)} — edit`}
+          className="inline-flex shrink-0 items-center gap-1.5 min-h-9 px-3 rounded-full border border-[var(--border)] bg-[var(--surface)] text-sm font-semibold text-[var(--text)] tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" className="text-[var(--text-muted)]">
+            <circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" strokeWidth="2" />
+            <path d="M12 9v4l2.5 1.5M9 2h6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+          {mmss(sessionExercise.restSec * 1000)}
+        </button>
+
+        <HeaderMenu
+          open={showMenu}
+          onOpenChange={setShowMenu}
+          onReplace={() => setShowReplace(true)}
+          onViewDetails={goDetails}
+          onSuperset={() => toast.info("Supersets are coming soon")}
+          onRemove={() => removeSessionExercise(getClient(), sessionExercise.id)}
+        />
       </div>
+
+      <ReplaceExercisePicker
+        currentExerciseId={sessionExercise.exerciseId}
+        onReplace={(newId) => replaceSessionExercise(getClient(), sessionExercise.id, newId)}
+        open={showReplace}
+        onOpenChange={setShowReplace}
+      />
+
+      <RestSheet
+        open={showRest}
+        restSec={sessionExercise.restSec}
+        onChange={(sec) => updateSessionExercise(getClient(), sessionExercise.id, { restSec: sec })}
+        onClose={() => setShowRest(false)}
+      />
 
       {prevTop && suggestedWeight !== undefined && noneCompleted && (
         <div className="flex items-center gap-2 bg-[var(--surface-2)] border border-[var(--border)] rounded-lg py-2 px-3 mb-3 text-sm">
@@ -160,11 +213,12 @@ export function ExerciseCard({
         </div>
       )}
 
-      <div className="flex gap-3 text-sm text-[var(--text-muted)] pb-1">
-        <span className="w-6">#</span>
-        <span className="w-[88px]">prev</span>
-        <span className="w-16 text-center">kg</span>
-        <span className="w-16 text-center">reps</span>
+      <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] pb-1">
+        <span className="w-6 shrink-0">#</span>
+        <span className="w-16 shrink-0">prev</span>
+        <span className="w-16 shrink-0 text-center">{unit}</span>
+        <span className="w-16 shrink-0 text-center">reps</span>
+        <span className="w-12 shrink-0 text-center">RPE</span>
       </div>
 
       {sets.map((s) => {
@@ -189,10 +243,92 @@ export function ExerciseCard({
       </button>
 
       <PlatesPanel topWeight={sets.reduce((m, s) => Math.max(m, s.weight), 0)} />
-
-      {showMedia && sessionExercise.exercise && (
-        <ExerciseMediaModal ex={sessionExercise.exercise} onClose={() => setShowMedia(false)} />
-      )}
     </section>
+  );
+}
+
+/**
+ * The header "…" overflow menu: a popover anchored to the trigger with the
+ * exercise actions. Closes on item pick, backdrop tap, or Escape.
+ */
+function HeaderMenu({
+  open,
+  onOpenChange,
+  onReplace,
+  onViewDetails,
+  onSuperset,
+  onRemove,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onReplace: () => void;
+  onViewDetails: () => void;
+  onSuperset: () => void;
+  onRemove: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onOpenChange(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onOpenChange]);
+
+  function run(action: () => void) {
+    onOpenChange(false);
+    action();
+  }
+
+  const item =
+    "w-full text-left min-h-11 px-4 flex items-center text-[15px] text-[var(--text)] hover:bg-[var(--surface-2)] focus:outline-none focus-visible:bg-[var(--surface-2)]";
+
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => onOpenChange(!open)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Exercise options"
+        className="inline-flex items-center justify-center w-9 h-9 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] text-xl leading-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+      >
+        ⋯
+      </button>
+
+      {open && (
+        <>
+          <div
+            aria-hidden="true"
+            onClick={() => onOpenChange(false)}
+            className="fixed inset-0 z-40"
+          />
+          <div
+            role="menu"
+            aria-label="Exercise options"
+            className="absolute right-0 top-full mt-1 z-50 min-w-[220px] py-1 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-lg)] overflow-hidden"
+          >
+            <button type="button" role="menuitem" onClick={() => run(onReplace)} className={item}>
+              Replace exercise
+            </button>
+            <button type="button" role="menuitem" onClick={() => run(onViewDetails)} className={item}>
+              View details
+            </button>
+            <button type="button" role="menuitem" onClick={() => run(onSuperset)} className={item}>
+              {/* TODO: #16 superset — stubbed until grouping logic lands */}
+              Make superset with next
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => run(onRemove)}
+              className={`${item} text-[var(--danger)]`}
+            >
+              Remove exercise
+            </button>
+          </div>
+        </>
+      )}
+    </div>
   );
 }

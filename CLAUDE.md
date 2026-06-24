@@ -25,18 +25,18 @@ Before committing, run: `pnpm typecheck && pnpm test`.
 
 - `supabase start` runs the local stack; `supabase status -o env` prints keys.
 - **Supabase defaults to ES256 JWTs; Triplit only verifies HS256/RS256.** So we
-  use an **RS256** signing key: `supabase gen signing-key --algorithm RS256`
-  → wrap as a JSON array in `supabase/signing_keys.json` (gitignored, private) →
-  `signing_keys_path` in `config.toml` → restart Supabase.
+use an **RS256** signing key: `supabase gen signing-key --algorithm RS256`
+→ wrap as a JSON array in `supabase/signing_keys.json` (gitignored, private) →
+`signing_keys_path` in `config.toml` → restart Supabase.
 - The sync server validates Supabase user tokens via `SUPABASE_JWT_SECRET` = the
-  **RS256 public JWK** (from `/auth/v1/.well-known/jwks.json`, single key object).
+**RS256 public JWK** (from `/auth/v1/.well-known/jwks.json`, single key object).
 - Web env: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 - After login, `AuthProvider` calls `client.startSession(accessToken)`; the app is
-  auth-gated (no anonymous use). `getCurrentUserId()` = Supabase user id.
+auth-gated (no anonymous use). `getCurrentUserId()` = Supabase user id.
 - Permissions: every collection is owner-scoped (`ownerId == token.sub`); the
-  exercise library is read/insert-open (allow-all filter = `[["id","isDefined",true]]`;
-  `{}` or `filter:[]` mean DENY in Triplit). Switching signing keys invalidates
-  existing sessions — sign out/in to get a token under the new key.
+exercise library is read/insert-open (allow-all filter = `[["id","isDefined",true]]`;
+`{}` or `filter:[]` mean DENY in Triplit). Switching signing keys invalidates
+existing sessions — sign out/in to get a token under the new key.
 
 ### Cloud sync (optional, self-hosted)
 
@@ -84,3 +84,4 @@ Schema is the Triplit schema in `packages/db/src/schema.ts`. When you change it,
 - Default to Plan mode for non-trivial work; agree on the plan before editing.
 - Don't commit or push unless asked. Default branch `main` (remote: `origin`, github.com/iammayron/myfit). For non-trivial work, use a short-lived branch + PR rather than pushing straight to `main`.
 - After changes, run the gate; verify UI/behavior in the running app when practical.
+

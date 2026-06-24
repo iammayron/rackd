@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { hydrateUnit } from "@/lib/units-store";
 import { LoginScreen } from "@/components/LoginScreen";
+import { ToastProvider } from "@/components/toast/ToastProvider";
 
 /** Auth gate: spinner while resolving, login when signed out, app when signed in. */
 function Gate({ children }: { children: React.ReactNode }) {
@@ -21,8 +22,10 @@ function Gate({ children }: { children: React.ReactNode }) {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider>
-      <Gate>{children}</Gate>
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <Gate>{children}</Gate>
+      </AuthProvider>
+    </ToastProvider>
   );
 }

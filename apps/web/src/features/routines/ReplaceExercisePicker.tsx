@@ -22,14 +22,25 @@ interface ExerciseRow {
 export function ReplaceExercisePicker({
   currentExerciseId,
   onReplace,
+  /** Controlled open state. When provided, the component renders no built-in trigger. */
+  open: openProp,
+  onOpenChange,
 }: {
   currentExerciseId: string;
   onReplace: (exerciseId: string) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const { results: exercises } = useQuery<ExerciseRow>((c) =>
     c.query("exercises").Order("name", "ASC"),
   );
-  const [open, setOpen] = useState(false);
+  const controlled = openProp !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlled ? openProp : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (!controlled) setInternalOpen(v);
+    onOpenChange?.(v);
+  };
   const [search, setSearch] = useState("");
 
   const current = exercises.find((e) => e.id === currentExerciseId);
@@ -81,13 +92,15 @@ export function ReplaceExercisePicker({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="min-h-9 px-3 rounded-lg bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] text-sm font-semibold"
-      >
-        ⇄ Replace
-      </button>
+      {!controlled && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="min-h-9 px-3 rounded-lg bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] text-sm font-semibold"
+        >
+          ⇄ Replace
+        </button>
+      )}
 
       {open && (
         <div className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]">
