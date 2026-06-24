@@ -83,6 +83,10 @@ export function SettingsForm() {
   const [uploading, setUploading] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  // Sync the toggle from the durable profile only on first load. The effect
+  // also re-runs when `metric` flips (to re-display values in the new unit);
+  // re-syncing then would read the still-unsaved profile and revert the click.
+  const syncedUnitFromProfile = useRef(false);
 
   // Load (and create if missing) the profile once, into display units.
   useEffect(() => {
@@ -91,8 +95,11 @@ export function SettingsForm() {
       if (cancelled) return;
       // Profile is the durable home for the measurement system — sync the
       // runtime kg/lb toggle to it so the choice survives across devices.
-      const pref = p.unitPreference === "imperial" ? "lb" : "kg";
-      if (pref !== unit) setUnit(pref);
+      if (!syncedUnitFromProfile.current) {
+        syncedUnitFromProfile.current = true;
+        const pref = p.unitPreference === "imperial" ? "lb" : "kg";
+        if (pref !== unit) setUnit(pref);
+      }
       setName(p.displayName ?? "");
       setPhotoUrl(p.photoUrl ?? "");
       setHeight(p.heightCm != null ? String(fromCm(p.heightCm, metric)) : "");
