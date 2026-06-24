@@ -32,6 +32,112 @@ body {
   min-height: calc(100dvh - env(safe-area-inset-top));
 }
 
+/* Portrait-only guard. The manifest `orientation` + screen.orientation.lock()
+   only work on Android/Chromium; iOS ignores both, so this CSS overlay is the
+   real enforcement there. Hidden by default; shown only when a *phone-sized*
+   viewport is held in landscape. `max-height: 500px` is the key: in landscape a
+   phone's short side becomes the height (~360–430px), so this catches phones
+   but never desktop/tablet windows or a portrait phone — desktop is untouched. */
+.rk-rotate-guard {
+  display: none;
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .rk-rotate-guard {
+    position: fixed;
+    inset: 0;
+    z-index: 9999; /* above sticky nav, toasts, and Preline modals */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    padding: max(var(--space-6), env(safe-area-inset-top))
+      max(var(--space-6), env(safe-area-inset-right))
+      max(var(--space-6), env(safe-area-inset-bottom))
+      max(var(--space-6), env(safe-area-inset-left));
+    background: var(--bg);
+    color: var(--text);
+    text-align: center;
+  }
+
+  .rk-rotate-guard svg {
+    color: var(--accent);
+    animation: rk-rotate-hint 2.4s var(--ease-in-out) infinite;
+  }
+
+  .rk-rotate-guard__text {
+    margin: 0;
+    max-width: 22ch;
+    font-size: var(--text-lg);
+    font-weight: var(--fw-semibold);
+    line-height: var(--leading-snug);
+  }
+}
+
+@keyframes rk-rotate-hint {
+  0%,
+  60%,
+  100% {
+    transform: rotate(0deg);
+  }
+  30% {
+    transform: rotate(-90deg);
+  }
+}
+
+/* iOS-style squircle (continuous rounded corners / superellipse). Baseline is an
+   SVG superellipse applied as a CSS mask, which works reliably in WebKit (this is
+   an installed iPhone PWA) — `corner-shape: superellipse()` is too patchy to rely
+   on. The mask stretches to the box (mask-size: 100% 100% + preserveAspectRatio
+   none), so it's size-agnostic and reusable for any avatar/icon. `overflow:hidden`
+   clips child media (images/video) to the same shape. */
+.rk-squircle {
+  overflow: hidden;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%20200%20200%22%20preserveAspectRatio=%22none%22%3E%3Cpath%20d=%22M200%20100%20L199.84%20136.18%20L199.36%20148.22%20L198.57%20156.94%20L197.44%20163.95%20L195.98%20169.85%20L194.18%20174.92%20L192.02%20179.33%20L189.49%20183.18%20L186.55%20186.55%20L183.18%20189.49%20L179.33%20192.02%20L174.92%20194.18%20L169.85%20195.98%20L163.95%20197.44%20L156.94%20198.57%20L148.22%20199.36%20L136.18%20199.84%20L100%20200%20L63.82%20199.84%20L51.78%20199.36%20L43.06%20198.57%20L36.05%20197.44%20L30.15%20195.98%20L25.08%20194.18%20L20.67%20192.02%20L16.82%20189.49%20L13.45%20186.55%20L10.51%20183.18%20L7.98%20179.33%20L5.82%20174.92%20L4.02%20169.85%20L2.56%20163.95%20L1.43%20156.94%20L0.64%20148.22%20L0.16%20136.18%20L0%20100%20L0.16%2063.82%20L0.64%2051.78%20L1.43%2043.06%20L2.56%2036.05%20L4.02%2030.15%20L5.82%2025.08%20L7.98%2020.67%20L10.51%2016.82%20L13.45%2013.45%20L16.82%2010.51%20L20.67%207.98%20L25.08%205.82%20L30.15%204.02%20L36.05%202.56%20L43.06%201.43%20L51.78%200.64%20L63.82%200.16%20L100%200%20L136.18%200.16%20L148.22%200.64%20L156.94%201.43%20L163.95%202.56%20L169.85%204.02%20L174.92%205.82%20L179.33%207.98%20L183.18%2010.51%20L186.55%2013.45%20L189.49%2016.82%20L192.02%2020.67%20L194.18%2025.08%20L195.98%2030.15%20L197.44%2036.05%20L198.57%2043.06%20L199.36%2051.78%20L199.84%2063.82%20Z%22%20fill=%22%23000%22/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%20200%20200%22%20preserveAspectRatio=%22none%22%3E%3Cpath%20d=%22M200%20100%20L199.84%20136.18%20L199.36%20148.22%20L198.57%20156.94%20L197.44%20163.95%20L195.98%20169.85%20L194.18%20174.92%20L192.02%20179.33%20L189.49%20183.18%20L186.55%20186.55%20L183.18%20189.49%20L179.33%20192.02%20L174.92%20194.18%20L169.85%20195.98%20L163.95%20197.44%20L156.94%20198.57%20L148.22%20199.36%20L136.18%20199.84%20L100%20200%20L63.82%20199.84%20L51.78%20199.36%20L43.06%20198.57%20L36.05%20197.44%20L30.15%20195.98%20L25.08%20194.18%20L20.67%20192.02%20L16.82%20189.49%20L13.45%20186.55%20L10.51%20183.18%20L7.98%20179.33%20L5.82%20174.92%20L4.02%20169.85%20L2.56%20163.95%20L1.43%20156.94%20L0.64%20148.22%20L0.16%20136.18%20L0%20100%20L0.16%2063.82%20L0.64%2051.78%20L1.43%2043.06%20L2.56%2036.05%20L4.02%2030.15%20L5.82%2025.08%20L7.98%2020.67%20L10.51%2016.82%20L13.45%2013.45%20L16.82%2010.51%20L20.67%207.98%20L25.08%205.82%20L30.15%204.02%20L36.05%202.56%20L43.06%201.43%20L51.78%200.64%20L63.82%200.16%20L100%200%20L136.18%200.16%20L148.22%200.64%20L156.94%201.43%20L163.95%202.56%20L169.85%204.02%20L174.92%205.82%20L179.33%207.98%20L183.18%2010.51%20L186.55%2013.45%20L189.49%2016.82%20L192.02%2020.67%20L194.18%2025.08%20L195.98%2030.15%20L197.44%2036.05%20L198.57%2043.06%20L199.36%2051.78%20L199.84%2063.82%20Z%22%20fill=%22%23000%22/%3E%3C/svg%3E");
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+/* Progressive enhancement: where the native continuous-corner primitive is
+   supported, prefer it (crisper, GPU-clipped) over the rasterized mask. */
+@supports (corner-shape: superellipse(4)) {
+  .rk-squircle {
+    -webkit-mask-image: none;
+    mask-image: none;
+    border-radius: 28%;
+    corner-shape: superellipse(4);
+  }
+}
+
+/* Bottom-sheet entrance: panel slides up, backdrop fades in. Reduced-motion is
+   handled globally below (durations collapse to ~0). */
+@keyframes rk-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes rk-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.rk-sheet-up {
+  animation: rk-sheet-up var(--dur-slow) var(--ease-out);
+}
+.rk-backdrop-in {
+  animation: rk-fade-in var(--dur) ease;
+}
+
 /* Respect reduced-motion: calm the press-shrink, ring sweep, and any animation.
    Rackd's motion is quick and confident, never essential — safe to neutralize. */
 @media (prefers-reduced-motion: reduce) {

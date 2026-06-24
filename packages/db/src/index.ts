@@ -87,6 +87,17 @@ export async function setSessionExerciseOrder(client: Client, id: string, order:
   });
 }
 
+/** Patch mutable fields of a live session exercise (currently its rest time). */
+export async function updateSessionExercise(
+  client: Client,
+  id: string,
+  patch: { restSec?: number },
+) {
+  return client.update("sessionExercises", id, (e) => {
+    if (patch.restSec !== undefined) e.restSec = patch.restSec;
+  });
+}
+
 export async function setRoutineExerciseOrder(client: Client, id: string, order: number) {
   return client.update("routineExercises", id, (e) => {
     e.order = order;
@@ -193,7 +204,11 @@ export async function updateSet(
   return client.update("setLogs", id, (s) => {
     if (patch.weight !== undefined) s.weight = patch.weight;
     if (patch.reps !== undefined) s.reps = patch.reps;
-    if (patch.rpe !== undefined) s.rpe = patch.rpe;
+    // `"rpe" in patch` (not `!== undefined`) so callers can CLEAR rpe by passing
+    // `rpe: undefined`. Absent key = leave it untouched; present-but-undefined =
+    // reset to no effort. Other fields stay guard-by-undefined so a partial
+    // patch never nulls them.
+    if ("rpe" in patch) s.rpe = patch.rpe;
     if (patch.completed !== undefined) s.completed = patch.completed;
   });
 }

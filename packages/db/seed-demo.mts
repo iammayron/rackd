@@ -237,7 +237,7 @@ async function seedProfile() {
     heightCm: 178,
     currentWeightKg: 79.5,
     goalWeightKg: 76,
-    trainingGoal: "hypertrophy",
+    trainingGoal: "build_muscle",
   };
   if (existing) {
     await c.update("userProfile", (existing as { id: string }).id, (p: Record<string, unknown>) => {

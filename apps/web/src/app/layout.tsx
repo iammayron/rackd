@@ -3,6 +3,7 @@ import { Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { PrelineInit } from "@/components/PrelineInit";
+import { OrientationGuard } from "@/components/OrientationGuard";
 import { MiniWorkoutBar } from "@/features/active-workout/MiniWorkoutBar";
 
 // Brand face — self-hosted at build by next/font, exposed as --font-hanken
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <MiniWorkoutBar />
           </Providers>
         </div>
+        <OrientationGuard />
         <PrelineInit />
       </body>
     </html>

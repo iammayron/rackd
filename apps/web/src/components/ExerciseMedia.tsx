@@ -47,18 +47,18 @@ export function ExerciseThumb({
   const style: React.CSSProperties = { width: size, height: size, minWidth: size };
   const inner = ex.thumbnailUrl ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={ex.thumbnailUrl} alt={ex.name} className="w-full h-full object-cover rounded-lg" />
+    <img src={ex.thumbnailUrl} alt={ex.name} className="w-full h-full object-cover" />
   ) : (
     <div
-      className="w-full h-full rounded-lg flex items-center justify-center font-bold text-white"
+      className="w-full h-full flex items-center justify-center font-bold text-white"
       style={{ background: colorFor(ex.primaryMuscle) }}
     >
       {initial}
     </div>
   );
-  if (!onClick) return <div style={style}>{inner}</div>;
+  if (!onClick) return <div className="rk-squircle" style={style}>{inner}</div>;
   return (
-    <button type="button" onClick={onClick} aria-label={`${ex.name} details`} style={style}>
+    <button type="button" onClick={onClick} aria-label={`${ex.name} details`} className="rk-squircle" style={style}>
       {inner}
     </button>
   );

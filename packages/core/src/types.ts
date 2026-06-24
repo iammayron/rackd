@@ -188,10 +188,11 @@ export interface BodyWeightLog {
 }
 
 export type TrainingGoal =
-  | "weight_loss"
-  | "hypertrophy"
-  | "strength"
-  | "muscle_gain";
+  | "build_muscle"
+  | "get_stronger"
+  | "lose_fat"
+  | "endurance"
+  | "general_fitness";
 
 export type UnitPreference = "metric" | "imperial";
 
