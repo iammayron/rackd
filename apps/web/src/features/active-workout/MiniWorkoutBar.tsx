@@ -38,22 +38,34 @@ export function MiniWorkoutBar() {
   if (pathname?.startsWith("/workout/")) return null;
 
   const resting = status !== "idle";
-  const statusText = resting ? (fired ? "Rest over" : mmss(remaining)) : "In progress";
+  // Eyebrow above the name: live rest state when resting, else a steady label.
+  const statusText = resting
+    ? fired
+      ? "Rest over"
+      : `Resting · ${mmss(remaining)}`
+    : "Workout in progress";
 
   return (
     <Link
       href={`/workout/${active.id}`}
-      className="fixed left-1/2 -translate-x-1/2 z-30 bottom-[calc(64px+var(--safe-bottom))] w-[min(440px,calc(100%-24px))] flex items-center gap-3 px-4 py-3 rounded-2xl no-underline text-[var(--text)] bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-lg)]"
+      aria-label={`Resume ${active.name}`}
+      // Accent fill (matches the "Today's workout" card + Start buttons) so the
+      // active workout reads as the loudest thing on screen, not a faint bar.
+      className="fixed left-1/2 -translate-x-1/2 z-30 bottom-[calc(64px+var(--safe-bottom))] w-[min(440px,calc(100%-24px))] flex items-center gap-3 px-4 py-3 rounded-2xl no-underline text-white bg-[var(--accent)] shadow-[var(--shadow-lg)]"
     >
       <span
         aria-hidden="true"
-        className={`h-2.5 w-2.5 rounded-full ${fired ? "bg-[var(--success)]" : "bg-[var(--accent)]"}`}
+        className={`h-2.5 w-2.5 shrink-0 rounded-full ${fired ? "bg-[var(--success)]" : "bg-white"}`}
       />
-      <span className="font-bold truncate">{active.name}</span>
-      <span className="ms-auto text-sm font-semibold tabular-nums text-[var(--text-muted)]">
-        {statusText}
+      <span className="min-w-0 flex-1 flex flex-col leading-tight">
+        <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-white/75 tabular-nums">
+          {statusText}
+        </span>
+        <span className="font-extrabold truncate">{active.name}</span>
       </span>
-      <span className="text-sm font-bold text-[var(--accent)]">Resume ›</span>
+      <span className="shrink-0 inline-flex items-center h-9 px-3.5 rounded-full bg-white text-[var(--accent)] text-sm font-extrabold">
+        Resume ›
+      </span>
     </Link>
   );
 }

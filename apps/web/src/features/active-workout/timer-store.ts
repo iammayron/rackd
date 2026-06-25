@@ -78,9 +78,13 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
       const now = Date.now();
       const { state, fired } = get();
       if (!fired && isFired(state, now)) {
-        fireEffects();
-        // We're in the foreground (JS ran), so the local notif already fired —
-        // cancel the server push to avoid a duplicate.
+        // How far past endAt this tick is. A foreground interval fires within a
+        // tick (~250ms); a large lag means the app was suspended (backgrounded)
+        // and is only now catching up — in which case the server Web Push has
+        // ALREADY alerted, so a local notif here would be the second one.
+        const lateMs = state.endAt !== undefined ? now - state.endAt : 0;
+        if (lateMs <= 1000) fireEffects();
+        // Cancel the server push (no-op if it already fired) to avoid a dupe.
         void cancelRestPush();
         set({ now, fired: true });
         if (intervalId) clearInterval(intervalId);
