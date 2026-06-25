@@ -143,12 +143,13 @@ export function SetRow({
 
   /**
    * Pick effort from the sheet. Tapping the already-selected value clears it.
-   * Persists (incl. clearing — `updateSet` honours `rpe: undefined`) and closes.
+   * Persists (incl. clearing — `updateSet` honours `rpe: undefined`) but leaves
+   * the sheet open so the selected level's label stays readable; the sheet's
+   * own Done/None/backdrop dismiss it.
    */
   async function chooseRpe(v: number | undefined) {
     const next = rpe === v ? undefined : v;
     setRpe(next);
-    setRpeOpen(false);
     // Send explicit null to clear — `undefined` would be dropped by JSON.stringify
     // and the route keys off `"rpe" in body` to distinguish clear from untouched.
     await api(`/api/set-logs/${data.id}`, {
