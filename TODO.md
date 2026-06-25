@@ -17,7 +17,7 @@ Braindump from on-device testing. Each item gets discussed/scoped before impleme
 - [x] 11. ~~Verify Triplit sync is actually working~~ — obsolete: Triplit removed; data now syncs via Supabase Postgres + React Query (IndexedDB offline cache + mutation queue)
 - [x] 12. Status bar when scrolling
 - [x] 13. Home icon bar
-- [ ] 14. Some buttons are too close to the edge (safe-area / edge padding) — vertical safe-area insets applied; horizontal (left/right) insets still missing
+- [x] 14. Some buttons are too close to the edge (safe-area / edge padding) — resolved: existing edge gutters (`px-4`/`px-5` pages + cards, 12–16px floating overlays) verified adequate on iPhone. Horizontal safe-area insets are moot — the app is iPhone-only and portrait-locked, so `safe-area-inset-left/right` are always 0. No code change needed.
 - [x] 15. Weight & reps editing — tap cell opens slide-up sheet with [−] [typeable value] [+], select-all on focus, −/＋ steps (reps 1, weight 2.5kg/5lb), commit on Done/close
 - [ ] 16. Superset button is missing — DB field + routine-editor toggle exist; in-workout menu action still stubbed ("coming soon")
 - [ ] 17. Bar weight + plate breakdown (barbell only) — per-side plate breakdown shipped (`PlatesPanel.tsx`); still missing the global bar-weight setting in Settings (bar hard-coded 20 kg / 45 lb)
@@ -27,7 +27,7 @@ Braindump from on-device testing. Each item gets discussed/scoped before impleme
   - Show per-side plate breakdown: per side = (total − bar) / 2, decomposed greedily from available plates — lb: 2.5/5/10/25/35/45; kg: 1.25/2.5/5/10/15/20/25. Display e.g. "45 bar + 25 each side".
   - If per-side isn't exactly achievable, show the closest combo and flag the remainder.
 - [x] 18. Always scroll to current exercise — snaps back to the current exercise after a rest, on reopen, once on load, and after editing (`workout/[id]/page.tsx`, `SetRow.tsx`)
-- [ ] 19. Complete summary not computing properly — summary code reviewed and looks correct (`summary/page.tsx`); re-test on device to confirm
-- [ ] 20. Share not working — share is fully wired (native share + PNG/clipboard fallback); re-test on device to confirm
+- [x] 19. Complete summary not computing properly — verified on device (renders + populates) and audited: volume/sets/duration/PRs/top-set traced through `summary/page.tsx` → `sessionVolume` + `fromKg` (canonical kg, linear unit conversion) and confirmed correct. Underlying pure fns covered in `calc.test.ts`. Accuracy confirmed.
+- [x] 20. Share not working — verified working on device (native share + PNG/clipboard fallback).
 - [ ] 21. Progress page is wrong — history/progress page implemented and computing (`history/page.tsx`); re-test on device to confirm
-- [ ] 22. "Done" status on the Home Screen
+- [x] 22. "Done" status on the Home Screen — implemented in `page.tsx`: a `completedToday` check (today's scheduled routine has a finished session ending after midnight) flips the hero into a "Today · done / Crushed it 💪" state with a "See your summary" link, plus two actions: "Train {nextName} ›" (starts the next scheduled workout) and "Start quick workout ›". The program card also shows block progress ("Day N of {block}" + completed-workout count + bar).

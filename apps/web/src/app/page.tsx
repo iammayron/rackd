@@ -118,6 +118,29 @@ export default function Home() {
     [activeProgramDetail],
   );
 
+  // Program progress: how many workouts have been logged against this program's
+  // routines (lifetime), and where that lands within the current block. The
+  // rotation cursor only moves on "Skip", so completed-session count is the
+  // honest measure of progress — not the cursor.
+  const programRoutineIds = useMemo(
+    () =>
+      new Set(
+        programDays
+          .map((d) => d.routineId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    [programDays],
+  );
+  const programDone = useMemo(
+    () =>
+      finished.filter((s) => s.routineId && programRoutineIds.has(s.routineId))
+        .length,
+    [finished, programRoutineIds],
+  );
+  const blockLen = programDays.length;
+  const doneInCycle = blockLen ? programDone % blockLen : 0;
+  const cyclePct = blockLen ? Math.round((doneInCycle / blockLen) * 100) : 0;
+
   const weekday = new Date().getDay();
   const fallbackToday = useMemo(() => {
     const normalized = routines.map((r) => ({
@@ -154,17 +177,27 @@ export default function Home() {
   const nextName = routineName(nextSlot?.routineId);
   const isRest = !heroRoutineId;
 
-  // Today's scheduled routine already finished today → celebrate instead of
-  // offering to start it again. Match the routine and the calendar day.
+  // A program workout finished today → celebrate. Finishing advances the
+  // rotation cursor server-side, so `slot` already points at the *next* workout;
+  // we therefore detect "done" from the finished session itself, not the current
+  // slot. Most-recent-first so a second workout the same day wins the headline.
   const completedToday = useMemo(() => {
-    if (!heroRoutineId) return undefined;
+    if (!activeProgram) return undefined;
     const dayStart = new Date();
     dayStart.setHours(0, 0, 0, 0);
     const since = dayStart.getTime();
-    return finished.find(
-      (s) => s.routineId === heroRoutineId && (s.endedAt ?? 0) >= since,
-    );
-  }, [finished, heroRoutineId]);
+    return finished
+      .filter(
+        (s) =>
+          s.routineId &&
+          programRoutineIds.has(s.routineId) &&
+          (s.endedAt ?? 0) >= since,
+      )
+      .sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0))[0];
+  }, [activeProgram, finished, programRoutineIds]);
+  const completedName = completedToday
+    ? routineName(completedToday.routineId ?? undefined)
+    : undefined;
   const canSkip =
     !!activeProgram &&
     (activeProgram.scheduleMode ?? "rotation") === "rotation" &&
@@ -293,16 +326,44 @@ export default function Home() {
             href={`/programs/${activeProgram.id}`}
             className="no-underline block mb-3.5"
           >
-            <div className="flex items-center gap-2.5 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius)] px-3.5 py-3">
-              <Badge tone="accent" solid>
-                Program
-              </Badge>
-              <span className="font-bold text-[15px] text-[var(--text)]">
-                {activeProgram.name}
-              </span>
-              <span className="ml-auto text-[var(--text-muted)] text-[13px]">
-                Change ›
-              </span>
+            <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius)] px-3.5 py-3">
+              <div className="flex items-center gap-2.5">
+                <Badge tone="accent" solid>
+                  Program
+                </Badge>
+                <span className="font-bold text-[15px] text-[var(--text)] truncate">
+                  {activeProgram.name}
+                </span>
+                <span className="ml-auto shrink-0 text-[var(--text-muted)] text-[13px]">
+                  Change ›
+                </span>
+              </div>
+              {blockLen > 0 && (
+                <div className="mt-2.5">
+                  <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-[var(--text-muted)] tabular-nums">
+                    <span>
+                      Day {doneInCycle + 1} of {blockLen}
+                    </span>
+                    <span>
+                      {programDone} {programDone === 1 ? "workout" : "workouts"}{" "}
+                      done
+                    </span>
+                  </div>
+                  <div
+                    className="h-1.5 overflow-hidden rounded-full bg-[var(--border)]"
+                    role="progressbar"
+                    aria-valuenow={doneInCycle}
+                    aria-valuemin={0}
+                    aria-valuemax={blockLen}
+                    aria-label="Progress through current block"
+                  >
+                    <div
+                      className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-300"
+                      style={{ width: `${cyclePct}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </Link>
         )}
@@ -380,8 +441,7 @@ export default function Home() {
               <span aria-hidden="true">💪</span>
             </div>
             <div className="mt-1.5 text-sm font-semibold text-white/85">
-              {heroName} complete
-              {nextName ? ` · Next up: ${nextName}` : ""}
+              {completedName} complete
             </div>
             <Button
               variant="secondary"
@@ -399,12 +459,22 @@ export default function Home() {
             >
               See your summary ›
             </Button>
+            {heroRoutineId && heroName && (
+              <button
+                type="button"
+                onClick={() => startRoutine(heroRoutineId)}
+                disabled={starting}
+                className="block w-full mt-2.5 py-1.5 bg-transparent border-none cursor-pointer text-sm font-bold text-white/90 text-center disabled:opacity-60"
+              >
+                {starting ? "Starting…" : `Train ${heroName} ›`}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setQuickOpen((v) => !v)}
-              className="block w-full mt-2.5 py-1.5 bg-transparent border-none cursor-pointer text-sm font-bold text-white/90 text-center"
+              className="block w-full mt-2 py-1.5 bg-transparent border-none cursor-pointer text-[13px] font-semibold text-white/75 text-center"
             >
-              Train again ›
+              Start quick workout ›
             </button>
           </Card>
         ) : !isRest ? (
