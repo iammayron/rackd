@@ -111,11 +111,17 @@ export function ExerciseCard({
 
   /**
    * After a set is completed, offer to copy its weight/reps to any LATER sets
-   * (higher `order`) in this exercise that aren't done yet. Non-blocking toast
-   * with a "Copy" action; ignored = auto-dismiss, no change.
+   * (higher `order`) in this exercise that aren't done yet AND don't already
+   * match — no point prompting to copy onto identical values. Non-blocking
+   * toast with a "Copy" action; ignored = auto-dismiss, no change.
    */
   function onSetCompleted(set: SetRowData) {
-    const targets = sets.filter((s) => s.order > set.order && !s.completed);
+    const targets = sets.filter(
+      (s) =>
+        s.order > set.order &&
+        !s.completed &&
+        (s.weight !== set.weight || s.reps !== set.reps),
+    );
     if (targets.length === 0) return;
     toast.info(
       `Copy ${display(set.weight)} ${unit} × ${set.reps} to remaining sets?`,

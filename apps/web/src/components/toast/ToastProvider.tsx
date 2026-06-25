@@ -76,7 +76,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       const id = nextId.current++;
       const type = options?.type ?? "info";
       const duration = options?.duration ?? DEFAULT_DURATION;
-      setToasts((prev) => [...prev, { id, message, type, duration, action: options?.action }]);
+      setToasts((prev) => [
+        ...prev,
+        { id, message, type, duration, action: options?.action },
+      ]);
       if (duration > 0) {
         timers.current.set(
           id,
@@ -91,9 +94,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const api = useMemo<ToastApi>(
     () => ({
       show,
-      success: (message, options) => show(message, { ...options, type: "success" }),
+      success: (message, options) =>
+        show(message, { ...options, type: "success" }),
       error: (message, options) => show(message, { ...options, type: "error" }),
-      warning: (message, options) => show(message, { ...options, type: "warning" }),
+      warning: (message, options) =>
+        show(message, { ...options, type: "warning" }),
       info: (message, options) => show(message, { ...options, type: "info" }),
       dismiss,
     }),
@@ -143,13 +148,23 @@ function ToastViewport({
 }
 
 /** Per-variant token mapping: accent color + matching icon glyph. */
-const VARIANTS: Record<ToastType, { color: string; tint: string; icon: React.ReactNode; label: string }> = {
+const VARIANTS: Record<
+  ToastType,
+  { color: string; tint: string; icon: React.ReactNode; label: string }
+> = {
   success: {
     color: "var(--success)",
     tint: "color-mix(in srgb, var(--success) 16%, transparent)",
     label: "Success",
     icon: (
-      <path d="M20 6 9 17l-5-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M20 6 9 17l-5-5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     ),
   },
   error: {
@@ -158,8 +173,21 @@ const VARIANTS: Record<ToastType, { color: string; tint: string; icon: React.Rea
     label: "Error",
     icon: (
       <>
-        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
-        <path d="M12 7v6M12 16.5v.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        <circle
+          cx="12"
+          cy="12"
+          r="9"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        />
+        <path
+          d="M12 7v6M12 16.5v.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+        />
       </>
     ),
   },
@@ -169,8 +197,20 @@ const VARIANTS: Record<ToastType, { color: string; tint: string; icon: React.Rea
     label: "Warning",
     icon: (
       <>
-        <path d="M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-        <path d="M12 9v4M12 16.5v.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        <path
+          d="M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M12 9v4M12 16.5v.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+        />
       </>
     ),
   },
@@ -180,14 +220,33 @@ const VARIANTS: Record<ToastType, { color: string; tint: string; icon: React.Rea
     label: "Info",
     icon: (
       <>
-        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
-        <path d="M12 11v5M12 7.5v.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        <circle
+          cx="12"
+          cy="12"
+          r="9"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        />
+        <path
+          d="M12 11v5M12 7.5v.5"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+        />
       </>
     ),
   },
 };
 
-function Toast({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: number) => void }) {
+function Toast({
+  toast,
+  onDismiss,
+}: {
+  toast: ToastItem;
+  onDismiss: (id: number) => void;
+}) {
   const [entered, setEntered] = useState(false);
   // Flip to the entered state on the next frame so the mount transition runs.
   const onMount = useCallback((node: HTMLDivElement | null) => {
@@ -203,11 +262,16 @@ function Toast({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: number)
       ref={onMount}
       role={assertive ? "alert" : "status"}
       aria-live={assertive ? "assertive" : "polite"}
-      className="pointer-events-auto flex w-fit max-w-sm items-start gap-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-lg)]"
+      // Variant-tinted background + border (not flat surface) so the toast
+      // separates from the near-black page and reads as a distinct prompt.
+      className="pointer-events-auto flex w-fit max-w-sm items-center gap-3 rounded-[var(--radius-md)] border p-3 shadow-[var(--shadow-lg)]"
       style={{
+        background: `color-mix(in srgb, ${v.color} 12%, var(--surface))`,
+        borderColor: `color-mix(in srgb, ${v.color} 45%, var(--border))`,
         opacity: entered ? 1 : 0,
         transform: entered ? "translateX(0)" : "translateX(16px)",
-        transition: "opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out)",
+        transition:
+          "opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out)",
       }}
     >
       <span
@@ -219,7 +283,7 @@ function Toast({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: number)
           {v.icon}
         </svg>
       </span>
-      <p className="min-w-0 flex-1 pt-0.5 text-sm font-medium text-[var(--text)]">
+      <p className="min-w-0 flex-1 text-sm font-medium text-[var(--text)]">
         <span className="sr-only">{v.label}: </span>
         {toast.message}
       </p>
@@ -230,7 +294,9 @@ function Toast({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: number)
             toast.action!.onClick();
             onDismiss(toast.id);
           }}
-          className="-my-0.5 shrink-0 self-center rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1.5 text-sm font-semibold text-[var(--accent)] transition-colors hover:bg-[var(--accent-wash)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          // Solid fill in the variant color — the toast's focal action.
+          className="-my-0.5 shrink-0 self-center rounded-[var(--radius-sm)] border-none px-3.5 py-1.5 text-sm font-bold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+          style={{ background: v.color }}
         >
           {toast.action.label}
         </button>
@@ -242,7 +308,13 @@ function Toast({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: number)
         className="-m-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--text)]"
       >
         <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-          <path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+          <path
+            d="M6 6l12 12M18 6 6 18"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+          />
         </svg>
       </button>
     </div>

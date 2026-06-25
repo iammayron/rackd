@@ -4,7 +4,12 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { todaysRoutine, programTodaySlot, programNextSlot, advanceRotation } from "@rackd/core";
+import {
+  todaysRoutine,
+  programTodaySlot,
+  programNextSlot,
+  advanceRotation,
+} from "@rackd/core";
 import { Card, Button, Badge, Avatar, Input, SelectableRow } from "@rackd/ui";
 import { api } from "@/lib/api";
 import { queryClient, qk } from "@/lib/query";
@@ -72,6 +77,14 @@ export default function Home() {
     queryFn: () => api<RoutineRow[]>("/api/routines"),
   });
 
+  // An unfinished session takes over the hero: while a workout is in progress
+  // we offer Resume, never a Start that would spawn a duplicate session.
+  const { data: active } = useQuery({
+    queryKey: qk.activeSession,
+    queryFn: () =>
+      api<{ id: string; name: string } | null>("/api/sessions/active"),
+  });
+
   // The active program (if any) drives "today"; otherwise fall back to a
   // routine scheduled for today's weekday.
   const { data: programs = [] } = useQuery({
@@ -81,7 +94,8 @@ export default function Home() {
   const activeProgram = programs.find((p) => p.active);
   const { data: activeProgramDetail } = useQuery({
     queryKey: qk.program(activeProgram?.id ?? ""),
-    queryFn: () => api<{ days: ProgramDayRow[] }>(`/api/programs/${activeProgram!.id}`),
+    queryFn: () =>
+      api<{ days: ProgramDayRow[] }>(`/api/programs/${activeProgram!.id}`),
     enabled: Boolean(activeProgram?.id),
   });
   const programDays = useMemo(
@@ -91,25 +105,43 @@ export default function Home() {
 
   const weekday = new Date().getDay();
   const fallbackToday = useMemo(() => {
-    const normalized = routines.map((r) => ({ ...r, scheduledDays: [...(r.scheduledDays ?? [])] }));
+    const normalized = routines.map((r) => ({
+      ...r,
+      scheduledDays: [...(r.scheduledDays ?? [])],
+    }));
     return todaysRoutine(normalized, weekday);
   }, [routines, weekday]);
 
   const routineName = (id?: string) => routines.find((r) => r.id === id)?.name;
 
   const slot = activeProgram
-    ? programTodaySlot(programDays, activeProgram.scheduleMode ?? "rotation", activeProgram.rotationCursor ?? 0, weekday)
+    ? programTodaySlot(
+        programDays,
+        activeProgram.scheduleMode ?? "rotation",
+        activeProgram.rotationCursor ?? 0,
+        weekday,
+      )
     : null;
   const nextSlot = activeProgram
-    ? programNextSlot(programDays, activeProgram.scheduleMode ?? "rotation", activeProgram.rotationCursor ?? 0, weekday)
+    ? programNextSlot(
+        programDays,
+        activeProgram.scheduleMode ?? "rotation",
+        activeProgram.rotationCursor ?? 0,
+        weekday,
+      )
     : null;
 
   // slot is null on a rest day (or no active program → use the weekday fallback).
   const heroRoutineId = activeProgram ? slot?.routineId : fallbackToday?.id;
-  const heroName = activeProgram ? routineName(slot?.routineId) : fallbackToday?.name;
+  const heroName = activeProgram
+    ? routineName(slot?.routineId)
+    : fallbackToday?.name;
   const nextName = routineName(nextSlot?.routineId);
   const isRest = !heroRoutineId;
-  const canSkip = !!activeProgram && (activeProgram.scheduleMode ?? "rotation") === "rotation" && programDays.length > 0;
+  const canSkip =
+    !!activeProgram &&
+    (activeProgram.scheduleMode ?? "rotation") === "rotation" &&
+    programDays.length > 0;
 
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
@@ -123,7 +155,10 @@ export default function Home() {
       programs.map((p) => ({
         id: p.id,
         name: p.name,
-        meta: (p.scheduleMode ?? "rotation") === "weekly" ? "Fixed weekly" : "Rotation",
+        meta:
+          (p.scheduleMode ?? "rotation") === "weekly"
+            ? "Fixed weekly"
+            : "Rotation",
       })),
     [programs],
   );
@@ -147,7 +182,9 @@ export default function Home() {
   }, [exercises, search]);
 
   function toggle(id: string) {
-    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+    setSelected((s) =>
+      s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
+    );
   }
 
   async function start() {
@@ -182,7 +219,10 @@ export default function Home() {
 
   async function skipDay() {
     if (!activeProgram) return;
-    const next = advanceRotation(activeProgram.rotationCursor ?? 0, programDays.length);
+    const next = advanceRotation(
+      activeProgram.rotationCursor ?? 0,
+      programDays.length,
+    );
     await api(`/api/programs/${activeProgram.id}`, {
       method: "PUT",
       body: JSON.stringify({ rotationCursor: next }),
@@ -197,35 +237,83 @@ export default function Home() {
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/assets/logo-mark.svg" alt="" width={34} height={34} className="block" />
+          <img
+            src="/assets/logo-mark.svg"
+            alt=""
+            width={34}
+            height={34}
+            className="block"
+          />
           <div className="flex-1">
-            <div className="text-2xl font-extrabold leading-none tracking-[-0.01em]">Rackd</div>
-            <div className="text-[var(--text-muted)] text-sm">Ready when you are.</div>
+            <div className="text-2xl font-extrabold leading-none tracking-[-0.01em]">
+              Rackd
+            </div>
+            <div className="text-[var(--text-muted)] text-sm">
+              Ready when you are.
+            </div>
           </div>
           <Link href="/settings" aria-label="Profile and settings">
-            <Avatar src={profile?.photoUrl || null} name={profile?.displayName} />
+            <Avatar
+              src={profile?.photoUrl || null}
+              name={profile?.displayName}
+            />
           </Link>
         </div>
 
         {/* Active program → drives today's workout */}
         {activeProgram && (
-          <Link href={`/programs/${activeProgram.id}`} className="no-underline block mb-3.5">
+          <Link
+            href={`/programs/${activeProgram.id}`}
+            className="no-underline block mb-3.5"
+          >
             <div className="flex items-center gap-2.5 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius)] px-3.5 py-3">
               <Badge tone="accent" solid>
                 Program
               </Badge>
-              <span className="font-bold text-[15px] text-[var(--text)]">{activeProgram.name}</span>
-              <span className="ml-auto text-[var(--text-muted)] text-[13px]">Change ›</span>
+              <span className="font-bold text-[15px] text-[var(--text)]">
+                {activeProgram.name}
+              </span>
+              <span className="ml-auto text-[var(--text-muted)] text-[13px]">
+                Change ›
+              </span>
             </div>
           </Link>
         )}
 
-        {/* No active program → prompt to activate an existing one or create one.
-            Replaces the today/rest card entirely until a program is active. */}
-        {!activeProgram ? (
-          <Card variant="dashed" style={{ marginBottom: 24, textAlign: "center", padding: 28 }}>
+        {/* A workout in progress supersedes everything: resume it, don't start
+            a duplicate. */}
+        {active ? (
+          <Card variant="accent" style={{ marginBottom: 24 }}>
+            <div className="text-xs font-bold uppercase tracking-[0.06em] opacity-85">
+              In progress
+            </div>
+            <div className="mt-2 text-3xl font-extrabold leading-[1.05]">
+              {active.name}
+            </div>
+            <Button
+              variant="secondary"
+              size="lg"
+              fullWidth
+              onClick={() => router.push(`/workout/${active.id}`)}
+              style={{
+                marginTop: 18,
+                background: "#fff",
+                color: "var(--accent)",
+                border: "none",
+              }}
+            >
+              Resume workout ›
+            </Button>
+          </Card>
+        ) : !activeProgram ? (
+          <Card
+            variant="dashed"
+            style={{ marginBottom: 24, textAlign: "center", padding: 28 }}
+          >
             <div className={EYEBROW}>Get started</div>
-            <div className="mt-1.5 text-3xl font-extrabold leading-[1.1]">No active program</div>
+            <div className="mt-1.5 text-3xl font-extrabold leading-[1.1]">
+              No active program
+            </div>
             <div className="mt-1 text-sm text-[var(--text-muted)]">
               {programs.length > 0
                 ? "Activate a program to plan your week — or create a new one."
@@ -271,14 +359,21 @@ export default function Home() {
                 </button>
               )}
             </div>
-            <div className="mt-2 text-3xl font-extrabold leading-[1.05]">{heroName}</div>
+            <div className="mt-2 text-3xl font-extrabold leading-[1.05]">
+              {heroName}
+            </div>
             <Button
               variant="secondary"
               size="lg"
               fullWidth
               onClick={() => startRoutine(heroRoutineId)}
               disabled={starting}
-              style={{ marginTop: 18, background: "#fff", color: "var(--accent)", border: "none" }}
+              style={{
+                marginTop: 18,
+                background: "#fff",
+                color: "var(--accent)",
+                border: "none",
+              }}
             >
               {starting ? "Starting…" : "Start workout"}
             </Button>
@@ -291,11 +386,18 @@ export default function Home() {
             </button>
           </Card>
         ) : (
-          <Card variant="dashed" style={{ marginBottom: 24, textAlign: "center", padding: 28 }}>
+          <Card
+            variant="dashed"
+            style={{ marginBottom: 24, textAlign: "center", padding: 28 }}
+          >
             <div className={EYEBROW}>Today</div>
-            <div className="mt-1.5 text-3xl font-extrabold leading-[1.1]">Rest day</div>
+            <div className="mt-1.5 text-3xl font-extrabold leading-[1.1]">
+              Rest day
+            </div>
             <div className="mt-1 text-sm text-[var(--text-muted)]">
-              {nextName ? `Recovery is where you grow. Next up: ${nextName}.` : "Nothing scheduled — recovery is where you grow."}
+              {nextName
+                ? `Recovery is where you grow. Next up: ${nextName}.`
+                : "Nothing scheduled — recovery is where you grow."}
             </div>
 
             <Button
@@ -373,7 +475,13 @@ export default function Home() {
 
         {selected.length > 0 && (
           <div className="fixed left-1/2 -translate-x-1/2 bottom-[calc(84px+var(--safe-bottom))] w-[min(440px,calc(100%-32px))] z-30">
-            <Button variant="primary" size="lg" fullWidth onClick={start} disabled={starting}>
+            <Button
+              variant="primary"
+              size="lg"
+              fullWidth
+              onClick={start}
+              disabled={starting}
+            >
               {starting ? "Starting…" : `Start workout (${selected.length})`}
             </Button>
           </div>

@@ -70,7 +70,13 @@ export function SetValueSheet({
     // mount; this just hands focus to the real field. Select-all is deferred a
     // frame so the seeded value (set above, not yet painted) is what highlights.
     inputRef.current?.focus({ preventScroll: true });
-    const id = requestAnimationFrame(() => inputRef.current?.select());
+    // setSelectionRange (not .select(), which iOS Safari ignores) so the first
+    // keystroke replaces the value. Deferred a frame so the seeded value is
+    // painted before we select it.
+    const id = requestAnimationFrame(() => {
+      const el = inputRef.current;
+      if (el) el.setSelectionRange(0, el.value.length);
+    });
     return () => cancelAnimationFrame(id);
   }, [open]);
 
@@ -98,9 +104,19 @@ export function SetValueSheet({
             type="button"
             onClick={() => nudge(-1)}
             aria-label={`Decrease ${title}`}
-            className="h-16 w-16 shrink-0 inline-flex items-center justify-center rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] text-3xl leading-none font-bold select-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)] active:bg-[var(--surface)]"
+            className="h-16 w-16 shrink-0 inline-flex items-center justify-center rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] select-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)] active:bg-[var(--surface)]"
           >
-            −
+            {/* SVG glyph (not a text "−"): the text minus sits high in the line
+                box; an SVG centers exactly and matches the + weight. */}
+            <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+              <path
+                d="M5 12h14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
           </button>
 
           <div className="flex flex-1 min-w-0 items-center justify-center gap-1 px-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] focus-within:ring-2 focus-within:ring-[var(--accent)]">
@@ -110,7 +126,12 @@ export function SetValueSheet({
               enterKeyHint="done"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              onFocus={(e) => e.currentTarget.select()}
+              onFocus={(e) =>
+                e.currentTarget.setSelectionRange(
+                  0,
+                  e.currentTarget.value.length,
+                )
+              }
               onKeyDown={(e) => {
                 // Keyboard's Done/checkmark (or Enter) commits, like the button.
                 if (e.key === "Enter") {
@@ -132,9 +153,17 @@ export function SetValueSheet({
             type="button"
             onClick={() => nudge(1)}
             aria-label={`Increase ${title}`}
-            className="h-16 w-16 shrink-0 inline-flex items-center justify-center rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] text-3xl leading-none font-bold select-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)] active:bg-[var(--surface)]"
+            className="h-16 w-16 shrink-0 inline-flex items-center justify-center rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] select-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)] active:bg-[var(--surface)]"
           >
-            +
+            <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+              <path
+                d="M12 5v14M5 12h14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
           </button>
         </div>
 
