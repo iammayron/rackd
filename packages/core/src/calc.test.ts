@@ -15,6 +15,7 @@ import {
   diffSessionVsRoutine,
   programWeekProgress,
   programDayKinds,
+  sessionCountsForProgram,
 } from "./calc";
 import type { ProgramDayKind } from "./calc";
 import { toKg, fromKg, formatWeight } from "./units";
@@ -581,5 +582,77 @@ describe("programDayKinds", () => {
         schedule: { mode: "weekly", workoutWeekdays: [] },
       }),
     ).toEqual([]);
+  });
+});
+
+describe("sessionCountsForProgram", () => {
+  it("counts a stamped session matching the program id even when its routine is not in the set", () => {
+    expect(
+      sessionCountsForProgram(
+        { programId: "prog_1", routineId: "rt_forked" },
+        "prog_1",
+        new Set(["rt_a", "rt_b"]),
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects a stamped session with a different program id even when its routine is in the set", () => {
+    expect(
+      sessionCountsForProgram(
+        { programId: "prog_other", routineId: "rt_a" },
+        "prog_1",
+        new Set(["rt_a", "rt_b"]),
+      ),
+    ).toBe(false);
+  });
+
+  it("counts a legacy session whose routine id is in the set", () => {
+    expect(
+      sessionCountsForProgram(
+        { programId: null, routineId: "rt_a" },
+        "prog_1",
+        new Set(["rt_a", "rt_b"]),
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects a legacy session whose routine id is not in the set", () => {
+    expect(
+      sessionCountsForProgram(
+        { programId: undefined, routineId: "rt_z" },
+        "prog_1",
+        new Set(["rt_a", "rt_b"]),
+      ),
+    ).toBe(false);
+  });
+
+  it("rejects a legacy session with a null routine id", () => {
+    expect(
+      sessionCountsForProgram(
+        { programId: null, routineId: null },
+        "prog_1",
+        new Set(["rt_a", "rt_b"]),
+      ),
+    ).toBe(false);
+  });
+
+  it("falls back to routine match when the program has no id but the routine is in the set", () => {
+    expect(
+      sessionCountsForProgram(
+        { programId: "prog_stamp", routineId: "rt_a" },
+        undefined,
+        new Set(["rt_a", "rt_b"]),
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects a legacy session against an empty routine set", () => {
+    expect(
+      sessionCountsForProgram(
+        { programId: null, routineId: "rt_a" },
+        "prog_1",
+        new Set<string>(),
+      ),
+    ).toBe(false);
   });
 });

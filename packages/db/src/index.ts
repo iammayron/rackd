@@ -68,12 +68,14 @@ async function insertRow(
 export async function startSession(args: {
   ownerId: string;
   routineId?: string;
+  programId?: string;
   name: string;
   now: number;
 }) {
   return insertRow(t.sessions, {
     ownerId: args.ownerId,
     routineId: args.routineId,
+    programId: args.programId,
     name: args.name,
     startedAt: args.now,
   });
@@ -808,6 +810,7 @@ export async function deleteRoutineSet(id: string) {
 export async function startSessionFromRoutine(args: {
   routineId: string;
   ownerId: string;
+  programId?: string;
   now: number;
 }) {
   const [routine] = await db
@@ -818,6 +821,7 @@ export async function startSessionFromRoutine(args: {
   const session = await insertRow(t.sessions, {
     ownerId: args.ownerId,
     routineId: args.routineId,
+    programId: args.programId,
     name: routine?.name ?? "Workout",
     startedAt: args.now,
   });

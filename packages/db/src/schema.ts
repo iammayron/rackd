@@ -90,6 +90,13 @@ export const sessions = pgTable("sessions", {
   routineId: text("routine_id").references(() => routines.id, {
     onDelete: "set null",
   }),
+  // Program this workout was started under (if any). Stamped at start time and
+  // never rewritten, so day/week progress survives a routine being forked or
+  // re-pointed by save-back. SET NULL on program delete — history outlives the
+  // plan. Progress counting joins on this, not routineId (which can churn).
+  programId: text("program_id").references(() => programs.id, {
+    onDelete: "set null",
+  }),
   name: text("name").notNull(),
   startedAt: bigint("started_at", { mode: "number" }).notNull(),
   endedAt: bigint("ended_at", { mode: "number" }),

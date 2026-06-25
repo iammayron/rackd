@@ -19,8 +19,20 @@ export const GET = withUser(async (ownerId) => {
 /** POST /api/sessions — start a session (from a routine, or blank). */
 export const POST = withUser(async (ownerId, req) => {
   const body = await req.json();
+  // programId is stamped at start so progress counting survives later routine
+  // forks/re-points; only meaningful when starting from a program's day.
   const session = body.routineId
-    ? await startSessionFromRoutine({ routineId: body.routineId, ownerId, now: Date.now() })
-    : await startSession({ ownerId, name: body.name ?? "Workout", now: Date.now() });
+    ? await startSessionFromRoutine({
+        routineId: body.routineId,
+        ownerId,
+        programId: body.programId,
+        now: Date.now(),
+      })
+    : await startSession({
+        ownerId,
+        programId: body.programId,
+        name: body.name ?? "Workout",
+        now: Date.now(),
+      });
   return Response.json(session, { status: 201 });
 });

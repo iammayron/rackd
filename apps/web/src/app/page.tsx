@@ -62,6 +62,7 @@ interface SessionRow {
   id: string;
   name: string;
   routineId?: string | null;
+  programId?: string | null;
   startedAt: number;
   endedAt?: number | null;
 }
@@ -259,12 +260,12 @@ export default function Home() {
     router.push(`/workout/${session.id}`);
   }
 
-  async function startRoutine(routineId?: string) {
+  async function startRoutine(routineId?: string, programId?: string) {
     if (!routineId || starting) return;
     setStarting(true);
     const s = await api<{ id: string }>("/api/sessions", {
       method: "POST",
-      body: JSON.stringify({ routineId }),
+      body: JSON.stringify({ routineId, programId }),
     });
     queryClient.invalidateQueries({ queryKey: qk.activeSession });
     router.push(`/workout/${s.id}`);
@@ -434,7 +435,7 @@ export default function Home() {
             {heroRoutineId && heroName && (
               <button
                 type="button"
-                onClick={() => startRoutine(heroRoutineId)}
+                onClick={() => startRoutine(heroRoutineId, activeProgram?.id)}
                 disabled={starting}
                 className="block w-full mt-2.5 py-1.5 bg-transparent border-none cursor-pointer text-sm font-bold text-white/90 text-center disabled:opacity-60"
               >
@@ -472,7 +473,7 @@ export default function Home() {
               variant="secondary"
               size="lg"
               fullWidth
-              onClick={() => startRoutine(heroRoutineId)}
+              onClick={() => startRoutine(heroRoutineId, activeProgram?.id)}
               disabled={starting}
               style={{
                 marginTop: 18,
