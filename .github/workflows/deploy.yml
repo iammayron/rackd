@@ -15,12 +15,19 @@ jobs:
       - uses: actions/checkout@v4
 
       # Apply schema changes to prod BEFORE deploying, so the schema the new
-      # code expects exists before it serves traffic. Runs the same
-      # `pnpm db:migrate` (drizzle-kit push) we use locally: it diffs schema.ts
-      # against the live DB and applies the delta — no migrations journal to
-      # baseline, so it can't fail on a fresh/empty journal. A failed run fails
-      # the job and blocks the deploy. Needs the DATABASE_URL repo secret
-      # (use the SESSION pooler URL, port 5432).
+      # code expects exists before it serves traffic. We use drizzle-kit
+      # `migrate` (non-interactive) — NOT `push`. `push` renders interactive
+      # confirmation prompts; in CI's no-TTY shell the prompt reads `undefined`
+      # and the command crashes (prints "undefined", exits 1). `migrate` only
+      # applies committed SQL migrations, deterministically.
+      #
+      # BASELINE.sql runs first and is idempotent: it seeds drizzle's journal
+      # so 0000_init + 0001 (originally applied via `push`, which records nothing
+      # in the journal) are treated as already-applied, and back-fills
+      # activated_at if missing. Without it, migrate would re-run 0000_init's
+      # CREATE TABLE against the existing prod tables and fail. Safe to re-run
+      # every deploy. Needs the DATABASE_URL repo secret (SESSION pooler URL,
+      # port 5432). A failed run fails the job and blocks the deploy.
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -29,7 +36,9 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile
       - name: Apply DB schema
-        run: pnpm db:migrate
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/drizzle/BASELINE.sql
+          pnpm --filter @rackd/db exec drizzle-kit migrate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
