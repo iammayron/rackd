@@ -20,6 +20,8 @@ Gym workout tracker (plan routines, run workouts, rest timer, history). PWA web 
 
 Before committing, run: `pnpm typecheck && pnpm test`.
 
+Claude Code helpers (`.claude/`): slash commands `/add-endpoint` (scaffold an owner-scoped route + repo fn + query wiring) and `/db-migrate` (Drizzle generate→review→push, keeping schema ⇄ `@rackd/core` types in sync); agents `test-author` / `test-auditor` for writing and vetting tests. A `Stop` hook runs the fast gate (typecheck + `@rackd/core` test) automatically and blocks finishing on failure.
+
 ### Auth (Supabase Cloud)
 
 - Supabase Cloud issues the JWTs; the client is unchanged. Web env:
@@ -84,4 +86,6 @@ Schema is the Drizzle schema in `packages/db/src/schema.ts` — keep it in sync 
 - Default to Plan mode for non-trivial work; agree on the plan before editing.
 - Don't commit or push unless asked. Default branch `main` (remote: `origin`, github.com/iammayron/myfit). For non-trivial work, use a short-lived branch + PR rather than pushing straight to `main`.
 - After changes, run the gate; verify UI/behavior in the running app when practical.
+- **Tests run automatically.** A `Stop` hook (`.claude/hooks/run-tests.sh`) runs the fast gate — `pnpm typecheck && pnpm --filter @rackd/core test` — whenever a turn touched `.ts/.tsx` under `packages/` or `apps/`, and blocks finishing if it fails. The hook deliberately skips the Postgres-dependent suites (`@rackd/db`, `apps/web` API tests); run those yourself with `pnpm test` when you changed repo functions, schema, or API routes and a DB is up.
+- If a change added or altered testable behavior with no covering test, invoke the **test-author** agent to write one (pure logic → `packages/core`; repo/route behavior → `packages/db` / `apps/web/test`). When tests exist but their quality is in doubt — or right after test-author writes new ones — invoke the **test-auditor** agent to vet them for false-positives and missing cases. Hooks can't call agents, so this stays a judgment call; skip it for trivial changes (docs, types, UI-only tweaks) with nothing to assert.
 
