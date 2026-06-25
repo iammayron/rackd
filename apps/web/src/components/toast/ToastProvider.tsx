@@ -264,7 +264,7 @@ function Toast({
       aria-live={assertive ? "assertive" : "polite"}
       // Variant-tinted background + border (not flat surface) so the toast
       // separates from the near-black page and reads as a distinct prompt.
-      className="pointer-events-auto flex w-fit max-w-sm items-start gap-3 rounded-[var(--radius-md)] border p-3 shadow-[var(--shadow-lg)]"
+      className="pointer-events-auto flex w-fit max-w-sm items-center gap-3 rounded-[var(--radius-md)] border p-3 shadow-[var(--shadow-lg)]"
       style={{
         background: `color-mix(in srgb, ${v.color} 12%, var(--surface))`,
         borderColor: `color-mix(in srgb, ${v.color} 45%, var(--border))`,
@@ -283,7 +283,7 @@ function Toast({
           {v.icon}
         </svg>
       </span>
-      <p className="min-w-0 flex-1 pt-0.5 text-sm font-medium text-[var(--text)]">
+      <p className="min-w-0 flex-1 text-sm font-medium text-[var(--text)]">
         <span className="sr-only">{v.label}: </span>
         {toast.message}
       </p>
