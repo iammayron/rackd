@@ -18,6 +18,7 @@ import { ActivateProgramSheet } from "@/components/ActivateProgramSheet";
 import { WeightProgressCard } from "@/features/dashboard/WeightProgressCard";
 import { WeeklyVolumeCard } from "@/features/dashboard/WeeklyVolumeCard";
 import { HistoryStreakCard } from "@/features/dashboard/HistoryStreakCard";
+import { ProgramProgress } from "@/features/dashboard/ProgramProgress";
 
 interface ExerciseRow {
   id: string;
@@ -45,6 +46,8 @@ interface ProgramRow {
   active?: boolean;
   scheduleMode?: "rotation" | "weekly";
   rotationCursor?: number;
+  blockWeeks?: number;
+  activatedAt?: number;
 }
 
 interface ProgramDayRow {
@@ -131,16 +134,6 @@ export default function Home() {
       ),
     [programDays],
   );
-  const programDone = useMemo(
-    () =>
-      finished.filter((s) => s.routineId && programRoutineIds.has(s.routineId))
-        .length,
-    [finished, programRoutineIds],
-  );
-  const blockLen = programDays.length;
-  const doneInCycle = blockLen ? programDone % blockLen : 0;
-  const cyclePct = blockLen ? Math.round((doneInCycle / blockLen) * 100) : 0;
-
   const weekday = new Date().getDay();
   const fallbackToday = useMemo(() => {
     const normalized = routines.map((r) => ({
@@ -338,32 +331,11 @@ export default function Home() {
                   Change ›
                 </span>
               </div>
-              {blockLen > 0 && (
-                <div className="mt-2.5">
-                  <div className="mb-1 flex items-center justify-between text-[12px] font-semibold text-[var(--text-muted)] tabular-nums">
-                    <span>
-                      Day {doneInCycle + 1} of {blockLen}
-                    </span>
-                    <span>
-                      {programDone} {programDone === 1 ? "workout" : "workouts"}{" "}
-                      done
-                    </span>
-                  </div>
-                  <div
-                    className="h-1.5 overflow-hidden rounded-full bg-[var(--border)]"
-                    role="progressbar"
-                    aria-valuenow={doneInCycle}
-                    aria-valuemin={0}
-                    aria-valuemax={blockLen}
-                    aria-label="Progress through current block"
-                  >
-                    <div
-                      className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-300"
-                      style={{ width: `${cyclePct}%` }}
-                    />
-                  </div>
-                </div>
-              )}
+              <ProgramProgress
+                program={activeProgram}
+                programDays={programDays}
+                finished={finished}
+              />
             </div>
           </Link>
         )}

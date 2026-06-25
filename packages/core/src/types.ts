@@ -167,6 +167,11 @@ export interface Program {
   scheduleMode?: "rotation" | "weekly";
   /** Rotation mode: index into the ordered ProgramDays for "today". */
   rotationCursor?: number;
+  /**
+   * Epoch ms when the program last became active. Anchors "week 1, day 1" of
+   * the block-progress bar; reset each time the program is re-activated.
+   */
+  activatedAt?: number;
 }
 
 export interface ProgramDay {

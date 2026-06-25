@@ -164,6 +164,9 @@ export const programs = pgTable("programs", {
   active: boolean("active"),
   scheduleMode: text("schedule_mode"),
   rotationCursor: integer("rotation_cursor"),
+  // When the program last became active — anchors "week 1, day 1" for the
+  // dashboard's week-block progress bar. Reset each time it's re-activated.
+  activatedAt: bigint("activated_at", { mode: "number" }),
 });
 
 export const programDays = pgTable("program_days", {

@@ -13,7 +13,9 @@ import {
   programNextSlot,
   advanceRotation,
   diffSessionVsRoutine,
+  programWeekProgress,
 } from "./calc";
+import type { ProgramDayKind } from "./calc";
 import { toKg, fromKg, formatWeight } from "./units";
 import { startTimer, pauseTimer, resumeTimer, remainingMs, addTime } from "./timer";
 import type { SetLog } from "./types";
@@ -386,5 +388,68 @@ describe("diffSessionVsRoutine", () => {
     const p = [{ exerciseId: "a", sets: [{ reps: 8 }] }];
     const q = [{ exerciseId: "a", sets: [{ weight: 0, reps: 8 }] }];
     expect(diffSessionVsRoutine(p, q).numbersChanged).toBe(false);
+  });
+});
+
+describe("programWeekProgress", () => {
+  const fill = (n: number, k: ProgramDayKind): ProgramDayKind[] =>
+    Array.from({ length: n }, () => k);
+
+  it("ignites a week only when all 7 notches fill (done + rest)", () => {
+    // Week 1: 4 workouts done + 3 rest = full → fire. Week 2: all future.
+    const week1: ProgramDayKind[] = [
+      "done", "rest", "done", "rest", "done", "rest", "done",
+    ];
+    const r = programWeekProgress(2, [...week1, ...fill(7, "future")]);
+    expect(r.totalDays).toBe(14);
+    expect(r.filledDays).toBe(7);
+    expect(r.weekFill).toEqual([1, 0]);
+    expect(r.weekDone).toEqual([true, false]);
+    expect(r.completedWeeks).toBe(1);
+  });
+
+  it("holds the fire when a workout is missed (gap stays empty)", () => {
+    const week1: ProgramDayKind[] = [
+      "done", "rest", "missed", "rest", "done", "rest", "done",
+    ];
+    const r = programWeekProgress(1, week1);
+    expect(r.filledDays).toBe(6);
+    expect(r.weekDone).toEqual([false]);
+    expect(r.weekFill[0]).toBeCloseTo(6 / 7, 5);
+    expect(r.completedWeeks).toBe(0);
+  });
+
+  it("counts pending/missed/future as empty", () => {
+    const r = programWeekProgress(1, [
+      "done", "pending", "future", "future", "future", "future", "future",
+    ]);
+    expect(r.filledDays).toBe(1);
+    expect(r.weekFill[0]).toBeCloseTo(1 / 7, 5);
+  });
+
+  it("pads short dayKinds arrays as future", () => {
+    const r = programWeekProgress(3, ["done", "rest"]);
+    expect(r.totalDays).toBe(21);
+    expect(r.filledDays).toBe(2);
+    expect(r.weekDone).toEqual([false, false, false]);
+  });
+
+  it("returns an empty block for zero/negative weeks", () => {
+    const r = programWeekProgress(0, []);
+    expect(r).toEqual({
+      blockWeeks: 0,
+      totalDays: 0,
+      filledDays: 0,
+      weekFill: [],
+      weekDone: [],
+      completedWeeks: 0,
+    });
+  });
+
+  it("ignites every week of a fully-completed block", () => {
+    const r = programWeekProgress(4, fill(28, "rest"));
+    expect(r.completedWeeks).toBe(4);
+    expect(r.weekDone).toEqual([true, true, true, true]);
+    expect(r.filledDays).toBe(28);
   });
 });
