@@ -14,6 +14,7 @@ import { ExerciseCard } from "@/features/active-workout/ExerciseCard";
 import { RestTimerBar } from "@/features/active-workout/RestTimerBar";
 import { useTimerStore } from "@/features/active-workout/timer-store";
 import { PrCelebration } from "@/features/active-workout/PrCelebration";
+import { FinishPromptSheet } from "@/features/active-workout/FinishPromptSheet";
 import {
   SaveBackSheet,
   type SaveBackMode,
@@ -94,6 +95,7 @@ export default function WorkoutPage() {
 
   const [prs, setPrs] = useState<DetectedPR[] | null>(null);
   const [saveBack, setSaveBack] = useState<SaveBackState | null>(null);
+  const [showFinishPrompt, setShowFinishPrompt] = useState(false);
 
   // --- drag-and-drop reorder (pointer events: works on touch + mouse) ---
   const listRef = useRef<HTMLDivElement>(null);
@@ -225,6 +227,35 @@ export default function WorkoutPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // --- offer to finish once every set is logged ---
+  // True when there's at least one exercise and every set across all of them is
+  // completed.
+  const allLogged =
+    sessionExercises.length > 0 &&
+    sessionExercises.every((se) => {
+      const sets = se.sets ?? [];
+      return sets.length > 0 && sets.every((s) => s.completed);
+    });
+
+  // Prompt only on a real false → true transition (completing the final set) —
+  // never on the initial load of an already-complete session, and never again
+  // while it stays complete (so "Add more" isn't re-nagged). Adding/uncompleting
+  // a set flips it back to false and re-arms the prompt.
+  const prevAllLogged = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (fetching || sessionExercises.length === 0) return;
+    const prev = prevAllLogged.current;
+    prevAllLogged.current = allLogged;
+    if (allLogged && prev === false) {
+      // Workout's done — kill the rest timer the final set just started.
+      useTimerStore.getState().skip();
+      setShowFinishPrompt(true);
+    } else if (!allLogged) {
+      setShowFinishPrompt(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allLogged, fetching]);
 
   function goSummary() {
     router.push(`/workout/${sessionId}/summary`);
@@ -417,6 +448,15 @@ export default function WorkoutPage() {
       </main>
 
       <RestTimerBar />
+
+      <FinishPromptSheet
+        open={showFinishPrompt}
+        onFinish={() => {
+          setShowFinishPrompt(false);
+          void finish();
+        }}
+        onKeepGoing={() => setShowFinishPrompt(false)}
+      />
 
       {prs && (
         <PrCelebration
