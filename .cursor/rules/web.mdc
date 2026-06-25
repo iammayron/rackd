@@ -1,0 +1,41 @@
+---
+description: Frontend + API-route conventions for the Next.js PWA (apps/web)
+globs: apps/web/**/*.{ts,tsx,css}
+alwaysApply: false
+---
+
+# apps/web conventions
+
+`apps/web` is a Next.js 15 / React 19 App Router PWA. It is a thin shell over
+`@rackd/core` (logic + types) and `@rackd/db` (data). Two layers live here: the
+client UI and the API route handlers that are the data-access layer.
+
+## Structure
+- **Feature-folder structure** (`features/<name>/` colocates components + hooks + queries), not by file-type.
+- Workspace packages ship TS source (listed in `transpilePackages`); import `@rackd/core` / `@rackd/db` directly.
+
+## Data layer (client → API → DB)
+- The **UI never touches the DB.** It calls `api()` (`lib/api.ts`) wrapped in **React Query** (`lib/query.ts`), never `@rackd/db` repo functions directly.
+- All query keys go in the central `qk` registry in `lib/query.ts`. Reads use `useQuery`; writes call `api`/`apiMutate` then `invalidateQueries`.
+- `apiMutate` queues fire-and-forget writes in IndexedDB so they survive offline (flushed FIFO on reconnect); plain `api` when the caller must see the error.
+- **Never value-import `@rackd/db` into a client component** — it pulls in `pg` and breaks the bundle. Use `import type` only.
+- Weight on the wire is canonical **kg**; convert at the display edge with `fromKg`/`formatWeight`. Never store/display raw lb.
+
+## API route handlers (`src/app/api/**`)
+- Route handlers call `@rackd/db` repository functions — they are the only place the client's requests reach Postgres.
+- **Always** wrap owner-scoped routes with `withUser` (`lib/api-auth.ts`) and derive `ownerId` from the JWT `sub`. NEVER read an `ownerId` from the body, query string, or params.
+- POST returns `201`; dynamic `[id]` params come from `await ctx.params`. Set `export const runtime = "nodejs"`.
+- The exercise + sharedRoutines libraries are the public exceptions (world-readable, owner-writable).
+
+## UI (Preline)
+- UI uses **Preline** (preferred over native controls). Preline 4 exposes `window.HSStaticMethods` only (no `window.HSSelect`); enhance via `HSStaticMethods.autoInit()`.
+- `globals.css` imports `variants.css` + `@source` by **relative path** (`../../node_modules/preline/...`) because they aren't in Preline's package `exports`.
+- `PrelineInit` re-inits on route change; wrap stateful widgets (see `AdvancedSelect`) and forward the native `change` to React.
+- Inline-styles → Preline/Tailwind migration is in progress (Stats select done first).
+
+## Gotchas
+- **Rest timer is wall-clock.** `@rackd/core`'s `timer.ts` stores an absolute `endAt`; PWA tabs sleep, so always recompute `remainingMs(state, now)`. The platform layer schedules the service-worker notification for `endAt`.
+- **Exercise media is URL-only** (`thumbnailUrl`/`clipUrl` CDN links, cached-on-view by the SW). Logging must never block on media; fall back to thumbnail + text offline.
+- `getCurrentUserId()` (`lib/auth.ts`) resolves the Supabase user id for client-side reads/keys only — never hardcode an `ownerId`.
+
+See `@AGENTS.md` for global rules and commands.
