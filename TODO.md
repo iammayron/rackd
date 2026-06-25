@@ -30,4 +30,4 @@ Braindump from on-device testing. Each item gets discussed/scoped before impleme
 - [x] 19. Complete summary not computing properly — verified on device (renders + populates) and audited: volume/sets/duration/PRs/top-set traced through `summary/page.tsx` → `sessionVolume` + `fromKg` (canonical kg, linear unit conversion) and confirmed correct. Underlying pure fns covered in `calc.test.ts`. Accuracy confirmed.
 - [x] 20. Share not working — verified working on device (native share + PNG/clipboard fallback).
 - [ ] 21. Progress page is wrong — history/progress page implemented and computing (`history/page.tsx`); re-test on device to confirm
-- [ ] 22. "Done" status on the Home Screen
+- [x] 22. "Done" status on the Home Screen — implemented in `page.tsx`: a `completedToday` check (today's scheduled routine has a finished session ending after midnight) flips the hero into a "Today · done / Crushed it 💪" state with a "See your summary" link + "Train again". Pending final device test.
