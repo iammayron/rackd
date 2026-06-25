@@ -31,29 +31,89 @@ export interface ShareCardProps extends React.HTMLAttributes<HTMLDivElement> {
  * Self-contained (inline styles + token vars) so it rasterizes cleanly via
  * html-to-image. Three themes: coral (accent), dark, light.
  */
-export function ShareCard({ data, theme = "accent", style, ...rest }: ShareCardProps) {
-  const dark = theme === "dark";
-  const bg =
+export function ShareCard({
+  data,
+  theme = "accent",
+  style,
+  ...rest
+}: ShareCardProps) {
+  // The card is rasterized and shared, so each theme uses fixed colors rather
+  // than the app's semantic tokens — otherwise "light" inherits whatever theme
+  // the app is currently in (and renders dark in a dark-mode app).
+  const palette =
     theme === "accent"
-      ? "linear-gradient(155deg, var(--accent) 0%, var(--accent-press) 100%)"
-      : dark
-        ? "#11161d"
-        : "var(--surface)";
-  const ink = theme === "accent" || dark ? "#fff" : "var(--text)";
-  const sub = theme === "accent" ? "rgba(255,255,255,0.82)" : "var(--text-muted)";
-  const hair = theme === "accent" ? "rgba(255,255,255,0.22)" : "var(--border)";
-  const whiteMark = theme === "accent" || dark;
+      ? {
+          bg: "linear-gradient(155deg, var(--accent) 0%, var(--accent-press) 100%)",
+          ink: "#fff",
+          sub: "rgba(255,255,255,0.82)",
+          hair: "rgba(255,255,255,0.22)",
+          chip: "rgba(0,0,0,0.20)",
+        }
+      : theme === "dark"
+        ? {
+            bg: "#11161d",
+            ink: "#f3f5f8",
+            sub: "#9aa6b4",
+            hair: "#2c333d",
+            chip: "#20262f",
+          }
+        : {
+            bg: "#ffffff",
+            ink: "#11161d",
+            sub: "#5b6776",
+            hair: "#e2e6ec",
+            chip: "#eef1f5",
+          };
+  const { bg, ink, sub, hair } = palette;
+  // Only the coral card needs a white logo; dark & light keep the orange mark.
+  const whiteMark = theme === "accent";
 
-  const Stat = ({ label, value, unit }: { label: string; value: string | number; unit?: string }) => (
+  const Stat = ({
+    label,
+    value,
+    unit,
+  }: {
+    label: string;
+    value: string | number;
+    unit?: string;
+  }) => (
     <div style={{ minWidth: 0 }}>
-      <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: sub, whiteSpace: "nowrap" }}>
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          color: sub,
+          whiteSpace: "nowrap",
+        }}
+      >
         {label}
       </div>
-      <div style={{ marginTop: 4, display: "flex", alignItems: "baseline", gap: 4 }}>
-        <span style={{ fontSize: 26, fontWeight: 800, color: ink, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em" }}>
+      <div
+        style={{
+          marginTop: 4,
+          display: "flex",
+          alignItems: "baseline",
+          gap: 4,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 26,
+            fontWeight: 800,
+            color: ink,
+            fontVariantNumeric: "tabular-nums",
+            letterSpacing: "-0.01em",
+          }}
+        >
           {value}
         </span>
-        {unit && <span style={{ fontSize: 13, fontWeight: 700, color: sub }}>{unit}</span>}
+        {unit && (
+          <span style={{ fontSize: 13, fontWeight: 700, color: sub }}>
+            {unit}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -71,7 +131,7 @@ export function ShareCard({ data, theme = "accent", style, ...rest }: ShareCardP
         flexDirection: "column",
         boxShadow: "var(--shadow-lg)",
         overflow: "hidden",
-        border: theme === "light" ? "1px solid var(--border)" : "none",
+        border: theme === "light" ? `1px solid ${hair}` : "none",
         fontFamily: "var(--font-sans)",
         ...style,
       }}
@@ -83,30 +143,73 @@ export function ShareCard({ data, theme = "accent", style, ...rest }: ShareCardP
           width={22}
           height={22}
           alt=""
-          style={{ display: "block", filter: whiteMark ? "brightness(0) invert(1)" : "none" }}
+          style={{
+            display: "block",
+            filter: whiteMark ? "brightness(0) invert(1)" : "none",
+          }}
         />
-        <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: "-0.01em" }}>Rackd</span>
-        <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 600, color: sub, whiteSpace: "nowrap" }}>
+        <span
+          style={{ fontWeight: 800, fontSize: 16, letterSpacing: "-0.01em" }}
+        >
+          Rackd
+        </span>
+        <span
+          style={{
+            marginLeft: "auto",
+            fontSize: 12,
+            fontWeight: 600,
+            color: sub,
+            whiteSpace: "nowrap",
+          }}
+        >
           {data.date}
         </span>
       </div>
 
       <div style={{ marginTop: "auto" }}>
-        <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: sub, whiteSpace: "nowrap" }}>
+        <div
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.07em",
+            color: sub,
+            whiteSpace: "nowrap",
+          }}
+        >
           Workout complete
         </div>
-        <div style={{ fontSize: 30, fontWeight: 800, lineHeight: 1.05, marginTop: 4, letterSpacing: "-0.01em" }}>
+        <div
+          style={{
+            fontSize: 30,
+            fontWeight: 800,
+            lineHeight: 1.05,
+            marginTop: 4,
+            letterSpacing: "-0.01em",
+          }}
+        >
           {data.name}
         </div>
       </div>
 
       <div style={{ height: 1, background: hair, margin: "18px 0" }} />
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", rowGap: 16, columnGap: 12 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          rowGap: 16,
+          columnGap: 12,
+        }}
+      >
         <Stat label="Volume" value={data.volume} unit={data.volumeUnit} />
         <Stat label="Duration" value={data.duration} />
         <Stat label="Sets" value={data.sets} />
-        <Stat label="PRs" value={data.prCount} unit={data.prCount === 1 ? "record" : "records"} />
+        <Stat
+          label="PRs"
+          value={data.prCount}
+          unit={data.prCount === 1 ? "record" : "records"}
+        />
       </div>
 
       {data.topSet && (
@@ -115,14 +218,24 @@ export function ShareCard({ data, theme = "accent", style, ...rest }: ShareCardP
             marginTop: 16,
             padding: "10px 14px",
             borderRadius: "var(--radius)",
-            background: theme === "accent" ? "rgba(0,0,0,0.20)" : "var(--surface-2)",
+            background: palette.chip,
             display: "flex",
-            alignItems: "center",
+            alignItems: "flex-start",
             gap: 8,
           }}
         >
-          <span aria-hidden="true" style={{ fontSize: 14 }}>🏆</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <span aria-hidden="true" style={{ fontSize: 14, lineHeight: 1.3 }}>
+            🏆
+          </span>
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: ink,
+              lineHeight: 1.3,
+              overflowWrap: "anywhere",
+            }}
+          >
             Top set · {data.topSet}
           </span>
         </div>
