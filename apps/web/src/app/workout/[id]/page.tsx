@@ -12,6 +12,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { BackButton } from "@/components/BackButton";
 import { ExerciseCard } from "@/features/active-workout/ExerciseCard";
 import { RestTimerBar } from "@/features/active-workout/RestTimerBar";
+import { useTimerStore } from "@/features/active-workout/timer-store";
 import { PrCelebration } from "@/features/active-workout/PrCelebration";
 import {
   SaveBackSheet,
@@ -65,6 +66,20 @@ interface SessionTree {
   exercises: SessionExerciseRow[];
 }
 
+/**
+ * The exercise the lifter is "on" right now: the first (in order) still holding
+ * an incomplete set, or the last one if everything's done. Drives auto-scroll
+ * (#18) — we snap back here after a rest, on reopen, and once on load.
+ */
+function computeCurrentId(exs: SessionExerciseRow[]): string | null {
+  const ordered = [...exs].sort((a, b) => a.order - b.order);
+  for (const se of ordered) {
+    const sets = se.sets ?? [];
+    if (sets.length === 0 || sets.some((s) => !s.completed)) return se.id;
+  }
+  return ordered[ordered.length - 1]?.id ?? null;
+}
+
 export default function WorkoutPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -93,14 +108,18 @@ export default function WorkoutPage() {
 
   const byId = new Map(sessionExercises.map((e) => [e.id, e]));
   const ordered = dragId
-    ? (orderIds.map((id) => byId.get(id)).filter(Boolean) as SessionExerciseRow[])
+    ? (orderIds
+        .map((id) => byId.get(id))
+        .filter(Boolean) as SessionExerciseRow[])
     : sessionExercises;
 
   function onDragMove(clientY: number) {
     const id = dragId;
     const container = listRef.current;
     if (!id || !container) return;
-    const nodes = Array.from(container.querySelectorAll<HTMLElement>("[data-sex]"));
+    const nodes = Array.from(
+      container.querySelectorAll<HTMLElement>("[data-sex]"),
+    );
     let target = nodes.findIndex((n) => {
       const r = n.getBoundingClientRect();
       return clientY < r.top + r.height / 2;
@@ -128,7 +147,9 @@ export default function WorkoutPage() {
       void api(`/api/sessions/${sessionId}/exercises/reorder`, {
         method: "PUT",
         body: JSON.stringify({ orderedIds: ids }),
-      }).then(() => queryClient.invalidateQueries({ queryKey: qk.session(sessionId) }));
+      }).then(() =>
+        queryClient.invalidateQueries({ queryKey: qk.session(sessionId) }),
+      );
     };
     window.addEventListener("pointermove", onMovePtr, { passive: false });
     window.addEventListener("pointerup", onUp);
@@ -145,6 +166,65 @@ export default function WorkoutPage() {
     e.preventDefault();
     setDragId(id);
   }
+
+  // --- auto-scroll to the current exercise (#18) ---
+  // Live id of the current exercise, recomputed each render (cheap) and read
+  // through a ref so the listeners below always see the latest without
+  // re-subscribing. We only scroll on explicit moments — never on the per-set
+  // query refetch — so the lifter's own scrolling is never yanked.
+  const currentIdRef = useRef<string | null>(null);
+  currentIdRef.current = computeCurrentId(sessionExercises);
+
+  function scrollToCurrent(behavior: ScrollBehavior) {
+    const id = currentIdRef.current;
+    if (!id) return;
+    const el = listRef.current?.querySelector<HTMLElement>(
+      `[data-sex="${id}"]`,
+    );
+    if (el)
+      requestAnimationFrame(() =>
+        el.scrollIntoView({ behavior, block: "start" }),
+      );
+  }
+
+  // 1) Once, after the session first loads, jump to where you left off.
+  const didInitialScroll = useRef(false);
+  useEffect(() => {
+    if (didInitialScroll.current || sessionExercises.length === 0) return;
+    didInitialScroll.current = true;
+    scrollToCurrent("auto");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionExercises.length]);
+
+  // 2) When a rest ends (timer leaves running → idle), bring the current
+  //    exercise back so the next set is right there.
+  const timerStatus = useTimerStore((s) => s.state.status);
+  const wasResting = useRef(false);
+  useEffect(() => {
+    if (timerStatus !== "idle") {
+      wasResting.current = true;
+      return;
+    }
+    if (wasResting.current) {
+      wasResting.current = false;
+      scrollToCurrent("smooth");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timerStatus]);
+
+  // 3) Reopening the app (foreground / tab focus) re-centers the current one.
+  useEffect(() => {
+    const onShow = () => {
+      if (document.visibilityState === "visible") scrollToCurrent("auto");
+    };
+    document.addEventListener("visibilitychange", onShow);
+    window.addEventListener("focus", onShow);
+    return () => {
+      document.removeEventListener("visibilitychange", onShow);
+      window.removeEventListener("focus", onShow);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function goSummary() {
     router.push(`/workout/${sessionId}/summary`);
@@ -197,7 +277,8 @@ export default function WorkoutPage() {
     queryClient.invalidateQueries({ queryKey: qk.activeSession });
     queryClient.invalidateQueries({ queryKey: qk.personalRecords });
     if (found && found.length > 0) {
-      if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate([120, 60, 120]);
+      if (typeof navigator !== "undefined" && "vibrate" in navigator)
+        navigator.vibrate([120, 60, 120]);
       setPrs(found);
     } else {
       await afterFinish();
@@ -235,10 +316,16 @@ export default function WorkoutPage() {
   }
 
   async function onAddExercise(exerciseId: string) {
-    const se = await api<{ id: string }>(`/api/sessions/${sessionId}/exercises`, {
-      method: "POST",
-      body: JSON.stringify({ exerciseId, order: sessionExercises.length + 1 }),
-    });
+    const se = await api<{ id: string }>(
+      `/api/sessions/${sessionId}/exercises`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          exerciseId,
+          order: sessionExercises.length + 1,
+        }),
+      },
+    );
     await api("/api/set-logs", {
       method: "POST",
       body: JSON.stringify({ sessionExerciseId: se.id, order: 1 }),
@@ -289,14 +376,18 @@ export default function WorkoutPage() {
       <main className="flex-1 p-4">
         {fetching && <p className="text-[var(--text-muted)]">Loading…</p>}
         {!fetching && sessionExercises.length === 0 && (
-          <p className="text-[var(--text-muted)]">No exercises in this session.</p>
+          <p className="text-[var(--text-muted)]">
+            No exercises in this session.
+          </p>
         )}
         <div ref={listRef}>
           {ordered.map((se, i) => {
             const prev = ordered[i - 1];
             const next = ordered[i + 1];
             const g = se.supersetGroup;
-            const inGroup = g != null && (prev?.supersetGroup === g || next?.supersetGroup === g);
+            const inGroup =
+              g != null &&
+              (prev?.supersetGroup === g || next?.supersetGroup === g);
             // skip rest when the next exercise is your superset partner (go straight to it)
             const startsRest = g == null || next?.supersetGroup !== g;
             return (
@@ -329,7 +420,10 @@ export default function WorkoutPage() {
         <PrCelebration
           prs={prs}
           nameById={Object.fromEntries(
-            sessionExercises.map((se) => [se.exerciseId, se.exercise?.name ?? "Exercise"]),
+            sessionExercises.map((se) => [
+              se.exerciseId,
+              se.exercise?.name ?? "Exercise",
+            ]),
           )}
           onClose={() => {
             setPrs(null);

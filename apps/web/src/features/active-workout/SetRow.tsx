@@ -47,12 +47,34 @@ export function SetRow({
 }) {
   const startTimer = useTimerStore((s) => s.start);
   const { unit, display, toKg } = useUnit();
-  const [weight, setWeight] = useState(data.weight ? String(display(data.weight)) : "");
+  const [weight, setWeight] = useState(
+    data.weight ? String(display(data.weight)) : "",
+  );
   const [reps, setReps] = useState(String(data.reps || ""));
   const [rpe, setRpe] = useState<number | undefined>(data.rpe);
   const [rpeOpen, setRpeOpen] = useState(false);
   // Which value's editor is open (one shared sheet serves both).
   const [editing, setEditing] = useState<"weight" | "reps" | null>(null);
+
+  // Keep the exercise we just edited in view (#18). Opening the value sheet
+  // pops the keyboard, which on mobile can drift the page; when the sheet
+  // closes we re-anchor the owning card. `block: "nearest"` is a no-op if it
+  // never moved, so this only corrects an actual drift.
+  const rowRef = useRef<HTMLDivElement>(null);
+  const wasEditing = useRef(false);
+  useEffect(() => {
+    if (editing) {
+      wasEditing.current = true;
+    } else if (wasEditing.current) {
+      wasEditing.current = false;
+      const card = rowRef.current?.closest<HTMLElement>("[data-sex]");
+      if (card) {
+        requestAnimationFrame(() =>
+          card.scrollIntoView({ behavior: "smooth", block: "nearest" }),
+        );
+      }
+    }
+  }, [editing]);
 
   // While our own write is in flight we don't overwrite local state from the
   // query — otherwise the echo (our write coming back through the subscription)
@@ -63,7 +85,8 @@ export function SetRow({
   // Resync local state when the persisted value changes, but only when no write
   // of ours is pending. Keeps the canonical-kg → display conversion at the edge.
   useEffect(() => {
-    if (!weightWriting.current) setWeight(data.weight ? String(display(data.weight)) : "");
+    if (!weightWriting.current)
+      setWeight(data.weight ? String(display(data.weight)) : "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.weight, unit]);
   useEffect(() => {
@@ -128,12 +151,18 @@ export function SetRow({
     });
     queryClient.invalidateQueries({ queryKey: qk.session(sessionId) });
     if (next && startsRest) startTimer(restSec);
-    if (next) onCompleted?.({ ...data, weight: kg, reps: repCount, completed: true });
+    if (next)
+      onCompleted?.({ ...data, weight: kg, reps: repCount, completed: true });
   }
 
   return (
-    <div className={`flex items-center gap-2 py-2 ${data.completed ? "opacity-70" : ""}`}>
-      <span className="w-6 shrink-0 font-semibold text-[var(--text-muted)]">{data.order}</span>
+    <div
+      ref={rowRef}
+      className={`flex items-center gap-2 py-2 ${data.completed ? "opacity-70" : ""}`}
+    >
+      <span className="w-6 shrink-0 font-semibold text-[var(--text-muted)]">
+        {data.order}
+      </span>
       <span className="w-16 shrink-0 text-sm text-[var(--text-muted)] truncate">
         {prevLabel ?? "—"}
       </span>
@@ -174,7 +203,11 @@ export function SetRow({
             ? "text-[var(--text-on-accent)] border-transparent text-lg"
             : "bg-[var(--surface-2)] text-[var(--text-muted)] border-[var(--border)] text-xs"
         }`}
-        style={rpe != null ? { background: rpeColor(rpe) ?? "var(--accent)" } : undefined}
+        style={
+          rpe != null
+            ? { background: rpeColor(rpe) ?? "var(--accent)" }
+            : undefined
+        }
       >
         {rpe != null ? rpe : "RPE"}
       </button>
