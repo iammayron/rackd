@@ -34,6 +34,9 @@ export function BottomSheet({
   const panelRef = useRef<HTMLDivElement>(null);
   const [dragY, setDragY] = useState(0);
   const dragStart = useRef<number | null>(null);
+  // Height the on-screen keyboard overlaps into the layout viewport, so the
+  // sheet can sit above it instead of being hidden behind it (see effect below).
+  const [kbInset, setKbInset] = useState(0);
 
   // Accessible dialog: focus the sheet on open, close on Escape.
   useEffect(() => {
@@ -57,6 +60,25 @@ export function BottomSheet({
       window.removeEventListener("keydown", onKey);
     };
   }, [open, onClose]);
+
+  // Lift the sheet above the on-screen keyboard. A position:fixed sheet stays
+  // pinned to the layout viewport, so the keyboard covers it; the VisualViewport
+  // API reports how much the keyboard shrank the visible area, which we apply as
+  // a bottom offset on the panel.
+  useEffect(() => {
+    if (!open) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setKbInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      setKbInset(0);
+    };
+  }, [open]);
 
   // Reset drag offset whenever the sheet (re)opens.
   useEffect(() => {
@@ -98,8 +120,11 @@ export function BottomSheet({
         aria-label={title}
         className="rk-squircle-corners relative w-[min(440px,100%)] max-h-[88vh] flex flex-col overflow-hidden bg-[var(--bg)] rounded-t-[22px] shadow-[var(--shadow-lg)] outline-none rk-sheet-up"
         style={{
+          marginBottom: kbInset || undefined,
           transform: dragY ? `translateY(${dragY}px)` : undefined,
-          transition: dragging ? "none" : "transform var(--dur) var(--ease-out)",
+          transition: dragging
+            ? "none"
+            : "transform var(--dur) var(--ease-out), margin-bottom var(--dur) var(--ease-out)",
         }}
       >
         <div

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { RestTimerRing, Button } from "@rackd/ui";
 import { useTimerStore } from "./timer-store";
 
@@ -22,13 +23,31 @@ export function RestTimerBar() {
   const add = useTimerStore((s) => s.add);
   const skip = useTimerStore((s) => s.skip);
 
-  if (state.status === "idle") return null;
+  const visible = state.status !== "idle";
+
+  // Lock background scroll while the rest overlay is up — it's a modal moment,
+  // so a stray scroll behind the dim scrim shouldn't move the page. Released
+  // automatically on skip or when the timer auto-dismisses after firing.
+  useEffect(() => {
+    if (!visible) return;
+    const { body } = document;
+    const prevOverflow = body.style.overflow;
+    const prevOverscroll = body.style.overscrollBehavior;
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+    return () => {
+      body.style.overflow = prevOverflow;
+      body.style.overscrollBehavior = prevOverscroll;
+    };
+  }, [visible]);
+
+  if (!visible) return null;
 
   const total = (state.durationMs || 1) / 1000;
 
   return (
     <div
-      className="fixed inset-0 z-40 flex flex-col justify-end"
+      className="fixed inset-0 z-40 flex flex-col justify-end touch-none"
       role="dialog"
       aria-modal="true"
       aria-label="Rest timer"
