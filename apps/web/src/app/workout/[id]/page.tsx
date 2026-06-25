@@ -344,6 +344,9 @@ export default function WorkoutPage() {
       });
     }
     queryClient.invalidateQueries({ queryKey: qk.routines });
+    // A "this program" save-back repoints the session at the forked routine —
+    // refetch sessions so the home hero sees today's workout as done.
+    queryClient.invalidateQueries({ queryKey: qk.sessions });
     setSaveBack(null);
     goSummary();
   }
