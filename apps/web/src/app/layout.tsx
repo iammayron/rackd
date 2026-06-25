@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { PrelineInit } from "@/components/PrelineInit";
 import { OrientationGuard } from "@/components/OrientationGuard";
+import { ForegroundReflow } from "@/components/ForegroundReflow";
 import { MiniWorkoutBar } from "@/features/active-workout/MiniWorkoutBar";
 
 // Brand face — self-hosted at build by next/font, exposed as --font-hanken
@@ -23,7 +24,11 @@ export const metadata: Metadata = {
   title: "Rackd",
   description: "Plan, run, and track your gym workouts — local-first.",
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Rackd" },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Rackd",
+  },
 };
 
 export const viewport: Viewport = {
@@ -39,7 +44,11 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en" className={hanken.variable}>
       <head>
@@ -54,6 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </Providers>
         </div>
         <OrientationGuard />
+        <ForegroundReflow />
         <PrelineInit />
       </body>
     </html>
