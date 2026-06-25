@@ -19,10 +19,20 @@ if (!connectionString) {
   process.exit(1);
 }
 
-const pool = new Pool({
-  connectionString,
-  ssl: process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false },
-});
+// Strip any `sslmode` from the URL. pg-connection-string parses it and (since
+// recent pg) treats require/verify-ca as verify-full, which OVERRIDES the
+// explicit `ssl` option below and rejects Supabase's self-signed chain
+// (SELF_SIGNED_CERT_IN_CHAIN). With sslmode removed, our `ssl` object governs:
+// TLS on, cert verification relaxed — same posture as db.ts.
+const ssl = process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false };
+let cleanedUrl = connectionString;
+if (ssl) {
+  const u = new URL(connectionString);
+  u.searchParams.delete("sslmode");
+  cleanedUrl = u.toString();
+}
+
+const pool = new Pool({ connectionString: cleanedUrl, ssl });
 
 const db = drizzle(pool);
 const migrationsFolder = fileURLToPath(new URL("../drizzle", import.meta.url));
