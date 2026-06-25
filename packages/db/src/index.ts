@@ -1,4 +1,4 @@
-import { eq, and, gte, lte, asc, desc } from "drizzle-orm";
+import { eq, and, gte, lte, asc, desc, notExists, sql } from "drizzle-orm";
 import { uuidv7 } from "uuidv7";
 import { estimate1RM } from "@rackd/core";
 import type {
@@ -1575,4 +1575,66 @@ export async function markPushSent(id: string) {
     .update(t.scheduledPushes)
     .set({ status: "sent" })
     .where(eq(t.scheduledPushes.id, id));
+}
+
+/* ---------------------------------------------------------------------------
+ * Account deletion
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Permanently delete everything an owner owns — the data half of account
+ * deletion. Runs in ONE transaction (all-or-nothing). DB cascades take care of
+ * the child trees (sessions→sessionExercises→setLogs, routines→routineExercises
+ * →routineSets, programs→programDays, pushSubscriptions→scheduledPushes), so we
+ * only delete the roots, then the standalone owner-scoped tables.
+ *
+ * Two deliberate exceptions:
+ *  - `sharedRoutines` are LEFT in place — they're self-contained public snapshots
+ *    that should survive the author leaving (caller's product choice).
+ *  - Custom `exercises` are removed only when NO routine/session still references
+ *    them. Importing a shared routine reuses the author's `exerciseId`
+ *    (see `importShared`), so another user may point at this owner's custom
+ *    exercise; deleting it would orphan their plan, so we keep referenced ones.
+ *
+ * The Supabase auth user itself is deleted separately by the caller (needs the
+ * service-role admin API, which lives in the web app, not here).
+ */
+export async function deleteAccountData(ownerId: string) {
+  await db.transaction(async (tx) => {
+    // Roots first — cascades clear their owned child rows.
+    await tx.delete(t.sessions).where(eq(t.sessions.ownerId, ownerId));
+    await tx.delete(t.routines).where(eq(t.routines.ownerId, ownerId));
+    await tx.delete(t.programs).where(eq(t.programs.ownerId, ownerId));
+    await tx
+      .delete(t.pushSubscriptions)
+      .where(eq(t.pushSubscriptions.ownerId, ownerId));
+    // Standalone owner-scoped tables (no cascade parent).
+    await tx
+      .delete(t.personalRecords)
+      .where(eq(t.personalRecords.ownerId, ownerId));
+    await tx.delete(t.bodyMetrics).where(eq(t.bodyMetrics.ownerId, ownerId));
+    await tx
+      .delete(t.bodyWeightLogs)
+      .where(eq(t.bodyWeightLogs.ownerId, ownerId));
+    await tx.delete(t.userProfile).where(eq(t.userProfile.ownerId, ownerId));
+    // Custom exercises — only those no surviving routine/session references.
+    await tx.delete(t.exercises).where(
+      and(
+        eq(t.exercises.ownerId, ownerId),
+        eq(t.exercises.isCustom, true),
+        notExists(
+          tx
+            .select({ one: sql`1` })
+            .from(t.routineExercises)
+            .where(eq(t.routineExercises.exerciseId, t.exercises.id)),
+        ),
+        notExists(
+          tx
+            .select({ one: sql`1` })
+            .from(t.sessionExercises)
+            .where(eq(t.sessionExercises.exerciseId, t.exercises.id)),
+        ),
+      ),
+    );
+  });
 }
