@@ -64,10 +64,13 @@ export function SetValueSheet({
   useEffect(() => {
     if (!open) return;
     setText(initialRef.current ? String(initialRef.current) : "");
-    const id = requestAnimationFrame(() => {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    });
+    // Focus synchronously: a deferred focus (rAF/timeout) lands outside the tap
+    // that opened the sheet, so mobile browsers focus the field but never raise
+    // the keyboard. SetRow's warm-up input keeps the keyboard up across the
+    // mount; this just hands focus to the real field. Select-all is deferred a
+    // frame so the seeded value (set above, not yet painted) is what highlights.
+    inputRef.current?.focus({ preventScroll: true });
+    const id = requestAnimationFrame(() => inputRef.current?.select());
     return () => cancelAnimationFrame(id);
   }, [open]);
 
