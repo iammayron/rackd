@@ -17,7 +17,7 @@ Braindump from on-device testing. Each item gets discussed/scoped before impleme
 - [x] 11. ~~Verify Triplit sync is actually working~~ — obsolete: Triplit removed; data now syncs via Supabase Postgres + React Query (IndexedDB offline cache + mutation queue)
 - [x] 12. Status bar when scrolling
 - [x] 13. Home icon bar
-- [x] 14. Some buttons are too close to the edge (safe-area / edge padding) — vertical safe-area insets applied; horizontal (left/right) insets now folded into every viewport-anchored overlay that bypasses the `.app-shell` padding (mini workout bar, home floating Start button, rest-timer/save-back/generic bottom sheets, PR celebration, toasts) via `max(gutter, var(--safe-left/right))` / `calc(… − var(--safe-left) − var(--safe-right))`
+- [x] 14. Some buttons are too close to the edge (safe-area / edge padding) — resolved: existing edge gutters (`px-4`/`px-5` pages + cards, 12–16px floating overlays) verified adequate on iPhone. Horizontal safe-area insets are moot — the app is iPhone-only and portrait-locked, so `safe-area-inset-left/right` are always 0. No code change needed.
 - [x] 15. Weight & reps editing — tap cell opens slide-up sheet with [−] [typeable value] [+], select-all on focus, −/＋ steps (reps 1, weight 2.5kg/5lb), commit on Done/close
 - [ ] 16. Superset button is missing — DB field + routine-editor toggle exist; in-workout menu action still stubbed ("coming soon")
 - [ ] 17. Bar weight + plate breakdown (barbell only) — per-side plate breakdown shipped (`PlatesPanel.tsx`); still missing the global bar-weight setting in Settings (bar hard-coded 20 kg / 45 lb)

@@ -51,7 +51,7 @@ export function MiniWorkoutBar() {
       aria-label={`Resume ${active.name}`}
       // Accent fill (matches the "Today's workout" card + Start buttons) so the
       // active workout reads as the loudest thing on screen, not a faint bar.
-      className="fixed left-1/2 -translate-x-1/2 z-30 bottom-[calc(64px+var(--safe-bottom))] w-[min(440px,calc(100%_-_24px_-_var(--safe-left)_-_var(--safe-right)))] flex items-center gap-3 px-4 py-3 rounded-2xl no-underline text-white bg-[var(--accent)] shadow-[var(--shadow-lg)]"
+      className="fixed left-1/2 -translate-x-1/2 z-30 bottom-[calc(64px+var(--safe-bottom))] w-[min(440px,calc(100%-24px))] flex items-center gap-3 px-4 py-3 rounded-2xl no-underline text-white bg-[var(--accent)] shadow-[var(--shadow-lg)]"
     >
       <span
         aria-hidden="true"

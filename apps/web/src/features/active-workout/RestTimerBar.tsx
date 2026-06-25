@@ -52,11 +52,8 @@ export function RestTimerBar() {
       aria-modal="true"
       aria-label="Rest timer"
     >
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 bg-black/50 rk-backdrop-in"
-      />
-      <div className="relative flex flex-col items-center gap-3 pt-5 pl-[max(20px,var(--safe-left))] pr-[max(20px,var(--safe-right))] pb-[calc(20px+env(safe-area-inset-bottom))] border-t border-[var(--border)] bg-[var(--surface)] rounded-t-[22px] shadow-[var(--shadow-lg)] rk-sheet-up">
+      <div aria-hidden="true" className="absolute inset-0 bg-black/50 rk-backdrop-in" />
+      <div className="relative flex flex-col items-center gap-3 px-5 pt-5 pb-[calc(20px+env(safe-area-inset-bottom))] border-t border-[var(--border)] bg-[var(--surface)] rounded-t-[22px] shadow-[var(--shadow-lg)] rk-sheet-up">
         <RestTimerRing
           remaining={Math.ceil(remaining / 1000)}
           total={total}
@@ -65,22 +62,10 @@ export function RestTimerBar() {
           strokeWidth={11}
         />
         <div className="flex gap-2 w-full">
-          <Button
-            variant="secondary"
-            size="sm"
-            style={{ flex: 1 }}
-            onClick={() => add(-15)}
-            disabled={fired}
-          >
+          <Button variant="secondary" size="sm" style={{ flex: 1 }} onClick={() => add(-15)} disabled={fired}>
             −15s
           </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            style={{ flex: 1 }}
-            onClick={() => add(15)}
-            disabled={fired}
-          >
+          <Button variant="secondary" size="sm" style={{ flex: 1 }} onClick={() => add(15)} disabled={fired}>
             +15s
           </Button>
         </div>

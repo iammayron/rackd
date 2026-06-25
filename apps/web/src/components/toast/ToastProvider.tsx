@@ -137,7 +137,7 @@ function ToastViewport({
       style={{
         paddingTop: "calc(12px + env(safe-area-inset-top))",
         paddingRight: "calc(12px + env(safe-area-inset-right))",
-        paddingLeft: "max(12px, env(safe-area-inset-left))",
+        paddingLeft: "12px",
       }}
     >
       {toasts.map((t) => (

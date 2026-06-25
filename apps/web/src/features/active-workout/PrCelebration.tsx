@@ -24,7 +24,7 @@ export function PrCelebration({
   const { unit, display } = useUnit();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center py-6 pl-[max(24px,var(--safe-left))] pr-[max(24px,var(--safe-right))] bg-black/60">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60">
       <div className="flex max-h-[85dvh] w-full max-w-sm flex-col bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 text-center">
         <div className="shrink-0">
           <div className="text-5xl mb-2">🏆</div>

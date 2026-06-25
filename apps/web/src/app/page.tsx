@@ -538,7 +538,7 @@ export default function Home() {
         )}
 
         {selected.length > 0 && (
-          <div className="fixed left-1/2 -translate-x-1/2 bottom-[calc(84px+var(--safe-bottom))] w-[min(440px,calc(100%_-_32px_-_var(--safe-left)_-_var(--safe-right)))] z-30">
+          <div className="fixed left-1/2 -translate-x-1/2 bottom-[calc(84px+var(--safe-bottom))] w-[min(440px,calc(100%-32px))] z-30">
             <Button
               variant="primary"
               size="lg"

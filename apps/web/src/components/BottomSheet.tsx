@@ -69,8 +69,7 @@ export function BottomSheet({
     if (!open) return;
     const vv = window.visualViewport;
     if (!vv) return;
-    const update = () =>
-      setKbInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    const update = () => setKbInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
     update();
     vv.addEventListener("resize", update);
     vv.addEventListener("scroll", update);
@@ -137,18 +136,16 @@ export function BottomSheet({
         >
           <span className="mx-auto block w-[38px] h-[5px] rounded-full bg-[var(--border)]" />
           {(title || subtitle) && (
-            <div className="flex items-baseline justify-between gap-3 pt-2 pl-[max(20px,var(--safe-left))] pr-[max(20px,var(--safe-right))]">
+            <div className="flex items-baseline justify-between gap-3 px-5 pt-2">
               {title && <h2 className="text-[17px] font-extrabold">{title}</h2>}
               {subtitle && (
-                <span className="text-[13px] text-[var(--text-muted)]">
-                  {subtitle}
-                </span>
+                <span className="text-[13px] text-[var(--text-muted)]">{subtitle}</span>
               )}
             </div>
           )}
         </div>
 
-        <div className="overflow-y-auto pt-2 pl-[max(16px,var(--safe-left))] pr-[max(16px,var(--safe-right))] pb-[calc(16px+env(safe-area-inset-bottom))]">
+        <div className="overflow-y-auto px-4 pt-2 pb-[calc(16px+env(safe-area-inset-bottom))]">
           {children}
         </div>
       </div>
