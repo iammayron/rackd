@@ -1,10 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { logBodyWeight } from "@rackd/db";
-import { getClient } from "@/lib/triplit";
-import { getCurrentUserId } from "@/lib/auth";
-import { useQuery } from "@/lib/use-query";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { queryClient, qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
 
 interface WeightLogRow {
@@ -55,11 +54,14 @@ function Sparkline({ values }: { values: number[] }) {
 export function WeightProgressCard() {
   const { unit, display, toKg, fmt } = useUnit();
 
-  const { results: logs } = useQuery<WeightLogRow>((c) =>
-    c.query("bodyWeightLogs").Order("loggedAt", "ASC"),
-  );
-  const { results: profiles } = useQuery<ProfileRow>((c) => c.query("userProfile"));
-  const profile = profiles[0];
+  const { data: logs = [] } = useQuery({
+    queryKey: qk.bodyWeight,
+    queryFn: () => api<WeightLogRow[]>("/api/body-weight"),
+  });
+  const { data: profile } = useQuery({
+    queryKey: qk.profile,
+    queryFn: () => api<ProfileRow>("/api/profile"),
+  });
 
   const latestLog = logs.length > 0 ? logs[logs.length - 1] : undefined;
   const currentKg = profile?.currentWeightKg ?? latestLog?.weightKg;
@@ -79,11 +81,12 @@ export function WeightProgressCard() {
     if (!Number.isFinite(n) || n <= 0 || saving) return;
     setSaving(true);
     try {
-      await logBodyWeight(getClient(), {
-        ownerId: getCurrentUserId(),
-        weightKg: toKg(n),
-        loggedAt: Date.now(),
+      await api("/api/body-weight", {
+        method: "POST",
+        body: JSON.stringify({ weightKg: toKg(n), loggedAt: Date.now() }),
       });
+      queryClient.invalidateQueries({ queryKey: qk.bodyWeight });
+      queryClient.invalidateQueries({ queryKey: qk.profile });
       setValue("");
       setOpen(false);
     } finally {

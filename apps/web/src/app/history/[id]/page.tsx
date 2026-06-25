@@ -2,15 +2,11 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { estimate1RM } from "@rackd/core";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
-import { useQuery } from "@/lib/use-query";
 import { BackButton } from "@/components/BackButton";
-
-interface SessionExerciseRow {
-  id: string;
-  order: number;
-  exercise?: { name: string } | null;
-}
 
 interface SetRow {
   id: string;
@@ -22,13 +18,23 @@ interface SetRow {
   isPr: boolean;
 }
 
+interface SessionExerciseRow {
+  id: string;
+  order: number;
+  exercise?: { name: string } | null;
+  sets: SetRow[];
+}
+
+interface SessionDetail {
+  id: string;
+  name: string;
+  startedAt: number;
+  exercises: SessionExerciseRow[];
+}
+
 function ExerciseSummary({ se }: { se: SessionExerciseRow }) {
-  const { results: sets } = useQuery<SetRow>(
-    (c) =>
-      c.query("setLogs").Where("sessionExerciseId", "=", se.id).Order("order", "ASC"),
-    [se.id],
-  );
   const { unit, display } = useUnit();
+  const sets = [...se.sets].sort((a, b) => a.order - b.order);
   const done = sets.filter((s) => s.completed);
   const best = done.reduce((m, s) => Math.max(m, estimate1RM(s.weight, s.reps)), 0);
 
@@ -61,33 +67,27 @@ export default function HistoryDetailPage() {
   const router = useRouter();
   const sessionId = params.id;
 
-  const { results: session } = useQuery<{ id: string; name: string; startedAt: number }>(
-    (c) => c.query("sessions").Where("id", "=", sessionId),
-    [sessionId],
-  );
-  const { results: exercises } = useQuery<SessionExerciseRow>(
-    (c) =>
-      c
-        .query("sessionExercises")
-        .Where("sessionId", "=", sessionId)
-        .Include("exercise")
-        .Order("order", "ASC"),
-    [sessionId],
-  );
+  const { data: session } = useQuery({
+    queryKey: qk.session(sessionId),
+    queryFn: () => api<SessionDetail>(`/api/sessions/${sessionId}`),
+    enabled: Boolean(sessionId),
+  });
 
-  const s = session[0];
+  const exercises = (session?.exercises ?? [])
+    .slice()
+    .sort((a, b) => a.order - b.order);
 
   return (
     <div className="flex flex-col min-h-[100dvh]">
       <header className="sticky top-[var(--safe-top)] z-10 flex items-center gap-3 py-3 px-4 bg-[var(--bg)] border-b border-[var(--border)]">
         <BackButton onClick={() => router.push("/history")} />
-        <h1 className="text-lg font-bold">{s?.name ?? "Workout"}</h1>
+        <h1 className="text-lg font-bold">{session?.name ?? "Workout"}</h1>
       </header>
 
       <main className="flex-1 p-4">
-        {s && (
+        {session && (
           <p className="text-[var(--text-muted)] mb-4">
-            {new Date(s.startedAt).toLocaleString()}
+            {new Date(session.startedAt).toLocaleString()}
           </p>
         )}
         {exercises.map((se) => (

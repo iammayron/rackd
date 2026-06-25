@@ -17,7 +17,7 @@ const nextConfig = {
   // Self-contained server bundle for Docker.
   output: "standalone",
   // Transpile workspace packages (they ship TS source, not built dist).
-  transpilePackages: ["@myfit/core", "@myfit/db", "@myfit/ui"],
+  transpilePackages: ["@rackd/core", "@rackd/db", "@rackd/ui"],
   // Monorepo: trace files from the repo root so build traces + standalone resolve.
   outputFileTracingRoot: join(__dirname, "../../"),
 };

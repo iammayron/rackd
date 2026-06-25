@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { estimate1RM } from "@rackd/core";
-import { updateSet, deleteSet } from "@rackd/db";
-import { getClient } from "@/lib/triplit";
+import { api } from "@/lib/api";
+import { queryClient, qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
 import { useTimerStore } from "./timer-store";
 import { RpeSheet, rpeColor } from "./RpeSheet";
@@ -29,12 +29,15 @@ const CELL =
  */
 export function SetRow({
   data,
+  sessionId,
   restSec,
   prevLabel,
   startsRest = true,
   onCompleted,
 }: {
   data: SetRowData;
+  /** Owning session — used to invalidate its tree after a write. */
+  sessionId: string;
   restSec: number;
   prevLabel?: string;
   /** false for a supersetted exercise that isn't last in its group — go straight to the partner. */
@@ -75,7 +78,11 @@ export function SetRow({
     setWeight(value ? String(value) : "");
     weightWriting.current = true;
     try {
-      await updateSet(getClient(), data.id, { weight: value ? toKg(value) : 0 });
+      await api(`/api/set-logs/${data.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ weight: value ? toKg(value) : 0 }),
+      });
+      queryClient.invalidateQueries({ queryKey: qk.session(sessionId) });
     } finally {
       weightWriting.current = false;
     }
@@ -84,7 +91,11 @@ export function SetRow({
     setReps(value ? String(value) : "");
     repsWriting.current = true;
     try {
-      await updateSet(getClient(), data.id, { reps: value });
+      await api(`/api/set-logs/${data.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ reps: value }),
+      });
+      queryClient.invalidateQueries({ queryKey: qk.session(sessionId) });
     } finally {
       repsWriting.current = false;
     }
@@ -98,19 +109,24 @@ export function SetRow({
     const next = rpe === v ? undefined : v;
     setRpe(next);
     setRpeOpen(false);
-    await updateSet(getClient(), data.id, { rpe: next });
+    // Send explicit null to clear — `undefined` would be dropped by JSON.stringify
+    // and the route keys off `"rpe" in body` to distinguish clear from untouched.
+    await api(`/api/set-logs/${data.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ rpe: next ?? null }),
+    });
+    queryClient.invalidateQueries({ queryKey: qk.session(sessionId) });
   }
 
   async function toggle() {
-    const client = getClient();
     const next = !data.completed;
     const kg = weight ? toKg(Number(weight)) : 0;
     const repCount = Number(reps) || 0;
-    await updateSet(client, data.id, {
-      weight: kg,
-      reps: repCount,
-      completed: next,
+    await api(`/api/set-logs/${data.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ weight: kg, reps: repCount, completed: next }),
     });
+    queryClient.invalidateQueries({ queryKey: qk.session(sessionId) });
     if (next && startsRest) startTimer(restSec);
     if (next) onCompleted?.({ ...data, weight: kg, reps: repCount, completed: true });
   }
@@ -210,7 +226,10 @@ export function SetRow({
       </button>
       <button
         type="button"
-        onClick={() => deleteSet(getClient(), data.id)}
+        onClick={async () => {
+          await api(`/api/set-logs/${data.id}`, { method: "DELETE" });
+          queryClient.invalidateQueries({ queryKey: qk.session(sessionId) });
+        }}
         aria-label="Delete set"
         className="shrink-0 min-h-11 w-7 bg-transparent border-none text-lg text-[var(--text-muted)]"
       >

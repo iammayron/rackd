@@ -35,7 +35,7 @@ Home box (Docker Compose + Tailscale)
 Fly.io
 ├── web         — Fly Machine (shared-cpu-1x, 512MB–1GB)
 │                 Next.js 15 standalone, auto-stop when idle
-├── postgres    — Fly Managed Postgres (Basic plan, 1GB RAM)
+├── (external)  — Supabase Cloud Postgres (free tier)
 │                 All app data: exercises, routines, sessions, etc.
 ├── tigris      — S3-compatible object storage (profile photos)
 └── (external)  — Supabase Cloud free tier (auth only)
@@ -329,13 +329,10 @@ Note: `NEXT_PUBLIC_*` vars need to be available at build time. Set them as build
 | Resource | Configuration | Cost |
 |----------|---------------|------|
 | Web Machine | shared-cpu-1x, 512MB, auto-stop | ~$1–3 |
-| Managed Postgres | Basic (1 shared CPU, 1GB) + 5GB storage | ~$39 |
+| Supabase Cloud | Free tier (auth + Postgres, 500 MB) | $0 |
 | Tigris | Free tier (5GB, 100k reads) | $0 |
-| Supabase Cloud | Free tier (auth only) | $0 |
 | SSL | First 10 certs free | $0 |
-| **Total** | | **~$40–42/mo** |
-
-**Budget option:** Use unmanaged Fly Postgres (self-run, ~$4/mo for a dev single-node) instead of managed. Brings total to ~$5–7/mo but you own Postgres operations (backups, upgrades, failover).
+| **Total** | | **~$1–3/mo** |
 
 **Comparison to current setup:** Home box electricity + internet is "free" but requires hardware, Tailscale networking, and manual maintenance. Fly.io is fully managed with auto-deploy.
 
@@ -346,7 +343,7 @@ Note: `NEXT_PUBLIC_*` vars need to be available at build time. Set them as build
 ### Phase 1: Infrastructure Setup (no code changes)
 1. Create Supabase Cloud project, configure auth settings (redirect URLs, providers)
 2. `fly launch` — create the Fly app
-3. `fly postgres create` — provision Managed Postgres
+3. Supabase Cloud Postgres — already provisioned with the auth project
 4. `fly storage create` — provision Tigris bucket, set public read policy
 5. Set all secrets via `fly secrets set`
 6. Set up GitHub Actions for auto-deploy
@@ -387,7 +384,7 @@ Note: `NEXT_PUBLIC_*` vars need to be available at build time. Set them as build
 
 ## 12. Risks & Open Questions
 
-- **Managed Postgres cost ($39/mo)** is the biggest line item. For a personal app, unmanaged Postgres (~$4/mo) may be acceptable if you're comfortable with manual backups. Alternatively, explore Neon (serverless Postgres with a generous free tier) as the Fly Postgres provider — Fly supports Neon as a database option.
+- **Supabase free tier limits:** 500 MB database, 1 GB storage, 50k MAU. Sufficient for a personal gym tracker. If you outgrow it, Supabase Pro is $25/mo.
 - **Offline mutation conflicts:** With Triplit, conflict resolution was built in. The simple offline queue relies on last-write-wins. For a single-user app this is fine, but the flush logic should handle 409s gracefully.
 - **Build-time env vars:** `NEXT_PUBLIC_*` must be available at Docker build time. The current Dockerfile handles this via build args — verify this works with Fly's remote builder.
 - **Cold starts:** With auto-stop enabled, the first request after idle wakes the machine. Next.js standalone cold start is typically 1–3 seconds. Acceptable for a personal app.

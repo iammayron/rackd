@@ -1,309 +1,252 @@
-import { Schema as S } from "@triplit/client";
+import {
+  pgTable,
+  text,
+  integer,
+  doublePrecision,
+  boolean,
+  bigint,
+} from "drizzle-orm/pg-core";
 
 /**
- * Triplit schema — the local-first + sync source of truth for persisted data.
- * Domain TYPES live in @rackd/core; this maps them to storage/sync.
- * Media (clipUrl/thumbnailUrl) are URLs only — binaries live on the CDN.
+ * Drizzle/Postgres schema — the persisted source of truth (replaces Triplit).
+ * Domain TYPES live in @rackd/core; this maps them to storage.
  *
- * Authorization: the "user" role binds `userId` from the auth token's `sub`
- * claim (Supabase user id). Every collection carries `ownerId` and is scoped to
- * the owner. Exercises are an exception — the shared library is world-readable
- * (read has no filter); only the owner can write their custom exercises, and the
- * library itself is seeded server-side with a service token.
+ * Conventions:
+ * - `id` is a TEXT primary key, app-generated (uuidv7) — never DB-generated.
+ * - `ownerId` (= Supabase `auth.users.id`) scopes every owner-owned row; API
+ *   routes add `WHERE owner_id = …`. The exercise + sharedRoutines libraries are
+ *   the public exceptions (world-readable, owner-writable).
+ * - Epoch-millisecond timestamps are BIGINT (they overflow int4); weights/loads
+ *   are DOUBLE PRECISION (2.5 kg increments); counts/orders are INTEGER.
+ * - Parent→child deletes CASCADE at the DB level so API routes don't re-walk
+ *   the tree by hand. `routineId` back-references SET NULL (history/plan-day
+ *   slots survive their routine being deleted).
+ * - JS property names stay camelCase (DB columns snake_case) so row shapes match
+ *   the @rackd/core domain types the UI already consumes.
  */
-export const roles = {
-  user: {
-    match: { sub: "$userId" },
-  },
-};
 
-// Triplit's permission generics are finicky about tuple/readonly filters;
-// the runtime shape is what matters and Triplit validates it. Cast at use.
-const ownerOnly = {
-  user: {
-    read: { filter: [["ownerId", "=", "$role.userId"]] },
-    insert: { filter: [["ownerId", "=", "$role.userId"]] },
-    update: { filter: [["ownerId", "=", "$role.userId"]] },
-    delete: { filter: [["ownerId", "=", "$role.userId"]] },
-  },
-} as never;
-
-export const schema = S.Collections({
-  exercises: {
-    schema: S.Schema({
-      id: S.Id(),
-      name: S.String(),
-      primaryMuscle: S.String(),
-      secondaryMuscles: S.Set(S.String()),
-      equipment: S.String(),
-      category: S.String(),
-      instructions: S.String({ default: "" }),
-      thumbnailUrl: S.Optional(S.String()),
-      clipUrl: S.Optional(S.String()),
-      clipUrlWebm: S.Optional(S.String()),
-      mediaSource: S.String({ default: "library" }),
-      isCustom: S.Boolean({ default: false }),
-      ownerId: S.Optional(S.String()),
-    }),
-    permissions: {
-      user: {
-        // [id isDefined] is always-true → allow-all (shared library read + seed).
-        read: { filter: [["id", "isDefined", true]] },
-        insert: { filter: [["id", "isDefined", true]] },
-        update: { filter: [["ownerId", "=", "$role.userId"]] }, // library has no owner → immutable
-        delete: { filter: [["ownerId", "=", "$role.userId"]] },
-      },
-    } as never,
-  },
-
-  routines: {
-    schema: S.Schema({
-      id: S.Id(),
-      ownerId: S.String(),
-      name: S.String(),
-      folderId: S.Optional(S.String()),
-      notes: S.Optional(S.String()),
-      order: S.Number({ default: 0 }),
-      // Free-text focus/split tag (Push, Pull, Legs, Upper, Lower…). Optional;
-      // absent = no tag (the Plans page falls back to a name-derived label).
-      category: S.Optional(S.String()),
-      // Weekdays this routine is scheduled for (0=Sun … 6=Sat). Drives the
-      // dashboard's "today's workout". Optional set; absent = unscheduled.
-      scheduledDays: S.Optional(S.Set(S.Number())),
-    }),
-    permissions: ownerOnly,
-  },
-
-  routineExercises: {
-    schema: S.Schema({
-      id: S.Id(),
-      ownerId: S.String({ default: "" }),
-      routineId: S.String(),
-      exerciseId: S.String(),
-      order: S.Number(),
-      supersetGroup: S.Optional(S.Number()),
-      restSec: S.Number({ default: 120 }),
-      notes: S.Optional(S.String()),
-    }),
-    relationships: {
-      exercise: S.RelationById("exercises", "$exerciseId"),
-    },
-    permissions: ownerOnly,
-  },
-
-  routineSets: {
-    schema: S.Schema({
-      id: S.Id(),
-      ownerId: S.String({ default: "" }),
-      routineExerciseId: S.String(),
-      order: S.Number(),
-      type: S.String({ default: "normal" }),
-      targetReps: S.Optional(S.Number()),
-      targetWeight: S.Optional(S.Number()),
-      targetRpe: S.Optional(S.Number()),
-      tempo: S.Optional(S.String()),
-    }),
-    permissions: ownerOnly,
-  },
-
-  sessions: {
-    schema: S.Schema({
-      id: S.Id(),
-      ownerId: S.String(),
-      routineId: S.Optional(S.String()),
-      name: S.String(),
-      startedAt: S.Number(),
-      endedAt: S.Optional(S.Number()),
-      notes: S.Optional(S.String()),
-      bodyweight: S.Optional(S.Number()),
-    }),
-    permissions: ownerOnly,
-  },
-
-  sessionExercises: {
-    schema: S.Schema({
-      id: S.Id(),
-      ownerId: S.String({ default: "" }),
-      sessionId: S.String(),
-      exerciseId: S.String(),
-      order: S.Number(),
-      supersetGroup: S.Optional(S.Number()),
-      restSec: S.Number({ default: 120 }),
-    }),
-    relationships: {
-      exercise: S.RelationById("exercises", "$exerciseId"),
-    },
-    permissions: ownerOnly,
-  },
-
-  setLogs: {
-    schema: S.Schema({
-      id: S.Id(),
-      ownerId: S.String({ default: "" }),
-      sessionExerciseId: S.String(),
-      order: S.Number(),
-      type: S.String({ default: "normal" }),
-      weight: S.Number({ default: 0 }),
-      reps: S.Number({ default: 0 }),
-      rpe: S.Optional(S.Number()),
-      completed: S.Boolean({ default: false }),
-      restTakenSec: S.Optional(S.Number()),
-      isPr: S.Boolean({ default: false }),
-    }),
-    permissions: ownerOnly,
-  },
-
-  personalRecords: {
-    schema: S.Schema({
-      id: S.Id(),
-      ownerId: S.String(),
-      exerciseId: S.String(),
-      type: S.String(),
-      value: S.Number(),
-      sessionId: S.String(),
-      achievedAt: S.Number(),
-    }),
-    permissions: ownerOnly,
-  },
-
-  bodyMetrics: {
-    schema: S.Schema({
-      id: S.Id(),
-      ownerId: S.String(),
-      date: S.Number(),
-      weightKg: S.Number(),
-      note: S.Optional(S.String()),
-    }),
-    permissions: ownerOnly,
-  },
-
-  // Timestamped weight history for the progress chart. Weight canonical (kg);
-  // loggedAt is epoch ms. Many rows per user, owner-scoped.
-  bodyWeightLogs: {
-    schema: S.Schema({
-      id: S.Id(),
-      ownerId: S.String(),
-      weightKg: S.Number(),
-      loggedAt: S.Number(),
-    }),
-    permissions: ownerOnly,
-  },
-
-  programs: {
-    schema: S.Schema({
-      id: S.Id(),
-      ownerId: S.String(),
-      name: S.String(),
-      notes: S.Optional(S.String()),
-      order: S.Number({ default: 0 }),
-      // Length of one training block, in weeks (e.g. a 4-week mesocycle).
-      // Optional; absent/0 = unset (the Plans page omits the "N-week block" tag).
-      blockWeeks: S.Optional(S.Number()),
-      // Scheduling (all optional — absent = unscheduled program). See @rackd/core
-      // Program docs: rotation cycles ordered days via rotationCursor; weekly pins
-      // each day to a weekday. `active` = the program driving "today's workout".
-      active: S.Optional(S.Boolean()),
-      scheduleMode: S.Optional(S.String()),
-      rotationCursor: S.Optional(S.Number()),
-    }),
-    permissions: ownerOnly,
-  },
-
-  // Public catalog of shared routines (a self-contained snapshot for discovery).
-  // Read-open to all authed users; only the author can edit/remove their own.
-  sharedRoutines: {
-    schema: S.Schema({
-      id: S.Id(),
-      ownerId: S.String(),
-      authorName: S.String({ default: "Someone" }),
-      name: S.String(),
-      exercisesJson: S.String(),
-      exerciseCount: S.Number({ default: 0 }),
-      createdAt: S.Number(),
-    }),
-    permissions: {
-      user: {
-        read: { filter: [["id", "isDefined", true]] },
-        insert: { filter: [["ownerId", "=", "$role.userId"]] },
-        update: { filter: [["ownerId", "=", "$role.userId"]] },
-        delete: { filter: [["ownerId", "=", "$role.userId"]] },
-      },
-    } as never,
-  },
-
-  // Profile + settings, one row per user. Weights canonical (kg), height in cm.
-  // photoUrl is a URL only — no binary in the synced DB (media rule).
-  userProfile: {
-    schema: S.Schema({
-      id: S.Id(),
-      ownerId: S.String(),
-      displayName: S.Optional(S.String()),
-      photoUrl: S.Optional(S.String()),
-      heightCm: S.Optional(S.Number()),
-      currentWeightKg: S.Optional(S.Number()),
-      goalWeightKg: S.Optional(S.Number()),
-      trainingGoal: S.Optional(S.String()),
-      unitPreference: S.String({ default: "metric" }),
-      defaultRestSec: S.Number({ default: 120 }),
-      defaultSets: S.Number({ default: 3 }),
-      defaultReps: S.Number({ default: 10 }),
-    }),
-    permissions: ownerOnly,
-  },
-
-  programDays: {
-    schema: S.Schema({
-      id: S.Id(),
-      ownerId: S.String({ default: "" }),
-      programId: S.String(),
-      order: S.Number(),
-      name: S.String({ default: "Day" }),
-      routineId: S.Optional(S.String()),
-      // Weekly mode: weekday this day is pinned to (0=Sun … 6=Sat).
-      weekday: S.Optional(S.Number()),
-    }),
-    relationships: {
-      routine: S.RelationById("routines", "$routineId"),
-    },
-    permissions: ownerOnly,
-  },
-
-  // One Web Push subscription per installed PWA/device. Mirrors @rackd/core
-  // PushSubscriptionRecord. endpoint+p256dh+auth are what the push sender needs;
-  // owner-scoped so a user only ever sees/edits their own devices.
-  pushSubscriptions: {
-    schema: S.Schema({
-      id: S.Id(),
-      ownerId: S.String(),
-      endpoint: S.String(),
-      p256dh: S.String(),
-      auth: S.String(),
-      userAgent: S.Optional(S.String()),
-      createdAt: S.Number(),
-    }),
-    permissions: ownerOnly,
-  },
-
-  // Queue of "send a push at fireAt" requests — the transport between the PWA
-  // and the server-side push sender (apps/push). Mirrors @rackd/core
-  // ScheduledPush. The sender reads `pending` rows with a service token (bypasses
-  // rules); the owning user creates/reschedules/cancels their own.
-  scheduledPushes: {
-    schema: S.Schema({
-      id: S.Id(),
-      ownerId: S.String(),
-      subscriptionId: S.String(),
-      fireAt: S.Number(),
-      title: S.String({ default: "Rest over" }),
-      body: S.String({ default: "Time for your next set." }),
-      status: S.String({ default: "pending" }),
-      createdAt: S.Number(),
-    }),
-    relationships: {
-      subscription: S.RelationById("pushSubscriptions", "$subscriptionId"),
-    },
-    permissions: ownerOnly,
-  },
+export const exercises = pgTable("exercises", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  primaryMuscle: text("primary_muscle").notNull(),
+  secondaryMuscles: text("secondary_muscles").array().notNull().default([]),
+  equipment: text("equipment").notNull(),
+  category: text("category").notNull(),
+  instructions: text("instructions").notNull().default(""),
+  thumbnailUrl: text("thumbnail_url"),
+  clipUrl: text("clip_url"),
+  clipUrlWebm: text("clip_url_webm"),
+  mediaSource: text("media_source").notNull().default("library"),
+  isCustom: boolean("is_custom").notNull().default(false),
+  ownerId: text("owner_id"),
 });
 
-export type Schema = typeof schema;
+export const routines = pgTable("routines", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  name: text("name").notNull(),
+  folderId: text("folder_id"),
+  notes: text("notes"),
+  order: integer("order").notNull().default(0),
+  category: text("category"),
+  // Weekdays (0=Sun … 6=Sat) this routine is scheduled for; null = unscheduled.
+  scheduledDays: integer("scheduled_days").array(),
+});
+
+export const routineExercises = pgTable("routine_exercises", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull().default(""),
+  routineId: text("routine_id")
+    .notNull()
+    .references(() => routines.id, { onDelete: "cascade" }),
+  exerciseId: text("exercise_id")
+    .notNull()
+    .references(() => exercises.id),
+  order: integer("order").notNull(),
+  supersetGroup: integer("superset_group"),
+  restSec: integer("rest_sec").notNull().default(120),
+  notes: text("notes"),
+});
+
+export const routineSets = pgTable("routine_sets", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull().default(""),
+  routineExerciseId: text("routine_exercise_id")
+    .notNull()
+    .references(() => routineExercises.id, { onDelete: "cascade" }),
+  order: integer("order").notNull(),
+  type: text("type").notNull().default("normal"),
+  targetReps: integer("target_reps"),
+  targetWeight: doublePrecision("target_weight"),
+  targetRpe: doublePrecision("target_rpe"),
+  tempo: text("tempo"),
+});
+
+export const sessions = pgTable("sessions", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  // Source routine (if any). SET NULL on routine delete — the session is history
+  // and must outlive its plan.
+  routineId: text("routine_id").references(() => routines.id, {
+    onDelete: "set null",
+  }),
+  name: text("name").notNull(),
+  startedAt: bigint("started_at", { mode: "number" }).notNull(),
+  endedAt: bigint("ended_at", { mode: "number" }),
+  notes: text("notes"),
+  bodyweight: doublePrecision("bodyweight"),
+});
+
+export const sessionExercises = pgTable("session_exercises", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull().default(""),
+  sessionId: text("session_id")
+    .notNull()
+    .references(() => sessions.id, { onDelete: "cascade" }),
+  exerciseId: text("exercise_id")
+    .notNull()
+    .references(() => exercises.id),
+  order: integer("order").notNull(),
+  supersetGroup: integer("superset_group"),
+  restSec: integer("rest_sec").notNull().default(120),
+});
+
+export const setLogs = pgTable("set_logs", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull().default(""),
+  sessionExerciseId: text("session_exercise_id")
+    .notNull()
+    .references(() => sessionExercises.id, { onDelete: "cascade" }),
+  order: integer("order").notNull(),
+  type: text("type").notNull().default("normal"),
+  weight: doublePrecision("weight").notNull().default(0),
+  reps: integer("reps").notNull().default(0),
+  rpe: doublePrecision("rpe"),
+  completed: boolean("completed").notNull().default(false),
+  restTakenSec: integer("rest_taken_sec"),
+  isPr: boolean("is_pr").notNull().default(false),
+});
+
+export const personalRecords = pgTable("personal_records", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  exerciseId: text("exercise_id")
+    .notNull()
+    .references(() => exercises.id),
+  type: text("type").notNull(),
+  value: doublePrecision("value").notNull(),
+  sessionId: text("session_id").notNull(),
+  achievedAt: bigint("achieved_at", { mode: "number" }).notNull(),
+});
+
+export const bodyMetrics = pgTable("body_metrics", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  date: bigint("date", { mode: "number" }).notNull(),
+  weightKg: doublePrecision("weight_kg").notNull(),
+  note: text("note"),
+});
+
+export const bodyWeightLogs = pgTable("body_weight_logs", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  weightKg: doublePrecision("weight_kg").notNull(),
+  loggedAt: bigint("logged_at", { mode: "number" }).notNull(),
+});
+
+export const programs = pgTable("programs", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  name: text("name").notNull(),
+  notes: text("notes"),
+  order: integer("order").notNull().default(0),
+  blockWeeks: integer("block_weeks"),
+  active: boolean("active"),
+  scheduleMode: text("schedule_mode"),
+  rotationCursor: integer("rotation_cursor"),
+});
+
+export const programDays = pgTable("program_days", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull().default(""),
+  programId: text("program_id")
+    .notNull()
+    .references(() => programs.id, { onDelete: "cascade" }),
+  order: integer("order").notNull(),
+  name: text("name").notNull().default("Day"),
+  // SET NULL on routine delete → the day becomes a Rest slot, structure intact.
+  routineId: text("routine_id").references(() => routines.id, {
+    onDelete: "set null",
+  }),
+  weekday: integer("weekday"),
+});
+
+export const sharedRoutines = pgTable("shared_routines", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  authorName: text("author_name").notNull().default("Someone"),
+  name: text("name").notNull(),
+  // Self-contained snapshot, stored as a JSON string (app stringifies/parses) so
+  // the row shape stays a string — not Postgres jsonb.
+  exercisesJson: text("exercises_json").notNull(),
+  exerciseCount: integer("exercise_count").notNull().default(0),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+export const userProfile = pgTable("user_profiles", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  displayName: text("display_name"),
+  photoUrl: text("photo_url"),
+  heightCm: doublePrecision("height_cm"),
+  currentWeightKg: doublePrecision("current_weight_kg"),
+  goalWeightKg: doublePrecision("goal_weight_kg"),
+  trainingGoal: text("training_goal"),
+  unitPreference: text("unit_preference").notNull().default("metric"),
+  defaultRestSec: integer("default_rest_sec").notNull().default(120),
+  defaultSets: integer("default_sets").notNull().default(3),
+  defaultReps: integer("default_reps").notNull().default(10),
+});
+
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  endpoint: text("endpoint").notNull(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  userAgent: text("user_agent"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+export const scheduledPushes = pgTable("scheduled_pushes", {
+  id: text("id").primaryKey(),
+  ownerId: text("owner_id").notNull(),
+  subscriptionId: text("subscription_id")
+    .notNull()
+    .references(() => pushSubscriptions.id, { onDelete: "cascade" }),
+  fireAt: bigint("fire_at", { mode: "number" }).notNull(),
+  title: text("title").notNull().default("Rest over"),
+  body: text("body").notNull().default("Time for your next set."),
+  status: text("status").notNull().default("pending"),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+/** All tables, for `drizzle(pool, { schema })` relational queries. */
+export const schema = {
+  exercises,
+  routines,
+  routineExercises,
+  routineSets,
+  sessions,
+  sessionExercises,
+  setLogs,
+  personalRecords,
+  bodyMetrics,
+  bodyWeightLogs,
+  programs,
+  programDays,
+  sharedRoutines,
+  userProfile,
+  pushSubscriptions,
+  scheduledPushes,
+};

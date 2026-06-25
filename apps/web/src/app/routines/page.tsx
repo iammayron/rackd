@@ -3,11 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createRoutine, startSessionFromRoutine, deleteRoutine } from "@rackd/db";
+import { useQuery } from "@tanstack/react-query";
 import { Card, Button } from "@rackd/ui";
-import { getClient } from "@/lib/triplit";
-import { getCurrentUserId } from "@/lib/auth";
-import { useQuery } from "@/lib/use-query";
+import { api } from "@/lib/api";
+import { queryClient, qk } from "@/lib/query";
 import { Nav } from "@/components/Nav";
 
 interface RoutineRow {
@@ -18,29 +17,34 @@ interface RoutineRow {
 
 export default function RoutinesPage() {
   const router = useRouter();
-  const { results: routines } = useQuery<RoutineRow>((c) =>
-    c.query("routines").Order("order", "ASC"),
-  );
+  const { data: routines = [] } = useQuery({
+    queryKey: qk.routines,
+    queryFn: () => api<RoutineRow[]>("/api/routines"),
+  });
   const [busy, setBusy] = useState(false);
 
   async function create() {
-    const r = await createRoutine(getClient(), {
-      ownerId: getCurrentUserId(),
-      name: "New Routine",
-      order: routines.length,
+    const r = await api<RoutineRow>("/api/routines", {
+      method: "POST",
+      body: JSON.stringify({ name: "New Routine", order: routines.length }),
     });
+    queryClient.invalidateQueries({ queryKey: qk.routines });
     router.push(`/routines/${r.id}?from=routines`);
   }
 
   async function start(id: string) {
     if (busy) return;
     setBusy(true);
-    const s = await startSessionFromRoutine(getClient(), {
-      routineId: id,
-      ownerId: getCurrentUserId(),
-      now: Date.now(),
+    const s = await api<{ id: string }>("/api/sessions", {
+      method: "POST",
+      body: JSON.stringify({ routineId: id }),
     });
     router.push(`/workout/${s.id}`);
+  }
+
+  async function remove(id: string) {
+    await api(`/api/routines/${id}`, { method: "DELETE" });
+    queryClient.invalidateQueries({ queryKey: qk.routines });
   }
 
   return (
@@ -77,7 +81,7 @@ export default function RoutinesPage() {
                 </Button>
                 <button
                   type="button"
-                  onClick={() => deleteRoutine(getClient(), r.id)}
+                  onClick={() => remove(r.id)}
                   aria-label="Delete routine"
                   className="min-h-10 w-9 bg-transparent border-none text-lg text-[var(--text-muted)]"
                 >

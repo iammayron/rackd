@@ -2,8 +2,10 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { currentStreak } from "@rackd/core";
-import { useQuery } from "@/lib/use-query";
+import { api } from "@/lib/api";
+import { qk } from "@/lib/query";
 
 interface SessionRow {
   id: string;
@@ -29,9 +31,10 @@ function fmtDate(ms: number): string {
 
 /** Dashboard card: recent completed workouts + current day streak. */
 export function HistoryStreakCard() {
-  const { results: sessions } = useQuery<SessionRow>((c) =>
-    c.query("sessions").Where("endedAt", "isDefined", true).Order("startedAt", "DESC"),
-  );
+  const { data: sessions = [] } = useQuery({
+    queryKey: qk.sessions,
+    queryFn: () => api<SessionRow[]>("/api/sessions"),
+  });
 
   const streak = useMemo(
     () => currentStreak(sessions.map((s) => dayIndex(s.startedAt)), dayIndex(Date.now())),

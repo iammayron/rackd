@@ -16,9 +16,9 @@ git status --short
 Review for:
 
 1. **Correctness** — logic bugs, wrong signs, off-by-one, null/undefined handling, date/timezone handling, error paths.
-2. **Conventions** — follow this repo's `CLAUDE.md`: domain logic stays in `packages/core` (pure, no platform deps), types imported from `@myfit/core` (never redeclared), DB access only via `@myfit/db` repository functions, units stored canonical (kg) and converted at the display edge.
-3. **Gotchas** — the non-obvious items in `CLAUDE.md` (prescription vs session trees, wall-clock timer, media is URL-only, DRY/KISS gates).
-4. **Migrations/data** — Triplit schema changes in `packages/db/src/schema.ts` stay in sync with `@myfit/core` types.
+2. **Conventions** — follow this repo's `CLAUDE.md`: domain logic stays in `packages/core` (pure, no platform deps), types imported from `@rackd/core` (never redeclared), Postgres access only via `@rackd/db` Drizzle repository functions, called from API route handlers (`apps/web/src/app/api/**`) — UI never touches the DB; it calls those routes via `api()` + React Query. Every owner-scoped route filters by `ownerId = token.sub`. Units stored canonical (kg), converted at the display edge.
+3. **Gotchas** — the non-obvious items in `CLAUDE.md` (prescription vs session trees, wall-clock timer, media is URL-only, DRY/KISS gates). Also: never value-import `@rackd/db` from a client component (it pulls in `pg`, breaking the bundle) — types only via `import type`.
+4. **Migrations/data** — Drizzle schema changes in `packages/db/src/schema.ts` stay in sync with `@rackd/core` types; new tables/columns need a `drizzle-kit generate` migration.
 5. **Tests** — pure logic in `core` has vitest coverage; the gate (`pnpm typecheck && pnpm test`) would pass.
 
 Return findings grouped **Must-fix** / **Consider**, each with file:line and a concrete fix. If the diff is clean, say so plainly.

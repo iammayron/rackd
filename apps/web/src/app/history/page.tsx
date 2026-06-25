@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { exerciseStats, type ExerciseStatPoint } from "@rackd/db";
 import { Card, Badge } from "@rackd/ui";
-import { getClient } from "@/lib/triplit";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
-import { useQuery } from "@/lib/use-query";
 import { LineChart, BarChart } from "@/components/Chart";
 import { AdvancedSelect } from "@/components/AdvancedSelect";
 import { Nav } from "@/components/Nav";
@@ -21,14 +21,20 @@ interface ExerciseRow {
   id: string;
   name: string;
 }
-interface SessionExerciseRow {
-  exerciseId: string;
-}
 interface PRRow {
   id: string;
+  exerciseId: string;
   type: string;
   value: number;
   achievedAt: number;
+}
+/** Per-session stat point for one exercise (was in @rackd/db). */
+interface ExerciseStatPoint {
+  sessionId: string;
+  date: number;
+  best1rm: number;
+  volume: number;
+  topWeight: number;
 }
 
 const EYEBROW =
@@ -49,10 +55,11 @@ function fmtDuration(start: number, end: number): string {
 }
 
 export default function HistoryPage() {
-  // finished sessions only, newest first
-  const { results: sessions } = useQuery<SessionRow>((c) =>
-    c.query("sessions").Where("endedAt", "isDefined", true).Order("startedAt", "DESC"),
-  );
+  // finished sessions only, newest first (the API orders by startedAt desc).
+  const { data: sessions = [] } = useQuery({
+    queryKey: qk.sessions,
+    queryFn: () => api<SessionRow[]>("/api/sessions"),
+  });
 
   return (
     <div className="flex flex-col min-h-[100dvh]">
@@ -104,43 +111,44 @@ export default function HistoryPage() {
 /** Per-exercise progress: PRs, estimated 1RM trend, and volume per session. */
 function ExerciseProgress() {
   const { unit, display } = useUnit();
-  const { results: exercises } = useQuery<ExerciseRow>((c) =>
-    c.query("exercises").Order("name", "ASC"),
-  );
-  const { results: sessionExercises } = useQuery<SessionExerciseRow>((c) =>
-    c.query("sessionExercises"),
-  );
+  const { data: exercises = [] } = useQuery({
+    queryKey: qk.exercises,
+    queryFn: () => api<ExerciseRow[]>("/api/exercises"),
+  });
+  // All of the caller's PRs — every performed exercise earns one on first
+  // finish, so this is our set of exercises that actually have logged history.
+  const { data: allPrs = [] } = useQuery({
+    queryKey: qk.personalRecords,
+    queryFn: () => api<PRRow[]>("/api/personal-records"),
+  });
 
   // only exercises that actually have logged history
   const withHistory = useMemo(() => {
-    const ids = new Set(sessionExercises.map((s) => s.exerciseId));
+    const ids = new Set(allPrs.map((p) => p.exerciseId));
     return exercises.filter((e) => ids.has(e.id));
-  }, [exercises, sessionExercises]);
+  }, [exercises, allPrs]);
 
   const [selected, setSelected] = useState<string>("");
   useEffect(() => {
     if (!selected && withHistory.length > 0) setSelected(withHistory[0]!.id);
   }, [withHistory, selected]);
 
-  const [points, setPoints] = useState<ExerciseStatPoint[]>([]);
-  useEffect(() => {
-    if (!selected) return;
-    let cancelled = false;
-    exerciseStats(getClient(), selected).then((p) => {
-      if (!cancelled) setPoints(p);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [selected, sessionExercises.length]);
+  const { data: points = [] } = useQuery({
+    queryKey: qk.exerciseStats(selected),
+    queryFn: () => api<ExerciseStatPoint[]>(`/api/exercises/${selected}/stats`),
+    enabled: Boolean(selected),
+  });
 
-  const { results: prs } = useQuery<PRRow>(
-    (c) =>
-      c
-        .query("personalRecords")
-        .Where("exerciseId", "=", selected || "_none_")
-        .Order("value", "DESC"),
-    [selected],
+  const { data: prs = [] } = useQuery({
+    queryKey: qk.personalRecordsForExercise(selected),
+    queryFn: () => api<PRRow[]>(`/api/personal-records/exercise/${selected}`),
+    enabled: Boolean(selected),
+  });
+
+  // Highest-value records first (the API orders by achievedAt).
+  const sortedPrs = useMemo(
+    () => [...prs].sort((a, b) => b.value - a.value),
+    [prs],
   );
 
   if (withHistory.length === 0) return null;
@@ -156,9 +164,9 @@ function ExerciseProgress() {
         />
       </div>
 
-      {prs.length > 0 && (
+      {sortedPrs.length > 0 && (
         <div className="flex gap-2 mb-4 flex-wrap">
-          {prs.map((pr) => (
+          {sortedPrs.map((pr) => (
             <Badge key={pr.id} tone="accent">
               🏆 {pr.type === "1rm" ? "Est 1RM" : "Top weight"} {display(pr.value)} {unit}
             </Badge>

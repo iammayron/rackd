@@ -3,18 +3,11 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  startSession,
-  addSessionExercise,
-  startSessionFromRoutine,
-  setProgramSchedule,
-  setProgramActive,
-} from "@rackd/db";
+import { useQuery } from "@tanstack/react-query";
 import { todaysRoutine, programTodaySlot, programNextSlot, advanceRotation } from "@rackd/core";
 import { Card, Button, Badge, Avatar, Input, SelectableRow } from "@rackd/ui";
-import { getClient } from "@/lib/triplit";
-import { getCurrentUserId } from "@/lib/auth";
-import { useQuery } from "@/lib/use-query";
+import { api } from "@/lib/api";
+import { queryClient, qk } from "@/lib/query";
 import { Nav } from "@/components/Nav";
 import { ActivateProgramSheet } from "@/components/ActivateProgramSheet";
 import { WeightProgressCard } from "@/features/dashboard/WeightProgressCard";
@@ -62,23 +55,38 @@ const EYEBROW =
 
 export default function Home() {
   const router = useRouter();
-  const { results: exercises } = useQuery<ExerciseRow>((c) =>
-    c.query("exercises").Order("name", "ASC"),
-  );
-  const { results: profiles } = useQuery<ProfileRow>((c) => c.query("userProfile"));
-  const profile = profiles[0];
+  const { data: exercises = [] } = useQuery({
+    queryKey: qk.exercises,
+    queryFn: async () => {
+      const rows = await api<ExerciseRow[]>("/api/exercises");
+      return [...rows].sort((a, b) => a.name.localeCompare(b.name));
+    },
+  });
+  const { data: profile } = useQuery({
+    queryKey: qk.profile,
+    queryFn: () => api<ProfileRow>("/api/profile"),
+  });
 
-  const { results: routines } = useQuery<RoutineRow>((c) =>
-    c.query("routines").Order("order", "ASC"),
-  );
+  const { data: routines = [] } = useQuery({
+    queryKey: qk.routines,
+    queryFn: () => api<RoutineRow[]>("/api/routines"),
+  });
 
   // The active program (if any) drives "today"; otherwise fall back to a
   // routine scheduled for today's weekday.
-  const { results: programs } = useQuery<ProgramRow>((c) => c.query("programs"));
+  const { data: programs = [] } = useQuery({
+    queryKey: qk.programs,
+    queryFn: () => api<ProgramRow[]>("/api/programs"),
+  });
   const activeProgram = programs.find((p) => p.active);
-  const { results: programDays } = useQuery<ProgramDayRow>(
-    (c) => c.query("programDays").Where("programId", "=", activeProgram?.id ?? "__none__"),
-    [activeProgram?.id],
+  const { data: activeProgramDetail } = useQuery({
+    queryKey: qk.program(activeProgram?.id ?? ""),
+    queryFn: () => api<{ days: ProgramDayRow[] }>(`/api/programs/${activeProgram!.id}`),
+    enabled: Boolean(activeProgram?.id),
+  });
+  const programDays = useMemo(
+    () => activeProgramDetail?.days ?? [],
+    [activeProgramDetail],
   );
 
   const weekday = new Date().getDay();
@@ -122,7 +130,12 @@ export default function Home() {
 
   async function activateProgram(programId: string) {
     setActivateOpen(false);
-    await setProgramActive(getClient(), { programId, ownerId: getCurrentUserId() });
+    await api(`/api/programs/${programId}`, {
+      method: "PUT",
+      body: JSON.stringify({ active: true }),
+    });
+    queryClient.invalidateQueries({ queryKey: qk.programs });
+    queryClient.invalidateQueries({ queryKey: qk.program(programId) });
   }
 
   const filtered = useMemo(() => {
@@ -140,35 +153,42 @@ export default function Home() {
   async function start() {
     if (selected.length === 0 || starting) return;
     setStarting(true);
-    const client = getClient();
-    const session = await startSession(client, {
-      ownerId: getCurrentUserId(),
-      name: "Quick Workout",
-      now: Date.now(),
+    const session = await api<{ id: string }>("/api/sessions", {
+      method: "POST",
+      body: JSON.stringify({ name: "Quick Workout" }),
     });
     await Promise.all(
       selected.map((exerciseId, i) =>
-        addSessionExercise(client, { sessionId: session.id, exerciseId, order: i + 1 }),
+        api(`/api/sessions/${session.id}/exercises`, {
+          method: "POST",
+          body: JSON.stringify({ exerciseId, order: i + 1 }),
+        }),
       ),
     );
+    queryClient.invalidateQueries({ queryKey: qk.activeSession });
     router.push(`/workout/${session.id}`);
   }
 
   async function startRoutine(routineId?: string) {
     if (!routineId || starting) return;
     setStarting(true);
-    const s = await startSessionFromRoutine(getClient(), {
-      routineId,
-      ownerId: getCurrentUserId(),
-      now: Date.now(),
+    const s = await api<{ id: string }>("/api/sessions", {
+      method: "POST",
+      body: JSON.stringify({ routineId }),
     });
+    queryClient.invalidateQueries({ queryKey: qk.activeSession });
     router.push(`/workout/${s.id}`);
   }
 
   async function skipDay() {
     if (!activeProgram) return;
     const next = advanceRotation(activeProgram.rotationCursor ?? 0, programDays.length);
-    await setProgramSchedule(getClient(), activeProgram.id, { rotationCursor: next });
+    await api(`/api/programs/${activeProgram.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ rotationCursor: next }),
+    });
+    queryClient.invalidateQueries({ queryKey: qk.programs });
+    queryClient.invalidateQueries({ queryKey: qk.program(activeProgram.id) });
   }
 
   return (

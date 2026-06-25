@@ -1,5 +1,3 @@
-import type { Client } from "./index";
-
 /**
  * Starter exercise library (Phase 1 subset — text only, media added later).
  * Real apps ship ~300; this is enough to run the loop. Stable ids so seeding
@@ -65,31 +63,3 @@ export const SEED_EXERCISES: SeedExercise[] = [
   { id: "ex_sumo_deadlift", name: "Sumo Deadlift", primaryMuscle: "glutes", secondaryMuscles: ["hamstrings", "back", "quads"], equipment: "barbell", category: "barbell", instructions: "Wide stance, toes out, flat back, drive the floor away — more glute/inner-thigh than conventional." },
   { id: "ex_seated_calf_raise", name: "Seated Calf Raise", primaryMuscle: "calves", secondaryMuscles: [], equipment: "machine", category: "machine", instructions: "Seated, full stretch and contraction — targets the soleus." },
 ];
-
-/**
- * Insert any missing library exercises (idempotent per id). Existing rows are
- * left untouched, so adding to SEED_EXERCISES seeds the new ones on next login
- * without re-inserting or clobbering the rest. Returns the count inserted.
- */
-export async function seedExercises(client: Client): Promise<number> {
-  const existing = await client.fetch(client.query("exercises"));
-  const existingIds = new Set(existing.map((e) => e.id));
-
-  let inserted = 0;
-  for (const ex of SEED_EXERCISES) {
-    if (existingIds.has(ex.id)) continue;
-    await client.insert("exercises", {
-      id: ex.id,
-      name: ex.name,
-      primaryMuscle: ex.primaryMuscle,
-      secondaryMuscles: new Set(ex.secondaryMuscles),
-      equipment: ex.equipment,
-      category: ex.category,
-      instructions: ex.instructions,
-      mediaSource: "library",
-      isCustom: false,
-    });
-    inserted++;
-  }
-  return inserted;
-}

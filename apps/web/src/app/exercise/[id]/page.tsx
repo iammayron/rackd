@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { suggestReplacements } from "@rackd/core";
 import { Card, Badge, MuscleVisualizer, exerciseGradient } from "@rackd/ui";
-import { useQuery } from "@/lib/use-query";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { qk } from "@/lib/query";
 import { BackButton } from "@/components/BackButton";
 
 interface ExerciseRow {
@@ -38,13 +40,16 @@ export default function ExerciseDetailPage() {
   const router = useRouter();
   const id = params.id;
 
-  const { results: matches } = useQuery<ExerciseRow>(
-    (c) => c.query("exercises").Where("id", "=", id),
-    [id],
-  );
-  const ex = matches[0];
+  const { data: ex } = useQuery({
+    queryKey: qk.exercise(id),
+    queryFn: () => api<ExerciseRow>(`/api/exercises/${id}`),
+    enabled: Boolean(id),
+  });
 
-  const { results: all } = useQuery<ExerciseRow>((c) => c.query("exercises").Order("name", "ASC"));
+  const { data: all = [] } = useQuery({
+    queryKey: qk.exercises,
+    queryFn: () => api<ExerciseRow[]>("/api/exercises"),
+  });
 
   if (!ex) {
     return (
