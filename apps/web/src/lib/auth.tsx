@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { getSupabase } from "./supabase";
+import { api } from "./api";
 
 /**
  * Module-level cache of the current user id so the synchronous `getCurrentUserId()`
@@ -19,6 +20,17 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
+  /**
+   * Change the signed-in user's password. Verifies `currentPassword` first by
+   * re-authenticating (Supabase lets a live session set a new password without
+   * the old one — we require it so a borrowed/unlocked session can't).
+   */
+  updatePassword: (
+    currentPassword: string,
+    newPassword: string,
+  ) => Promise<{ error?: string }>;
+  /** Permanently delete the account (data + auth user), then sign out. */
+  deleteAccount: () => Promise<{ error?: string }>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -67,6 +79,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     signOut: async () => {
       await getSupabase().auth.signOut();
+    },
+    updatePassword: async (currentPassword, newPassword) => {
+      const sb = getSupabase();
+      const email = user?.email;
+      if (!email) return { error: "You must be signed in." };
+      // Re-authenticate to prove the current password before changing it.
+      const { error: reauth } = await sb.auth.signInWithPassword({
+        email,
+        password: currentPassword,
+      });
+      if (reauth) return { error: "Current password is incorrect." };
+      const { error } = await sb.auth.updateUser({ password: newPassword });
+      return { error: error?.message };
+    },
+    deleteAccount: async () => {
+      try {
+        await api("/api/account", { method: "DELETE" });
+      } catch (e) {
+        return { error: e instanceof Error ? e.message : "Couldn't delete account." };
+      }
+      await getSupabase().auth.signOut();
+      return {};
     },
   };
 

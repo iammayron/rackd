@@ -29,6 +29,16 @@ export async function getAuthUser(request: Request): Promise<User | null> {
   return user ?? null;
 }
 
+/**
+ * Permanently delete a Supabase auth user — needs the service-role admin API,
+ * so it lives server-side only. Used by account deletion after the user's data
+ * has been wiped.
+ */
+export async function deleteAuthUser(userId: string): Promise<void> {
+  const { error } = await getServiceClient().auth.admin.deleteUser(userId);
+  if (error) throw new Error(error.message);
+}
+
 /** 401 helper for routes whose caller isn't authenticated. */
 export function unauthorized(): Response {
   return Response.json({ error: "Unauthorized" }, { status: 401 });

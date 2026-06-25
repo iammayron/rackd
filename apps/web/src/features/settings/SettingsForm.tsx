@@ -143,7 +143,7 @@ function posInt(s: string): number | undefined {
 export function SettingsForm() {
   const { unit, display, toKg } = useUnit();
   const setUnit = useUnitStore((s) => s.setUnit);
-  const { signOut } = useAuth();
+  const { user, signOut, updatePassword, deleteAccount } = useAuth();
   const { theme, setTheme: setThemeChoice } = useTheme();
   const toast = useToast();
   const metric = unit === "kg";
@@ -162,6 +162,12 @@ export function SettingsForm() {
   const [defaultReps, setDefaultReps] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [changingPw, setChangingPw] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   // Tracks the unit across renders so a toggle can reconvert the numeric fields
   // in place (below) instead of refetching — refetching wiped unsaved edits.
@@ -332,6 +338,42 @@ export function SettingsForm() {
     }
   }
 
+  async function changePassword() {
+    if (changingPw) return;
+    if (newPw.length < 8) {
+      toast.error("New password must be at least 8 characters.");
+      return;
+    }
+    if (newPw !== confirmPw) {
+      toast.error("New passwords don't match.");
+      return;
+    }
+    setChangingPw(true);
+    const { error } = await updatePassword(currentPw, newPw);
+    setChangingPw(false);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    setCurrentPw("");
+    setNewPw("");
+    setConfirmPw("");
+    toast.success("Password updated");
+  }
+
+  const deleteArmed = deleteConfirm.trim().toUpperCase() === "DELETE";
+  async function confirmDelete() {
+    if (deleting || !deleteArmed) return;
+    setDeleting(true);
+    const { error } = await deleteAccount();
+    if (error) {
+      setDeleting(false);
+      toast.error(error);
+      return;
+    }
+    // deleteAccount signs out on success; the auth gate now shows login.
+  }
+
   if (!loaded) {
     return <p className="text-[var(--text-muted)]">Loading…</p>;
   }
@@ -346,6 +388,9 @@ export function SettingsForm() {
               <p className="truncate text-lg font-bold text-[var(--text)]">
                 {name || "Your name"}
               </p>
+              {user?.email && (
+                <p className="mb-2 truncate text-sm text-[var(--text-muted)]">{user.email}</p>
+              )}
               <p className="text-sm text-[var(--text-muted)]">
                 JPEG, PNG or WebP · up to 5 MB
               </p>
@@ -522,9 +567,78 @@ export function SettingsForm() {
         </Button>
       </div>
 
+      <Card>
+        <p className="mb-3 text-xs font-bold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+          Change password
+        </p>
+        <div className="space-y-3">
+          <Field label="Current password">
+            <Input
+              type="password"
+              autoComplete="current-password"
+              value={currentPw}
+              onChange={(e) => setCurrentPw(e.target.value)}
+              placeholder="Current password"
+            />
+          </Field>
+          <Field label="New password">
+            <Input
+              type="password"
+              autoComplete="new-password"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+              placeholder="At least 8 characters"
+            />
+          </Field>
+          <Field label="Confirm new password">
+            <Input
+              type="password"
+              autoComplete="new-password"
+              value={confirmPw}
+              onChange={(e) => setConfirmPw(e.target.value)}
+              placeholder="Re-enter new password"
+            />
+          </Field>
+          <Button
+            variant="secondary"
+            fullWidth
+            onClick={changePassword}
+            disabled={changingPw || !currentPw || !newPw || !confirmPw}
+          >
+            {changingPw ? "Updating…" : "Update password"}
+          </Button>
+        </div>
+      </Card>
+
       <Button variant="ghost" fullWidth onClick={() => signOut()}>
         Sign out
       </Button>
+
+      <Card>
+        <p className="mb-1 text-xs font-bold uppercase tracking-[0.06em] text-[var(--danger)]">
+          Danger zone
+        </p>
+        <p className="mb-3 text-sm text-[var(--text-muted)]">
+          Permanently delete your account and all your workouts, programs, and
+          history. This can’t be undone. Type <strong>DELETE</strong> to confirm.
+        </p>
+        <div className="space-y-3">
+          <Input
+            value={deleteConfirm}
+            onChange={(e) => setDeleteConfirm(e.target.value)}
+            placeholder="DELETE"
+            autoComplete="off"
+          />
+          <Button
+            variant="danger"
+            fullWidth
+            onClick={confirmDelete}
+            disabled={deleting || !deleteArmed}
+          >
+            {deleting ? "Deleting…" : "Delete my account"}
+          </Button>
+        </div>
+      </Card>
 
       <p className="pt-2 text-center text-xs text-[var(--text-muted)]">
         Rackd · local-first · v1.0
