@@ -29,6 +29,7 @@ export function Button({
   type = "button",
   onClick,
   style,
+  className,
   ...rest
 }: ButtonProps) {
   const sizes: Record<ButtonSize, React.CSSProperties & { radius: string }> = {
@@ -54,6 +55,7 @@ export function Button({
       type={type}
       disabled={disabled}
       onClick={onClick}
+      className={["rk-squircle-corners", className].filter(Boolean).join(" ")}
       onPointerDown={() => setPressed(true)}
       onPointerUp={() => setPressed(false)}
       onPointerLeave={() => setPressed(false)}

@@ -64,6 +64,9 @@ export const schema = S.Collections({
       folderId: S.Optional(S.String()),
       notes: S.Optional(S.String()),
       order: S.Number({ default: 0 }),
+      // Free-text focus/split tag (Push, Pull, Legs, Upper, Lower…). Optional;
+      // absent = no tag (the Plans page falls back to a name-derived label).
+      category: S.Optional(S.String()),
       // Weekdays this routine is scheduled for (0=Sun … 6=Sat). Drives the
       // dashboard's "today's workout". Optional set; absent = unscheduled.
       scheduledDays: S.Optional(S.Set(S.Number())),
@@ -193,6 +196,9 @@ export const schema = S.Collections({
       name: S.String(),
       notes: S.Optional(S.String()),
       order: S.Number({ default: 0 }),
+      // Length of one training block, in weeks (e.g. a 4-week mesocycle).
+      // Optional; absent/0 = unset (the Plans page omits the "N-week block" tag).
+      blockWeeks: S.Optional(S.Number()),
       // Scheduling (all optional — absent = unscheduled program). See @rackd/core
       // Program docs: rotation cycles ordered days via rotationCursor; weekly pins
       // each day to a weekday. `active` = the program driving "today's workout".
@@ -258,6 +264,43 @@ export const schema = S.Collections({
     }),
     relationships: {
       routine: S.RelationById("routines", "$routineId"),
+    },
+    permissions: ownerOnly,
+  },
+
+  // One Web Push subscription per installed PWA/device. Mirrors @rackd/core
+  // PushSubscriptionRecord. endpoint+p256dh+auth are what the push sender needs;
+  // owner-scoped so a user only ever sees/edits their own devices.
+  pushSubscriptions: {
+    schema: S.Schema({
+      id: S.Id(),
+      ownerId: S.String(),
+      endpoint: S.String(),
+      p256dh: S.String(),
+      auth: S.String(),
+      userAgent: S.Optional(S.String()),
+      createdAt: S.Number(),
+    }),
+    permissions: ownerOnly,
+  },
+
+  // Queue of "send a push at fireAt" requests — the transport between the PWA
+  // and the server-side push sender (apps/push). Mirrors @rackd/core
+  // ScheduledPush. The sender reads `pending` rows with a service token (bypasses
+  // rules); the owning user creates/reschedules/cancels their own.
+  scheduledPushes: {
+    schema: S.Schema({
+      id: S.Id(),
+      ownerId: S.String(),
+      subscriptionId: S.String(),
+      fireAt: S.Number(),
+      title: S.String({ default: "Rest over" }),
+      body: S.String({ default: "Time for your next set." }),
+      status: S.String({ default: "pending" }),
+      createdAt: S.Number(),
+    }),
+    relationships: {
+      subscription: S.RelationById("pushSubscriptions", "$subscriptionId"),
     },
     permissions: ownerOnly,
   },

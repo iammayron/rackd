@@ -85,6 +85,12 @@ export interface Routine {
   notes?: string;
   order: number;
   /**
+   * Free-text focus/split tag (e.g. "Push", "Pull", "Legs", "Upper", "Lower").
+   * Optional — absent means no explicit tag; the Plans page falls back to a
+   * label derived from the routine/day name.
+   */
+  category?: string;
+  /**
    * Weekdays this routine is scheduled for — 0=Sun … 6=Sat (matches
    * `Date.getDay()`). Drives the dashboard's "today's workout". Empty/absent =
    * not scheduled. Stored as a Set in the DB.
@@ -151,6 +157,11 @@ export interface Program {
   name: string;
   notes?: string;
   order: number;
+  /**
+   * Length of one training block in weeks (e.g. a 4-week mesocycle). Optional —
+   * absent/0 means unset and the Plans page omits the "N-week block" tag.
+   */
+  blockWeeks?: number;
   /** The one active program — drives the dashboard "today's workout". */
   active?: boolean;
   scheduleMode?: "rotation" | "weekly";
@@ -216,6 +227,47 @@ export interface UserProfile {
   defaultRestSec: number;
   defaultSets: number;
   defaultReps: number;
+}
+
+/**
+ * A device's Web Push subscription — the addressable handle the push sender uses
+ * to reach one installed PWA (one row per device/browser). `endpoint` + `p256dh`
+ * + `auth` are exactly what the `web-push` library needs; never store anything
+ * secret beyond these. Owner-scoped, many rows per user (phone, laptop, …).
+ */
+export interface PushSubscriptionRecord {
+  id: string;
+  ownerId: string;
+  /** Push service URL unique to this subscription (also our dedupe key). */
+  endpoint: string;
+  /** Client public key (base64url) for payload encryption. */
+  p256dh: string;
+  /** Client auth secret (base64url) for payload encryption. */
+  auth: string;
+  userAgent?: string;
+  createdAt: number;
+}
+
+export type ScheduledPushStatus = "pending" | "sent" | "cancelled";
+
+/**
+ * A request to deliver one Web Push at `fireAt` to `subscriptionId`. The client
+ * writes this when a rest timer starts (the only transport between the PWA and
+ * the server-side sender); the sender polls for `pending` rows whose `fireAt`
+ * has passed, delivers them, and flips `status` to `sent`. Skipping rest cancels
+ * the row; adding time reschedules `fireAt`. Background delivery is the whole
+ * point — a backgrounded PWA's JS is suspended and cannot notify itself.
+ */
+export interface ScheduledPush {
+  id: string;
+  ownerId: string;
+  subscriptionId: string;
+  /** Absolute time to deliver (epoch ms) — mirrors the timer's `endAt`. */
+  fireAt: number;
+  title: string;
+  body: string;
+  status: ScheduledPushStatus;
+  createdAt: number;
 }
 
 export type PrType = "1rm" | "weight" | "reps" | "volume";

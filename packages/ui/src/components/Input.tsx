@@ -15,11 +15,12 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
  * Text / number input. Large 44px target, surface-2 fill, coral focus ring.
  * `align` center is used for the weight/reps set cells. `suffix` shows a unit.
  */
-export function Input({ align = "left", suffix, style, wrapStyle, onFocus, onBlur, ...rest }: InputProps) {
+export function Input({ align = "left", suffix, style, wrapStyle, className, onFocus, onBlur, ...rest }: InputProps) {
   const [focus, setFocus] = React.useState(false);
   return (
     <div style={{ position: "relative", display: "flex", alignItems: "center", ...wrapStyle }}>
       <input
+        className={["rk-squircle-corners", className].filter(Boolean).join(" ")}
         onFocus={(e) => {
           setFocus(true);
           onFocus?.(e);

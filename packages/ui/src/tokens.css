@@ -117,6 +117,12 @@
   --tap-cta: 52px; /* primary CTAs */
   --app-width: 480px; /* the phone column */
   --content-pad: 24px; /* default screen gutter */
+
+  /* ── Safe-area insets — single source of truth (notch / home indicator) ─── */
+  --safe-top: env(safe-area-inset-top);
+  --safe-right: env(safe-area-inset-right);
+  --safe-bottom: env(safe-area-inset-bottom);
+  --safe-left: env(safe-area-inset-left);
 }
 
 /* ── Dark theme — opt-in on <html> ([data-theme="dark"]) ─────────────────── */

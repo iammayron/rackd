@@ -5,6 +5,7 @@ import type { PointerEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   finishSession,
+  discardSession,
   addSessionExercise,
   addSet,
   setSessionExerciseOrder,
@@ -21,6 +22,8 @@ import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
 import type { ExerciseMediaData } from "@/components/ExerciseMedia";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { BackButton } from "@/components/BackButton";
 import { ExerciseCard } from "@/features/active-workout/ExerciseCard";
 import { RestTimerBar } from "@/features/active-workout/RestTimerBar";
 import { PrCelebration } from "@/features/active-workout/PrCelebration";
@@ -48,6 +51,7 @@ interface SessionExerciseRow {
 export default function WorkoutPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const sessionId = params.id;
 
   const { results: sessionExercises, fetching } = useQuery<SessionExerciseRow>(
@@ -148,6 +152,22 @@ export default function WorkoutPage() {
     });
   }
 
+  /**
+   * Abandon the workout: confirm (destructive + irreversible), cascade-delete
+   * the session, then go home. With the session gone, the global MiniWorkoutBar
+   * (driven by any session with endedAt == null) disappears.
+   */
+  async function discard() {
+    const ok = await confirm({
+      title: "Discard this workout?",
+      message: "Everything logged in it will be permanently deleted.",
+      confirmLabel: "Discard",
+    });
+    if (!ok) return;
+    await discardSession(getClient(), sessionId);
+    router.push("/");
+  }
+
   async function finish() {
     const found = await finishSession(getClient(), sessionId, Date.now());
     if (found && found.length > 0) {
@@ -204,20 +224,20 @@ export default function WorkoutPage() {
 
   return (
     <div className="flex flex-col min-h-[100dvh]">
-      <header className="sticky top-0 z-10 flex items-center gap-3 py-3 px-4 bg-[var(--bg)] border-b border-[var(--border)]">
-        <button
-          type="button"
-          onClick={() => router.push("/")}
-          aria-label="Back"
-          className="bg-transparent border-none text-lg text-[var(--text-muted)]"
-        >
-          ←
-        </button>
+      <header className="sticky top-[var(--safe-top)] z-10 flex items-center gap-3 py-3 px-4 bg-[var(--bg)] border-b border-[var(--border)]">
+        <BackButton onClick={() => router.push("/")} />
         <h1 className="text-lg font-bold">Active Workout</h1>
         <button
           type="button"
+          onClick={discard}
+          className="ms-auto inline-flex items-center min-h-10 px-3 rounded-lg border border-[var(--danger)] bg-transparent text-[var(--danger)] font-semibold"
+        >
+          Discard
+        </button>
+        <button
+          type="button"
           onClick={finish}
-          className="ms-auto inline-flex items-center min-h-10 px-4 rounded-lg bg-[var(--success)] text-[#06231a] font-bold"
+          className="inline-flex items-center min-h-10 px-4 rounded-lg bg-[var(--success)] text-[#06231a] font-bold"
         >
           Finish
         </button>
@@ -284,6 +304,8 @@ export default function WorkoutPage() {
           onSave={onSaveBack}
         />
       )}
+
+      {confirmDialog}
     </div>
   );
 }

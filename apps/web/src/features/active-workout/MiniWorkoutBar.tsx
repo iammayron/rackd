@@ -46,7 +46,7 @@ export function MiniWorkoutBar() {
   return (
     <Link
       href={`/workout/${active.id}`}
-      className="fixed left-1/2 -translate-x-1/2 z-30 bottom-[64px] w-[min(440px,calc(100%-24px))] flex items-center gap-3 px-4 py-3 rounded-2xl no-underline text-[var(--text)] bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-lg)]"
+      className="fixed left-1/2 -translate-x-1/2 z-30 bottom-[calc(64px+var(--safe-bottom))] w-[min(440px,calc(100%-24px))] flex items-center gap-3 px-4 py-3 rounded-2xl no-underline text-[var(--text)] bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-lg)]"
     >
       <span
         aria-hidden="true"

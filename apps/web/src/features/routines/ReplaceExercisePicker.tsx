@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { suggestReplacements } from "@rackd/core";
 import { useQuery } from "@/lib/use-query";
 import { ExerciseThumb } from "@/components/ExerciseMedia";
+import { BottomSheet } from "@/components/BottomSheet";
 
 interface ExerciseRow {
   id: string;
@@ -13,11 +13,14 @@ interface ExerciseRow {
   thumbnailUrl?: string;
 }
 
+const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
 /**
- * "Replace" trigger that opens a full-screen modal with two parts: a list of
- * locally-computed suggestions (same primaryMuscle and/or equipment) and a
- * search box over the full library. Picking a replacement closes the modal and
- * calls onReplace(newExerciseId). Single-pick (unlike AddExercisePicker).
+ * "Replace" trigger that opens a bottom sheet listing the library, split into
+ * two groups: "Similar" (same primaryMuscle as the current exercise) and "All
+ * exercises" (the rest). A live, case-insensitive name search filters both
+ * groups. Picking a replacement closes the sheet and calls onReplace(newId).
+ * Single-pick (unlike AddExercisePicker).
  */
 export function ReplaceExercisePicker({
   currentExerciseId,
@@ -45,22 +48,18 @@ export function ReplaceExercisePicker({
 
   const current = exercises.find((e) => e.id === currentExerciseId);
 
-  const suggestions = useMemo(
-    () => (current ? suggestReplacements(exercises, current) : []),
-    [exercises, current],
-  );
-
-  const matches = useMemo(() => {
+  const { similar, all } = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return [];
-    return exercises.filter(
-      (e) =>
-        e.id !== currentExerciseId &&
-        (e.name.toLowerCase().includes(q) ||
-          e.primaryMuscle.toLowerCase().includes(q) ||
-          e.equipment.toLowerCase().includes(q)),
-    );
-  }, [exercises, search, currentExerciseId]);
+    const matchName = (e: ExerciseRow) => !q || e.name.toLowerCase().includes(q);
+    const isSimilar = (e: ExerciseRow) =>
+      !!current && e.id !== currentExerciseId && e.primaryMuscle === current.primaryMuscle;
+    return {
+      similar: exercises.filter((e) => isSimilar(e) && matchName(e)),
+      all: exercises.filter(
+        (e) => e.id !== currentExerciseId && !isSimilar(e) && matchName(e),
+      ),
+    };
+  }, [exercises, search, current, currentExerciseId]);
 
   function close() {
     setOpen(false);
@@ -73,20 +72,37 @@ export function ReplaceExercisePicker({
   }
 
   function Row({ ex }: { ex: ExerciseRow }) {
+    const subtitle = ex.equipment
+      ? `${cap(ex.primaryMuscle)} · ${cap(ex.equipment)}`
+      : cap(ex.primaryMuscle);
     return (
       <li>
         <button
           type="button"
           onClick={() => pick(ex.id)}
-          className="w-full text-left flex items-center gap-3 min-h-12 py-2 px-3 mb-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"
+          aria-label={`Replace with ${ex.name}`}
+          className="w-full text-left flex items-center gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
         >
-          <ExerciseThumb ex={ex} size={40} />
-          <span className="font-semibold">{ex.name}</span>
-          <span className="ms-auto text-sm text-[var(--text-muted)]">
-            {ex.primaryMuscle} · {ex.equipment}
+          <ExerciseThumb ex={ex} size={44} />
+          <span className="min-w-0 flex-1">
+            <span className="block font-bold truncate">{ex.name}</span>
+            <span className="block text-sm text-[var(--text-muted)] truncate">
+              {subtitle}
+            </span>
+          </span>
+          <span className="ms-2 shrink-0 text-sm font-semibold text-[var(--accent)]">
+            Swap
           </span>
         </button>
       </li>
+    );
+  }
+
+  function SectionHeader({ children }: { children: React.ReactNode }) {
+    return (
+      <p className="text-xs font-semibold tracking-wide text-[var(--text-muted)] mt-4 mb-2 first:mt-0">
+        {children}
+      </p>
     );
   }
 
@@ -102,64 +118,75 @@ export function ReplaceExercisePicker({
         </button>
       )}
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]">
-          <header className="flex items-center gap-2 p-4 border-b border-[var(--border)]">
-            <input
-              autoFocus
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search the library…"
-              className="flex-1 min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-            />
+      <BottomSheet open={open} onClose={close}>
+        <div className="sticky top-0 z-10 -mx-4 px-4 pb-3 bg-[var(--bg)]">
+          <div className="flex items-center gap-3">
+            <h2 className="flex-1 text-[17px] font-extrabold">Replace exercise</h2>
             <button
               type="button"
               onClick={close}
-              className="min-h-11 px-4 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-lg font-semibold"
+              aria-label="Close"
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-[var(--surface-2)] text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             >
-              Cancel
+              ✕
             </button>
-          </header>
+          </div>
 
-          <div className="flex-1 overflow-y-auto p-4">
-            {search.trim() ? (
+          {current && (
+            <div className="mt-3 flex items-center gap-2 text-sm text-[var(--text-muted)]">
+              <span>Replacing</span>
+              <ExerciseThumb ex={current} size={26} />
+              <span className="font-semibold text-[var(--text)]">{current.name}</span>
+            </div>
+          )}
+
+          <label className="sr-only" htmlFor="replace-search">
+            Search the library
+          </label>
+          <input
+            id="replace-search"
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search the library…"
+            className="mt-3 w-full min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+          />
+        </div>
+
+        {similar.length === 0 && all.length === 0 ? (
+          <p className="text-sm text-[var(--text-muted)] py-4">
+            {search.trim()
+              ? `Nothing in the library matches “${search.trim()}”.`
+              : "No exercises in the library yet."}
+          </p>
+        ) : (
+          <>
+            {similar.length > 0 && current && (
               <>
-                <p className="text-sm font-semibold text-[var(--text-muted)] mb-2">
-                  {matches.length ? "Search results" : "No matches"}
-                </p>
-                {matches.length === 0 ? (
-                  <p className="text-sm text-[var(--text-muted)]">
-                    Nothing in the library matches “{search.trim()}”.
-                  </p>
-                ) : (
-                  <ul className="list-none p-0 m-0">
-                    {matches.map((ex) => (
-                      <Row key={ex.id} ex={ex} />
-                    ))}
-                  </ul>
-                )}
-              </>
-            ) : (
-              <>
-                <p className="text-sm font-semibold text-[var(--text-muted)] mb-2">
-                  Suggested
-                </p>
-                {suggestions.length === 0 ? (
-                  <p className="text-sm text-[var(--text-muted)]">
-                    No similar exercises — search the full library above.
-                  </p>
-                ) : (
-                  <ul className="list-none p-0 m-0">
-                    {suggestions.map((ex) => (
-                      <Row key={ex.id} ex={ex} />
-                    ))}
-                  </ul>
-                )}
+                <SectionHeader>
+                  SIMILAR · {current.primaryMuscle.toUpperCase()}
+                </SectionHeader>
+                <ul className="list-none p-0 m-0 flex flex-col gap-2">
+                  {similar.map((ex) => (
+                    <Row key={ex.id} ex={ex} />
+                  ))}
+                </ul>
               </>
             )}
-          </div>
-        </div>
-      )}
+
+            {all.length > 0 && (
+              <>
+                <SectionHeader>ALL EXERCISES</SectionHeader>
+                <ul className="list-none p-0 m-0 flex flex-col gap-2">
+                  {all.map((ex) => (
+                    <Row key={ex.id} ex={ex} />
+                  ))}
+                </ul>
+              </>
+            )}
+          </>
+        )}
+      </BottomSheet>
     </>
   );
 }

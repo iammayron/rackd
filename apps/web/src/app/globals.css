@@ -32,6 +32,20 @@ body {
   min-height: calc(100dvh - env(safe-area-inset-top));
 }
 
+/* Opaque strip over the status-bar inset so scrolled content never shows
+   through the translucent bar. Above page content (z-30) + sticky headers,
+   below toasts (z-50) and sheets (z-100). */
+.rk-status-scrim {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--safe-top);
+  background: var(--bg);
+  z-index: 40;
+  pointer-events: none;
+}
+
 /* Portrait-only guard. The manifest `orientation` + screen.orientation.lock()
    only work on Android/Chromium; iOS ignores both, so this CSS overlay is the
    real enforcement there. Hidden by default; shown only when a *phone-sized*
@@ -112,6 +126,35 @@ body {
     -webkit-mask-image: none;
     mask-image: none;
     border-radius: 30%;
+    corner-shape: superellipse(2.5);
+  }
+}
+
+/* ─── Squircle corners, system-wide (progressive enhancement) ──────────────
+   iOS-style continuous corners on standard ROUNDED-RECTANGLE surfaces. Unlike
+   `.rk-squircle` (an SVG mask, only for the solid ExerciseThumb), this layers a
+   true superellipse on top of the element's EXISTING border-radius — so borders,
+   box-shadows, focus rings, overflow and content are all preserved. It's pure
+   progressive enhancement: browsers without `corner-shape` keep their normal
+   rounded corners, so there's nothing to fall back on.
+
+   The single source of truth for the squircle treatment. We opt elements in by:
+   (a) the standard Tailwind rectangle-radius utilities the app already uses, and
+   (b) a shared `.rk-squircle-corners` class for inline-styled design-system
+   components (Card/Button/Input) + key surfaces (BottomSheet) that don't carry a
+   `rounded-*` utility.
+
+   Deliberately EXCLUDES fully-round shapes — `rounded-full`, pill radii
+   (--radius-pill), avatars, circular buttons — because a superellipse on a
+   circle reads as a wobble, not a squircle. We never use `*` and never match
+   `rounded-full`, so those stay perfectly round. */
+@supports (corner-shape: superellipse(1)) {
+  .rk-squircle-corners,
+  .rounded-md,
+  .rounded-lg,
+  .rounded-xl,
+  .rounded-2xl,
+  .rounded-3xl {
     corner-shape: superellipse(2.5);
   }
 }

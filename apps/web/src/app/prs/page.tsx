@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Card, Badge, Input } from "@rackd/ui";
 import { useUnit } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";
+import { BackButton } from "@/components/BackButton";
 
 interface PRRow {
   id: string;
@@ -97,15 +98,8 @@ export default function PRsPage() {
 
   return (
     <div className="flex flex-col min-h-[100dvh]">
-      <header className="sticky top-0 z-10 flex items-center gap-3 py-3.5 px-5 bg-[var(--bg)] border-b border-[var(--border)]">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          aria-label="Back"
-          className="bg-transparent border-none text-[22px] leading-none text-[var(--text-muted)] cursor-pointer"
-        >
-          ←
-        </button>
+      <header className="sticky top-[var(--safe-top)] z-10 flex items-center gap-3 py-3.5 px-5 bg-[var(--bg)] border-b border-[var(--border)]">
+        <BackButton onClick={() => router.back()} />
         <h1 className="m-0 text-lg font-bold">Personal records</h1>
       </header>
 

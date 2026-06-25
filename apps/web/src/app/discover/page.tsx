@@ -6,6 +6,7 @@ import { cloneSharedRoutine, type SharedRoutineRow } from "@rackd/db";
 import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
+import { BackButton } from "@/components/BackButton";
 
 interface SharedRow extends SharedRoutineRow {
   createdAt: number;
@@ -22,20 +23,13 @@ export default function DiscoverPage() {
     if (cloning) return;
     setCloning(true);
     const id = await cloneSharedRoutine(getClient(), { shared: s, ownerId: getCurrentUserId() });
-    router.push(`/routines/${id}`);
+    router.push(`/routines/${id}?from=routines`);
   }
 
   return (
     <div className="flex flex-col min-h-[100dvh]">
-      <header className="sticky top-0 z-10 flex items-center gap-3 py-3 px-4 bg-[var(--bg)] border-b border-[var(--border)]">
-        <button
-          type="button"
-          onClick={() => router.push("/routines")}
-          aria-label="Back"
-          className="bg-transparent border-none text-lg text-[var(--text-muted)]"
-        >
-          ←
-        </button>
+      <header className="sticky top-[var(--safe-top)] z-10 flex items-center gap-3 py-3 px-4 bg-[var(--bg)] border-b border-[var(--border)]">
+        <BackButton onClick={() => router.push("/routines")} />
         <h1 className="text-lg font-bold">Discover</h1>
       </header>
 

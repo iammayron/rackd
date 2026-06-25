@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { suggestReplacements } from "@rackd/core";
 import { Card, Badge, MuscleVisualizer, exerciseGradient } from "@rackd/ui";
 import { useQuery } from "@/lib/use-query";
+import { BackButton } from "@/components/BackButton";
 
 interface ExerciseRow {
   id: string;
@@ -187,15 +188,8 @@ function Header({
   action?: React.ReactNode;
 }) {
   return (
-    <header className="sticky top-0 z-10 flex items-center gap-3 py-3.5 px-5 bg-[var(--bg)] border-b border-[var(--border)]">
-      <button
-        type="button"
-        onClick={onBack}
-        aria-label="Back"
-        className="bg-transparent border-none text-[22px] text-[var(--text-muted)] leading-none cursor-pointer min-h-11 min-w-11 -ms-2"
-      >
-        ←
-      </button>
+    <header className="sticky top-[var(--safe-top)] z-10 flex items-center gap-3 py-3.5 px-5 bg-[var(--bg)] border-b border-[var(--border)]">
+      <BackButton onClick={onBack} className="-ms-2" />
       <h1 className="m-0 text-lg font-bold flex-1 truncate">{title}</h1>
       {action}
     </header>

@@ -10,19 +10,22 @@ export interface SegmentedControlProps extends Omit<React.HTMLAttributes<HTMLDiv
   onChange?: (value: string) => void;
   /** @default "md" */
   size?: "sm" | "md";
+  /** Stretch the track to 100% width with equal-width segments (tab bars). @default false */
+  fullWidth?: boolean;
 }
 
 /**
  * Segmented control — the kg/lb unit toggle and similar 2–3 option switches.
  * Selected segment rides a coral pill; the track is surface-2.
  */
-export function SegmentedControl({ options, value, onChange, size = "md", style, ...rest }: SegmentedControlProps) {
+export function SegmentedControl({ options, value, onChange, size = "md", fullWidth = false, style, ...rest }: SegmentedControlProps) {
   const h = size === "sm" ? 36 : 44;
   return (
     <div
       role="tablist"
       style={{
-        display: "inline-flex",
+        display: fullWidth ? "flex" : "inline-flex",
+        width: fullWidth ? "100%" : undefined,
         padding: 4,
         gap: 4,
         background: "var(--surface-2)",
@@ -45,6 +48,7 @@ export function SegmentedControl({ options, value, onChange, size = "md", style,
             aria-selected={active}
             onClick={() => onChange?.(v)}
             style={{
+              flex: fullWidth ? 1 : undefined,
               height: h - 8,
               padding: "0 16px",
               minWidth: 44,

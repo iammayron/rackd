@@ -47,6 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <div className="app-shell">
+          <div className="rk-status-scrim" aria-hidden="true" />
           <Providers>
             {children}
             <MiniWorkoutBar />

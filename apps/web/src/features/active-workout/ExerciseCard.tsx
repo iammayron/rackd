@@ -11,6 +11,7 @@ import {
   removeSessionExercise,
   replaceSessionExercise,
   updateSessionExercise,
+  updateSet,
   type PrevSet,
 } from "@rackd/db";
 import { getClient } from "@/lib/triplit";
@@ -103,6 +104,28 @@ export function ExerciseCard({
 
   function goDetails() {
     router.push(`/exercise/${sessionExercise.exerciseId}`);
+  }
+
+  /**
+   * After a set is completed, offer to copy its weight/reps to any LATER sets
+   * (higher `order`) in this exercise that aren't done yet. Non-blocking toast
+   * with a "Copy" action; ignored = auto-dismiss, no change.
+   */
+  function onSetCompleted(set: SetRowData) {
+    const targets = sets.filter((s) => s.order > set.order && !s.completed);
+    if (targets.length === 0) return;
+    toast.info(`Copy ${display(set.weight)} ${unit} × ${set.reps} to remaining sets?`, {
+      action: {
+        label: "Copy",
+        onClick: async () => {
+          const client = getClient();
+          await Promise.all(
+            targets.map((t) => updateSet(client, t.id, { weight: set.weight, reps: set.reps })),
+          );
+          toast.success(`Copied to ${targets.length} set${targets.length === 1 ? "" : "s"}`);
+        },
+      },
+    });
   }
 
   async function onAddSet() {
@@ -230,6 +253,7 @@ export function ExerciseCard({
             restSec={sessionExercise.restSec}
             startsRest={startsRest}
             prevLabel={p ? `${display(p.weight)}×${p.reps}` : undefined}
+            onCompleted={onSetCompleted}
           />
         );
       })}
@@ -251,7 +275,7 @@ export function ExerciseCard({
  * The header "…" overflow menu: a popover anchored to the trigger with the
  * exercise actions. Closes on item pick, backdrop tap, or Escape.
  */
-function HeaderMenu({
+export function HeaderMenu({
   open,
   onOpenChange,
   onReplace,

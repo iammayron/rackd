@@ -29,7 +29,7 @@ export default function RoutinesPage() {
       name: "New Routine",
       order: routines.length,
     });
-    router.push(`/routines/${r.id}`);
+    router.push(`/routines/${r.id}?from=routines`);
   }
 
   async function start(id: string) {
@@ -45,7 +45,7 @@ export default function RoutinesPage() {
 
   return (
     <div className="flex flex-col min-h-[100dvh]">
-      <main className="flex-1 px-5 pt-5 pb-24">
+      <main className="flex-1 px-5 pt-5 pb-[calc(96px+var(--safe-bottom))]">
         <div className="flex items-center mb-5">
           <h1 className="text-2xl font-extrabold">Routines</h1>
           <Link
@@ -67,7 +67,7 @@ export default function RoutinesPage() {
             <li key={r.id}>
               <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <Link
-                  href={`/routines/${r.id}`}
+                  href={`/routines/${r.id}?from=routines`}
                   className="flex-1 font-semibold text-[var(--text)] no-underline"
                 >
                   {r.name}

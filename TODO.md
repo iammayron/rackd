@@ -6,11 +6,11 @@ Braindump from on-device testing. Each item gets discussed/scoped before impleme
 
 - [x] 1. Prevent screen rotation — lock orientation during a workout (portrait overlay in landscape + Android lock fallback)
 - [x] 2. Fix RPE (6-tier perceived-exertion sheet Very light→Max effort w/ colors, RPE inline after reps, row chip colored by tier, stores single number 1/3/5/8/9/10, clear-persistence fix)
-- [ ] 3. Copy values to remaining sets
-- [ ] 4. Fix replace button (replace exercise)
-- [ ] 5. Add timer per exercise
+- [x] 3. Copy values to remaining sets (on completing a set, toast offers "Copy" → copies weight & reps to later not-completed sets of the exercise)
+- [x] 4. Replace exercise — slide-up sheet with "Replacing" header, library search, Similar·muscle + All exercises groups, rounded rows w/ squircle thumb + Swap
+- [x] 5. Per-exercise rest timer — editable rest slide-up; rest persists back to routine on finish (next run pulls it); "Skip rest day" on Home reveals next workout to start
 - [x] 6. Data getting lost when minimizing workout (persist set edits on blur + focus-guarded resync)
-- [ ] 7. Fix drag and drop
+- [x] 7. Fix drag and drop
 - [ ] 8. Fix exercise details slide up
 - [ ] 9. Close timer when it ends + send a notification to iPhone (via Web Push; Live Activities not possible on PWA)
 - [ ] 10. Timer backdrop

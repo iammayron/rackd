@@ -32,12 +32,15 @@ export function SetRow({
   restSec,
   prevLabel,
   startsRest = true,
+  onCompleted,
 }: {
   data: SetRowData;
   restSec: number;
   prevLabel?: string;
   /** false for a supersetted exercise that isn't last in its group — go straight to the partner. */
   startsRest?: boolean;
+  /** Called after a set is successfully marked complete (not on un-complete). */
+  onCompleted?: (set: SetRowData) => void;
 }) {
   const startTimer = useTimerStore((s) => s.start);
   const { unit, display, toKg } = useUnit();
@@ -101,12 +104,15 @@ export function SetRow({
   async function toggle() {
     const client = getClient();
     const next = !data.completed;
+    const kg = weight ? toKg(Number(weight)) : 0;
+    const repCount = Number(reps) || 0;
     await updateSet(client, data.id, {
-      weight: weight ? toKg(Number(weight)) : 0,
-      reps: Number(reps) || 0,
+      weight: kg,
+      reps: repCount,
       completed: next,
     });
     if (next && startsRest) startTimer(restSec);
+    if (next) onCompleted?.({ ...data, weight: kg, reps: repCount, completed: true });
   }
 
   return (

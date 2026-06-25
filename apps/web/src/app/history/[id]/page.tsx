@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { estimate1RM } from "@rackd/core";
 import { useUnit } from "@/lib/units-store";
 import { useQuery } from "@/lib/use-query";
+import { BackButton } from "@/components/BackButton";
 
 interface SessionExerciseRow {
   id: string;
@@ -78,15 +79,8 @@ export default function HistoryDetailPage() {
 
   return (
     <div className="flex flex-col min-h-[100dvh]">
-      <header className="sticky top-0 flex items-center gap-3 py-3 px-4 bg-[var(--bg)] border-b border-[var(--border)]">
-        <button
-          type="button"
-          onClick={() => router.push("/history")}
-          aria-label="Back"
-          className="bg-transparent border-none text-lg text-[var(--text-muted)]"
-        >
-          ←
-        </button>
+      <header className="sticky top-[var(--safe-top)] z-10 flex items-center gap-3 py-3 px-4 bg-[var(--bg)] border-b border-[var(--border)]">
+        <BackButton onClick={() => router.push("/history")} />
         <h1 className="text-lg font-bold">{s?.name ?? "Workout"}</h1>
       </header>
 

@@ -1,0 +1,22 @@
+{
+  "name": "@rackd/push",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx worker.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rackd/core": "workspace:^",
+    "@rackd/db": "workspace:^",
+    "@triplit/client": "^1.0.0",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/web-push": "^3.6.4",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

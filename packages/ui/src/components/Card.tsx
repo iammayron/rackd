@@ -17,7 +17,7 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
  * step (dark). `feature` uses the larger hero radius; `accent` paints coral
  * (used for "today's workout"). `dashed` for empty / add states.
  */
-export function Card({ children, variant = "default", padding = 20, style, ...rest }: CardProps) {
+export function Card({ children, variant = "default", padding = 20, style, className, ...rest }: CardProps) {
   const variants: Record<CardVariant, React.CSSProperties> = {
     default: {
       background: "var(--surface)",
@@ -46,7 +46,11 @@ export function Card({ children, variant = "default", padding = 20, style, ...re
   };
   const v = variants[variant] ?? variants.default;
   return (
-    <div style={{ padding, fontFamily: "var(--font-sans)", color: "var(--text)", ...v, ...style }} {...rest}>
+    <div
+      className={["rk-squircle-corners", className].filter(Boolean).join(" ")}
+      style={{ padding, fontFamily: "var(--font-sans)", color: "var(--text)", ...v, ...style }}
+      {...rest}
+    >
       {children}
     </div>
   );

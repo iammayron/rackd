@@ -33,6 +33,8 @@ async function wipeDemo() {
     "bodyWeightLogs",
     "routineSets",
     "routineExercises",
+    "programDays",
+    "programs",
     "routines",
   ] as const;
   for (const col of cols) {
@@ -197,6 +199,7 @@ async function seedRoutine() {
     ownerId: OWNER,
     name: "Full Body A",
     order: 0,
+    category: "Full body",
     scheduledDays: new Set([1, 3, 5]),
   });
   const plan: { ex: string; reps: number; weight: number }[] = [
@@ -230,6 +233,155 @@ async function seedRoutine() {
   console.log("  seeded 1 routine (Full Body A)");
 }
 
+/**
+ * Demo Programs that exercise the new metadata: a 4-week PPL block and an 8-week
+ * Upper/Lower block. Each program day points at a categorised routine (Push,
+ * Pull, Legs / Upper, Lower) so the Plans page shows both the "N-week block"
+ * meta and the per-day category tag.
+ */
+async function seedPrograms() {
+  type SeededRoutine = { category: string; name: string; lifts: { ex: string; reps: number; weight: number }[] };
+  type SeededProgram = {
+    key: string;
+    name: string;
+    blockWeeks: number;
+    routines: SeededRoutine[];
+  };
+
+  const programs: SeededProgram[] = [
+    {
+      key: "ppl",
+      name: "Push / Pull / Legs",
+      blockWeeks: 4,
+      routines: [
+        {
+          category: "Push",
+          name: "Push",
+          lifts: [
+            { ex: "ex_bench_press", reps: 6, weight: 70 },
+            { ex: "ex_ohp", reps: 8, weight: 40 },
+            { ex: "ex_tricep_pushdown", reps: 12, weight: 30 },
+          ],
+        },
+        {
+          category: "Pull",
+          name: "Pull",
+          lifts: [
+            { ex: "ex_deadlift", reps: 5, weight: 120 },
+            { ex: "ex_bb_row", reps: 8, weight: 60 },
+            { ex: "ex_lat_pulldown", reps: 10, weight: 55 },
+            { ex: "ex_bb_curl", reps: 12, weight: 30 },
+          ],
+        },
+        {
+          category: "Legs",
+          name: "Legs",
+          lifts: [
+            { ex: "ex_squat", reps: 6, weight: 100 },
+            { ex: "ex_leg_press", reps: 10, weight: 150 },
+            { ex: "ex_calf_raise", reps: 15, weight: 60 },
+          ],
+        },
+      ],
+    },
+    {
+      key: "ul",
+      name: "Upper / Lower",
+      blockWeeks: 8,
+      routines: [
+        {
+          category: "Upper",
+          name: "Upper",
+          lifts: [
+            { ex: "ex_bench_press", reps: 6, weight: 72.5 },
+            { ex: "ex_bb_row", reps: 8, weight: 62.5 },
+            { ex: "ex_ohp", reps: 8, weight: 42.5 },
+            { ex: "ex_lat_pulldown", reps: 10, weight: 57.5 },
+          ],
+        },
+        {
+          category: "Lower",
+          name: "Lower",
+          lifts: [
+            { ex: "ex_squat", reps: 6, weight: 105 },
+            { ex: "ex_rdl", reps: 8, weight: 90 },
+            { ex: "ex_leg_press", reps: 10, weight: 155 },
+            { ex: "ex_calf_raise", reps: 15, weight: 65 },
+          ],
+        },
+      ],
+    },
+  ];
+
+  await ensureExercises([
+    ...new Set(programs.flatMap((p) => p.routines.flatMap((r) => r.lifts.map((l) => l.ex)))),
+  ]);
+
+  // Weekdays each program trains (0=Sun … 6=Sat), in day order.
+  const weekdaysByKey: Record<string, number[]> = { ppl: [1, 3, 5], ul: [1, 2, 4, 5] };
+
+  for (let pi = 0; pi < programs.length; pi++) {
+    const prog = programs[pi]!;
+    const programId = id("program", prog.key);
+    await c.insert("programs", {
+      id: programId,
+      ownerId: OWNER,
+      name: prog.name,
+      order: pi + 1, // keep the seeded routine list ordering intact
+      blockWeeks: prog.blockWeeks,
+      scheduleMode: "weekly",
+      active: false,
+    });
+
+    const weekdays = weekdaysByKey[prog.key] ?? [];
+    for (let ri = 0; ri < prog.routines.length; ri++) {
+      const r = prog.routines[ri]!;
+      const routineId = id("routine", prog.key, ri);
+      await c.insert("routines", {
+        id: routineId,
+        ownerId: OWNER,
+        name: r.name,
+        order: 1 + pi * 10 + ri,
+        category: r.category,
+      });
+      for (let li = 0; li < r.lifts.length; li++) {
+        const lift = r.lifts[li]!;
+        const reId = id("re", prog.key, ri, li);
+        await c.insert("routineExercises", {
+          id: reId,
+          ownerId: OWNER,
+          routineId,
+          exerciseId: lift.ex,
+          order: li,
+          restSec: 120,
+        });
+        for (let s = 0; s < 3; s++) {
+          await c.insert("routineSets", {
+            id: id("rs", prog.key, ri, li, s),
+            ownerId: OWNER,
+            routineExerciseId: reId,
+            order: s,
+            type: "normal",
+            targetReps: lift.reps,
+            targetWeight: lift.weight,
+          });
+        }
+      }
+      await c.insert("programDays", {
+        id: id("pd", prog.key, ri),
+        ownerId: OWNER,
+        programId,
+        order: ri + 1,
+        name: r.name,
+        routineId,
+        weekday: weekdays[ri],
+      });
+    }
+  }
+  const routineCount = programs.reduce((n, p) => n + p.routines.length, 0);
+  console.log(`  seeded ${programs.length} programs (${routineCount} routines)`);
+}
+
 async function seedProfile() {
   const existing = await c.fetchOne(c.query("userProfile").Where("ownerId", "=", OWNER));
   const patch = {
@@ -255,5 +407,6 @@ await wipeDemo();
 await seedWorkouts();
 await seedBodyweight();
 await seedRoutine();
+await seedPrograms();
 await seedProfile();
 console.log("Done.");

@@ -27,6 +27,15 @@ services:
       - "8787:8787"
     volumes:
       - myfit-sync-data:/data
+    healthcheck:
+      # node:22-slim has no curl/wget; use Node's global fetch.
+      test:
+        - CMD-SHELL
+        - "node -e \"fetch('http://localhost:8787/healthcheck').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
 
   web:
     build:
@@ -36,6 +45,8 @@ services:
         NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?}
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:?}
         NEXT_PUBLIC_TRIPLIT_URL: ${NEXT_PUBLIC_TRIPLIT_URL:?}
+        # VAPID public key — baked into the client so the SW can subscribe to push.
+        NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${NEXT_PUBLIC_VAPID_PUBLIC_KEY:?set NEXT_PUBLIC_VAPID_PUBLIC_KEY in .env}
     restart: unless-stopped
     environment:
       # Server-side only (read at runtime by the upload route handler) — NOT baked
@@ -51,6 +62,24 @@ services:
     depends_on:
       - sync
       - minio
+
+  # Web Push sender — drains the scheduledPushes queue and delivers VAPID pushes
+  # at each rest timer's endAt, so a backgrounded/locked phone still gets alerted.
+  # Connects to the sync server with a service token (minted from JWT_SECRET).
+  push:
+    build:
+      context: .
+      dockerfile: apps/push/Dockerfile
+    restart: unless-stopped
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      TRIPLIT_URL: ${PUSH_TRIPLIT_URL:-http://sync:8787}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:?set VAPID_PUBLIC_KEY in .env}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:?set VAPID_PRIVATE_KEY in .env}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@rackd.app}
+    depends_on:
+      sync:
+        condition: service_healthy
 
   # S3-compatible object store for profile photos. Console on :9001, API on :9000.
   # The bucket must allow anonymous downloads so <img> can load photos; create it

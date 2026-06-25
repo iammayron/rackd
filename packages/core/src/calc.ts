@@ -198,7 +198,13 @@ export function programNextSlot<T extends ScheduleDay>(
       const d = days.find((x) => x.weekday === wd && !isRestDay(x));
       if (d) return d;
     }
-    return null;
+    // Fallback for a weekly program whose days carry no `weekday` (e.g. created
+    // in rotation then switched to weekly without pinning weekdays). Today is
+    // still a rest day — nothing is pinned to it — but surface the first
+    // scheduled workout in order so the "skip rest day" path has a next workout
+    // to offer, matching the rotation experience.
+    const ordered = [...days].sort((a, b) => a.order - b.order);
+    return ordered.find((d) => !isRestDay(d)) ?? null;
   }
   const ordered = [...days].sort((a, b) => a.order - b.order);
   for (let k = 1; k <= ordered.length; k++) {

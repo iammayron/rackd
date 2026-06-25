@@ -1,6 +1,12 @@
 import { TriplitClient } from "@triplit/client";
 import { estimate1RM } from "@rackd/core";
-import type { TrainingGoal, UnitPreference, DiffExercise } from "@rackd/core";
+import type {
+  TrainingGoal,
+  UnitPreference,
+  DiffExercise,
+  ScheduledPush,
+  PushSubscriptionRecord,
+} from "@rackd/core";
 import { schema, roles } from "./schema";
 
 export { schema, roles } from "./schema";
@@ -101,6 +107,17 @@ export async function updateSessionExercise(
 export async function setRoutineExerciseOrder(client: Client, id: string, order: number) {
   return client.update("routineExercises", id, (e) => {
     e.order = order;
+  });
+}
+
+/** Patch mutable fields of a routine exercise (currently its rest time). */
+export async function updateRoutineExercise(
+  client: Client,
+  id: string,
+  patch: { restSec?: number },
+) {
+  return client.update("routineExercises", id, (e) => {
+    if (patch.restSec !== undefined) e.restSec = patch.restSec;
   });
 }
 
@@ -246,9 +263,62 @@ export async function finishSession(client: Client, sessionId: string, now: numb
   });
   const session = await client.fetchById("sessions", sessionId);
   if (session) {
+    // Rest is config/prescription (not performance), so carry an in-workout
+    // rest edit back to the routine for the next run. Safe alongside the
+    // optional save-back flow — both write the same session rest value.
+    await syncRestToRoutine(client, sessionId);
     return detectAndRecordPRs(client, { sessionId, ownerId: session.ownerId, now });
   }
   return [];
+}
+
+/**
+ * Carry per-exercise rest edits made during a live workout back to the source
+ * routine so the next run starts from the same rest timers. ONLY the `restSec`
+ * config is synced — performed sets/loads are never pushed to the routine
+ * (that's the explicit, user-driven save-back flow).
+ *
+ * sessionExercises hold no link to their source routineExercise, so we map by
+ * `exerciseId` within the session's `routineId`, using `order` to pair up when a
+ * routine repeats the same exercise. Exercises added mid-session (no routine
+ * slot) are skipped; removed ones keep their existing rest. No-ops for ad-hoc
+ * sessions (no routineId).
+ */
+async function syncRestToRoutine(client: Client, sessionId: string) {
+  const session = await client.fetchById("sessions", sessionId);
+  if (!session?.routineId) return;
+
+  const routineExs = await client.fetch(
+    client.query("routineExercises").Where("routineId", "=", session.routineId),
+  );
+  if (routineExs.length === 0) return;
+
+  const sessionExs = await client.fetch(
+    client.query("sessionExercises").Where("sessionId", "=", sessionId),
+  );
+  if (sessionExs.length === 0) return;
+
+  // Group routine slots by exerciseId (order-sorted) to pair duplicates by position.
+  const slotsByExId = new Map<string, typeof routineExs>();
+  for (const re of routineExs) {
+    const list = slotsByExId.get(re.exerciseId) ?? [];
+    list.push(re);
+    slotsByExId.set(re.exerciseId, list);
+  }
+  for (const list of slotsByExId.values()) list.sort((a, b) => a.order - b.order);
+
+  const claimed = new Set<string>();
+  const orderedSes = [...sessionExs].sort((a, b) => a.order - b.order);
+  for (const se of orderedSes) {
+    const slot = slotsByExId.get(se.exerciseId)?.find((re) => !claimed.has(re.id));
+    if (!slot) continue; // added/replaced mid-session — no matching routine slot
+    claimed.add(slot.id);
+    if (slot.restSec !== se.restSec) {
+      await client.update("routineExercises", slot.id, (re) => {
+        re.restSec = se.restSec;
+      });
+    }
+  }
 }
 
 export interface DetectedPR {
@@ -515,18 +585,31 @@ export async function exerciseStats(
 
 export async function createRoutine(
   client: Client,
-  args: { ownerId: string; name: string; order?: number },
+  args: { ownerId: string; name: string; order?: number; category?: string },
 ) {
   return client.insert("routines", {
     ownerId: args.ownerId,
     name: args.name,
     order: args.order ?? 0,
+    category: args.category,
   });
 }
 
 export async function renameRoutine(client: Client, id: string, name: string) {
   return client.update("routines", id, (r) => {
     r.name = name;
+  });
+}
+
+/**
+ * Set (or clear) a routine's free-text focus/split tag (Push, Pull, Legs…).
+ * Pass `undefined`/empty to clear it — the Plans page then falls back to a
+ * name-derived label.
+ */
+export async function setRoutineCategory(client: Client, id: string, category?: string) {
+  const value = category?.trim() || undefined;
+  return client.update("routines", id, (r) => {
+    r.category = value;
   });
 }
 
@@ -542,8 +625,30 @@ export async function setRoutineSchedule(client: Client, id: string, days: numbe
   });
 }
 
+/**
+ * Delete a routine and everything that hangs off it. Triplit has no FK cascade,
+ * so we remove children-first (same manual pattern as discardSession): each
+ * routineExercise's routineSets, then the routineExercises, then the routine.
+ *
+ * A routine can also be referenced by program days (a program day points to a
+ * routineId). Deleting the routine without touching them would leave dangling
+ * refs that render as a stale routine name, so we first detach every program
+ * day that points here by clearing its routineId — turning it into a Rest slot
+ * while keeping the program's day/weekday structure intact (id-based, via
+ * updateProgramDay).
+ */
 export async function deleteRoutine(client: Client, id: string) {
-  // remove children first (no cascade)
+  // Detach referencing program days first so none point at a deleted routine.
+  const refDays = await client.fetch(
+    client.query("programDays").Where("routineId", "=", id),
+  );
+  for (const d of refDays) {
+    await client.update("programDays", d.id, (day) => {
+      day.routineId = undefined;
+    });
+  }
+
+  // Then cascade the prescription tree (routineExercises → routineSets).
   const exs = await client.fetch(
     client.query("routineExercises").Where("routineId", "=", id),
   );
@@ -967,13 +1072,30 @@ export async function getSaveBackContext(
 
 export async function createProgram(
   client: Client,
-  args: { ownerId: string; name: string; order?: number },
+  args: { ownerId: string; name: string; order?: number; blockWeeks?: number },
 ) {
-  return client.insert("programs", {
+  const created = await client.insert("programs", {
     ownerId: args.ownerId,
     name: args.name,
     order: args.order ?? 0,
+    blockWeeks: args.blockWeeks,
   });
+  // First/only program becomes active by default so Home always has something to
+  // drive "today". Only auto-activate when this is the SOLE program for the owner;
+  // a 2nd+ program must be activated explicitly via setProgramActive (exclusive),
+  // so we can never create a double-active. Single place that covers every create
+  // path (Plans "+ New", template clone → createProgram). NB: a "no active program"
+  // check here is racy — right after an insert the active query can momentarily
+  // return empty under Triplit eventual consistency and activate without clearing.
+  const all = await client.fetch(
+    client.query("programs").Where("ownerId", "=", args.ownerId),
+  );
+  if (all.length === 1) {
+    await client.update("programs", created.id, (p) => {
+      p.active = true;
+    });
+  }
+  return created;
 }
 
 export async function renameProgram(client: Client, id: string, name: string) {
@@ -1003,15 +1125,21 @@ export async function setProgramActive(
   }
 }
 
-/** Set a program's schedule mode and/or rotation cursor. */
+/**
+ * Patch a program's schedule mode, rotation cursor, and/or block length.
+ * `blockWeeks` is present-keyed (not `!== undefined`) so callers can CLEAR it by
+ * passing `blockWeeks: undefined` (empty/0 in the editor = unset); a value of 0
+ * is normalised to undefined.
+ */
 export async function setProgramSchedule(
   client: Client,
   id: string,
-  patch: { scheduleMode?: "rotation" | "weekly"; rotationCursor?: number },
+  patch: { scheduleMode?: "rotation" | "weekly"; rotationCursor?: number; blockWeeks?: number },
 ) {
   return client.update("programs", id, (p) => {
     if (patch.scheduleMode !== undefined) p.scheduleMode = patch.scheduleMode;
     if (patch.rotationCursor !== undefined) p.rotationCursor = patch.rotationCursor;
+    if ("blockWeeks" in patch) p.blockWeeks = patch.blockWeeks ? patch.blockWeeks : undefined;
   });
 }
 
@@ -1048,13 +1176,27 @@ export async function updateProgramDay(
 ) {
   return client.update("programDays", id, (d) => {
     if (patch.name !== undefined) d.name = patch.name;
-    if (patch.routineId !== undefined) d.routineId = patch.routineId;
+    // `"routineId" in patch` (not `!== undefined`) so callers can CLEAR the
+    // assignment — turning the day into a Rest slot — by passing
+    // `routineId: undefined`. An absent key leaves the routine untouched.
+    if ("routineId" in patch) d.routineId = patch.routineId;
     if (patch.weekday !== undefined) d.weekday = patch.weekday;
   });
 }
 
 export async function removeProgramDay(client: Client, id: string) {
   return client.delete("programDays", id);
+}
+
+/** Persist a full reorder: `order` becomes the 1-based position in `orderedIds`. */
+export async function reorderProgramDays(client: Client, orderedIds: string[]) {
+  await Promise.all(
+    orderedIds.map((id, i) =>
+      client.update("programDays", id, (d) => {
+        d.order = i + 1;
+      }),
+    ),
+  );
 }
 
 /* ---------------------------------------------------------------------------
@@ -1188,4 +1330,150 @@ export async function lastPerformance(
   );
   if (sets.length === 0) return null;
   return sets.map((s) => ({ order: s.order, weight: s.weight, reps: s.reps }));
+}
+
+/**
+ * Discard a session entirely: cascade-delete its setLogs and sessionExercises,
+ * then the session row itself, so no orphans remain. Triplit has no FK cascade,
+ * so we delete children-first (same manual pattern as deleteRoutine /
+ * removeSessionExercise). Irreversible — the workout and everything logged in
+ * it are gone (used to abandon an in-progress workout, endedAt still null).
+ */
+export async function discardSession(client: Client, sessionId: string) {
+  const exs = await client.fetch(
+    client.query("sessionExercises").Where("sessionId", "=", sessionId),
+  );
+  for (const ex of exs) {
+    const sets = await client.fetch(
+      client.query("setLogs").Where("sessionExerciseId", "=", ex.id),
+    );
+    for (const s of sets) await client.delete("setLogs", s.id);
+    await client.delete("sessionExercises", ex.id);
+  }
+  await client.delete("sessions", sessionId);
+}
+
+/* ---------------------------------------------------------------------------
+ * Web Push — device subscriptions + the scheduled-push queue that the
+ * server-side sender (apps/push) drains. Background notifications need this:
+ * a backgrounded PWA's JS is suspended, so the rest-over alert must be sent
+ * server-side at the timer's endAt. UI/worker go through these, never the
+ * client directly.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Store (or refresh) a device's push subscription, deduped by `endpoint`.
+ * Endpoints are globally unique per subscription, so a repeat call updates the
+ * existing row's keys rather than piling up duplicates. Returns the row.
+ */
+export async function savePushSubscription(
+  client: Client,
+  args: {
+    ownerId: string;
+    endpoint: string;
+    p256dh: string;
+    auth: string;
+    userAgent?: string;
+    now: number;
+  },
+) {
+  const existing = await client.fetchOne(
+    client.query("pushSubscriptions").Where("endpoint", "=", args.endpoint),
+  );
+  if (existing) {
+    await client.update("pushSubscriptions", existing.id, (s) => {
+      s.ownerId = args.ownerId;
+      s.p256dh = args.p256dh;
+      s.auth = args.auth;
+      if (args.userAgent !== undefined) s.userAgent = args.userAgent;
+    });
+    return existing;
+  }
+  return client.insert("pushSubscriptions", {
+    ownerId: args.ownerId,
+    endpoint: args.endpoint,
+    p256dh: args.p256dh,
+    auth: args.auth,
+    userAgent: args.userAgent,
+    createdAt: args.now,
+  });
+}
+
+/** All push subscriptions (devices) for a user. */
+export async function getPushSubscriptions(client: Client, ownerId: string) {
+  return client.fetch(
+    client.query("pushSubscriptions").Where("ownerId", "=", ownerId),
+  );
+}
+
+/** Remove a stored subscription (e.g. the push service reported it expired). */
+export async function deletePushSubscription(client: Client, id: string) {
+  return client.delete("pushSubscriptions", id);
+}
+
+/** Queue a push for `fireAt`. Returns the row so the caller can reschedule/cancel it. */
+export async function schedulePush(
+  client: Client,
+  args: {
+    ownerId: string;
+    subscriptionId: string;
+    fireAt: number;
+    title: string;
+    body: string;
+    now: number;
+  },
+) {
+  return client.insert("scheduledPushes", {
+    ownerId: args.ownerId,
+    subscriptionId: args.subscriptionId,
+    fireAt: args.fireAt,
+    title: args.title,
+    body: args.body,
+    status: "pending",
+    createdAt: args.now,
+  });
+}
+
+/** Move a still-pending scheduled push to a new fire time (rest +/- time). */
+export async function reschedulePush(client: Client, id: string, fireAt: number) {
+  return client.update("scheduledPushes", id, (p) => {
+    if (p.status === "pending") p.fireAt = fireAt;
+  });
+}
+
+/** Cancel a scheduled push (rest skipped, or fired locally in the foreground). */
+export async function cancelScheduledPush(client: Client, id: string) {
+  return client.delete("scheduledPushes", id);
+}
+
+/** A pending scheduled push with its target subscription resolved (Included). */
+export interface PendingPushRow extends ScheduledPush {
+  subscription: PushSubscriptionRecord | null;
+}
+
+/**
+ * Live-subscribe to every pending push (across all owners), with each row's
+ * target `subscription` Included so the sender has endpoint+keys in one read.
+ * The set stays fresh as the client reschedules (fireAt changes), cancels (row
+ * removed) or fires locally; the sender decides *when* to deliver by comparing
+ * `fireAt` to the wall clock. Server-side only — call with a service-token
+ * client so permissions are bypassed. Returns an unsubscribe fn.
+ */
+export function subscribePendingPushes(
+  client: Client,
+  onResults: (rows: PendingPushRow[]) => void,
+  onError?: (error: unknown) => void,
+): () => void {
+  return client.subscribe(
+    client.query("scheduledPushes").Where("status", "=", "pending").Include("subscription"),
+    (results) => onResults(results as unknown as PendingPushRow[]),
+    onError,
+  );
+}
+
+/** Mark a scheduled push delivered so the sender never sends it twice. */
+export async function markPushSent(client: Client, id: string) {
+  return client.update("scheduledPushes", id, (p) => {
+    p.status = "sent";
+  });
 }

@@ -8,6 +8,7 @@ import {
   addSessionExercise,
   startSessionFromRoutine,
   setProgramSchedule,
+  setProgramActive,
 } from "@rackd/db";
 import { todaysRoutine, programTodaySlot, programNextSlot, advanceRotation } from "@rackd/core";
 import { Card, Button, Badge, Avatar, Input, SelectableRow } from "@rackd/ui";
@@ -15,6 +16,7 @@ import { getClient } from "@/lib/triplit";
 import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
 import { Nav } from "@/components/Nav";
+import { ActivateProgramSheet } from "@/components/ActivateProgramSheet";
 import { WeightProgressCard } from "@/features/dashboard/WeightProgressCard";
 import { WeeklyVolumeCard } from "@/features/dashboard/WeeklyVolumeCard";
 import { HistoryStreakCard } from "@/features/dashboard/HistoryStreakCard";
@@ -105,6 +107,23 @@ export default function Home() {
   const [selected, setSelected] = useState<string[]>([]);
   const [starting, setStarting] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [skipRevealed, setSkipRevealed] = useState(false);
+  const [activateOpen, setActivateOpen] = useState(false);
+
+  const programChoices = useMemo(
+    () =>
+      programs.map((p) => ({
+        id: p.id,
+        name: p.name,
+        meta: (p.scheduleMode ?? "rotation") === "weekly" ? "Fixed weekly" : "Rotation",
+      })),
+    [programs],
+  );
+
+  async function activateProgram(programId: string) {
+    setActivateOpen(false);
+    await setProgramActive(getClient(), { programId, ownerId: getCurrentUserId() });
+  }
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -154,7 +173,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-[100dvh]">
-      <main className="flex-1 px-5 pt-5 pb-28">
+      <main className="flex-1 px-5 pt-5 pb-[calc(112px+var(--safe-bottom))]">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -181,8 +200,42 @@ export default function Home() {
           </Link>
         )}
 
-        {/* Today — the one hero action, or a Rest day */}
-        {!isRest ? (
+        {/* No active program → prompt to activate an existing one or create one.
+            Replaces the today/rest card entirely until a program is active. */}
+        {!activeProgram ? (
+          <Card variant="dashed" style={{ marginBottom: 24, textAlign: "center", padding: 28 }}>
+            <div className={EYEBROW}>Get started</div>
+            <div className="mt-1.5 text-3xl font-extrabold leading-[1.1]">No active program</div>
+            <div className="mt-1 text-sm text-[var(--text-muted)]">
+              {programs.length > 0
+                ? "Activate a program to plan your week — or create a new one."
+                : "Create a program to plan your training week."}
+            </div>
+
+            {programs.length > 0 && (
+              <Button
+                variant="primary"
+                fullWidth
+                onClick={() => setActivateOpen(true)}
+                style={{ marginTop: 18 }}
+              >
+                Activate a program
+              </Button>
+            )}
+            <Button
+              variant={programs.length > 0 ? "secondary" : "primary"}
+              fullWidth
+              onClick={() => router.push("/programs")}
+              style={
+                programs.length > 0
+                  ? { marginTop: 10, color: "var(--accent)" }
+                  : { marginTop: 18 }
+              }
+            >
+              Create program
+            </Button>
+          </Card>
+        ) : !isRest ? (
           <Card variant="accent" style={{ marginBottom: 24 }}>
             <div className="flex items-center gap-2.5">
               <div className="text-xs font-bold uppercase tracking-[0.06em] opacity-85 whitespace-nowrap">
@@ -224,25 +277,42 @@ export default function Home() {
             <div className="mt-1 text-sm text-[var(--text-muted)]">
               {nextName ? `Recovery is where you grow. Next up: ${nextName}.` : "Nothing scheduled — recovery is where you grow."}
             </div>
-            {nextSlot?.routineId ? (
-              <Button
-                variant="secondary"
-                fullWidth
-                onClick={() => startRoutine(nextSlot.routineId)}
-                disabled={starting}
-                style={{ marginTop: 18, color: "var(--accent)" }}
+
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={() => setQuickOpen(true)}
+              style={{ marginTop: 18 }}
+            >
+              Start quick workout
+            </Button>
+
+            {nextSlot?.routineId && !skipRevealed && (
+              <button
+                type="button"
+                onClick={() => setSkipRevealed(true)}
+                className="block w-full mt-2.5 py-1.5 bg-transparent border-none cursor-pointer text-sm font-bold text-[var(--accent)] text-center"
               >
-                Train anyway · {nextName} ›
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                fullWidth
-                onClick={() => setQuickOpen(true)}
-                style={{ marginTop: 18 }}
-              >
-                Start quick workout
-              </Button>
+                Skip rest day ›
+              </button>
+            )}
+
+            {skipRevealed && nextSlot?.routineId && (
+              <div className="mt-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-3.5 text-left">
+                <div className={EYEBROW}>Skip the rest — start today</div>
+                <div className="mt-1 text-lg font-extrabold leading-tight text-[var(--text)]">
+                  {nextName}
+                </div>
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  onClick={() => startRoutine(nextSlot.routineId)}
+                  disabled={starting}
+                  style={{ marginTop: 12, color: "var(--accent)" }}
+                >
+                  {starting ? "Starting…" : `Start ${nextName} ›`}
+                </Button>
+              </div>
             )}
           </Card>
         )}
@@ -282,7 +352,7 @@ export default function Home() {
         )}
 
         {selected.length > 0 && (
-          <div className="fixed left-1/2 -translate-x-1/2 bottom-[84px] w-[min(440px,calc(100%-32px))] z-30">
+          <div className="fixed left-1/2 -translate-x-1/2 bottom-[calc(84px+var(--safe-bottom))] w-[min(440px,calc(100%-32px))] z-30">
             <Button variant="primary" size="lg" fullWidth onClick={start} disabled={starting}>
               {starting ? "Starting…" : `Start workout (${selected.length})`}
             </Button>
@@ -290,6 +360,13 @@ export default function Home() {
         )}
       </main>
       <Nav />
+
+      <ActivateProgramSheet
+        open={activateOpen}
+        onClose={() => setActivateOpen(false)}
+        programs={programChoices}
+        onSelect={activateProgram}
+      />
     </div>
   );
 }

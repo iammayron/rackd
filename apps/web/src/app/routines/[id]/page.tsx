@@ -1,46 +1,79 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, Suspense, useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   renameRoutine,
   addRoutineExerciseWithDefaults,
-  startSessionFromRoutine,
-  setRoutineExerciseOrder,
   setRoutineExerciseSuperset,
   reorderRoutineExercises,
-  publishRoutine,
-  setRoutineSchedule,
   duplicateRoutine,
+  deleteRoutine,
 } from "@rackd/db";
 import { getClient } from "@/lib/triplit";
-import { getCurrentUserId, useAuth } from "@/lib/auth";
+import { getCurrentUserId } from "@/lib/auth";
 import { useQuery } from "@/lib/use-query";
+import { useConfirm } from "@/components/ConfirmDialog";
+import { BackButton } from "@/components/BackButton";
+import type { ExerciseMediaData } from "@/components/ExerciseMedia";
 import { RoutineExerciseEditor } from "@/features/routines/RoutineExerciseEditor";
 import { AddExercisePicker } from "@/features/routines/AddExercisePicker";
-import { WeekdayPicker } from "@/features/routines/WeekdayPicker";
 
 interface RoutineExerciseRow {
   id: string;
   order: number;
   exerciseId: string;
+  restSec: number;
   supersetGroup?: number;
-  exercise?: { name: string } | null;
+  exercise?: ExerciseMediaData | null;
 }
 
 export default function RoutineEditorPage() {
+  // useSearchParams() needs a Suspense boundary to satisfy Next's static build.
+  return (
+    <Suspense fallback={null}>
+      <RoutineEditor />
+    </Suspense>
+  );
+}
+
+function RoutineEditor() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { confirm, dialog: confirmDialog } = useConfirm();
   const routineId = params.id;
+  // Set when the editor was opened from a program (drives the "IN PROGRAM" row
+  // and where Save/Back return to). Absent when editing straight from the
+  // routine library, so there's no program context to show.
+  const programId = searchParams.get("programId") || undefined;
+  // Hint for where a no-program entry came from (`routines` = the standalone
+  // library / Discover). Lets Back land on the library instead of the Plans hub.
+  const from = searchParams.get("from") || undefined;
+
+  // Intent-based "up" target: the originating program when opened from one, the
+  // routine library when opened from there, else the Plans hub. We `replace`
+  // (not push) when leaving so the editor pops off history instead of stacking
+  // a fresh entry — that's what keeps the next Back deterministic (the bug was
+  // pushing here, then a parent `router.back()` popping to this leftover entry).
+  const backHref = programId
+    ? `/programs/${programId}`
+    : from === "routines"
+      ? "/routines"
+      : "/programs";
 
   const { results: routine } = useQuery<{
     id: string;
     name: string;
-    scheduledDays?: Set<number> | number[];
   }>((c) => c.query("routines").Where("id", "=", routineId), [routineId]);
   const name = routine[0]?.name ?? "";
-  const scheduledDays = [...(routine[0]?.scheduledDays ?? [])];
+
+  const { results: program } = useQuery<{ id: string; name: string }>(
+    (c) => c.query("programs").Where("id", "=", programId ?? "__none__"),
+    [programId],
+  );
+  const programName = programId ? program[0]?.name : undefined;
 
   const { results: exercises } = useQuery<RoutineExerciseRow>(
     (c) =>
@@ -49,6 +82,14 @@ export default function RoutineEditorPage() {
         .Where("routineId", "=", routineId)
         .Include("exercise")
         .Order("order", "ASC"),
+    [routineId],
+  );
+
+  // Owner-wide program days (Triplit is owner-scoped) so we can warn before a
+  // delete that this routine is wired into one or more programs. Mirrors the
+  // shared-routine detection in the program editor.
+  const { results: referencingDays } = useQuery<{ id: string; programId: string }>(
+    (c) => c.query("programDays").Where("routineId", "=", routineId),
     [routineId],
   );
 
@@ -118,20 +159,6 @@ export default function RoutineEditorPage() {
     setDragId(id);
   }
 
-  const { user } = useAuth();
-  const [published, setPublished] = useState(false);
-  async function publish() {
-    if (exercises.length === 0) return;
-    await publishRoutine(getClient(), {
-      routineId,
-      ownerId: getCurrentUserId(),
-      authorName: user?.email?.split("@")[0] ?? "Someone",
-      now: Date.now(),
-    });
-    setPublished(true);
-    setTimeout(() => setPublished(false), 2500);
-  }
-
   async function onPick(exerciseId: string) {
     // pre-fill from the user's profile defaults (sets/reps/rest)
     await addRoutineExerciseWithDefaults(getClient(), {
@@ -140,19 +167,6 @@ export default function RoutineEditorPage() {
       order: exercises.length + 1,
       ownerId: getCurrentUserId(),
     });
-  }
-
-  async function move(index: number, dir: -1 | 1) {
-    const j = index + dir;
-    if (j < 0 || j >= exercises.length) return;
-    const a = exercises[index];
-    const b = exercises[j];
-    if (!a || !b) return;
-    const client = getClient();
-    await Promise.all([
-      setRoutineExerciseOrder(client, a.id, b.order),
-      setRoutineExerciseOrder(client, b.id, a.order),
-    ]);
   }
 
   // two exercises are supersetted when they share a non-null group
@@ -184,13 +198,10 @@ export default function RoutineEditorPage() {
     }
   }
 
-  async function start() {
-    const s = await startSessionFromRoutine(getClient(), {
-      routineId,
-      ownerId: getCurrentUserId(),
-      now: Date.now(),
-    });
-    router.push(`/workout/${s.id}`);
+  // Edits persist live as you type, so Save is "I'm done": return to where you
+  // came from (see `backHref`).
+  function save() {
+    router.replace(backHref);
   }
 
   async function duplicate() {
@@ -201,17 +212,30 @@ export default function RoutineEditorPage() {
     if (newId) router.push(`/routines/${newId}`);
   }
 
+  async function remove() {
+    const dayCount = referencingDays.length;
+    const programCount = new Set(referencingDays.map((d) => d.programId)).size;
+    const message =
+      dayCount > 0
+        ? `This routine is used by ${dayCount} program day${dayCount === 1 ? "" : "s"}` +
+          ` across ${programCount} program${programCount === 1 ? "" : "s"}.` +
+          ` Deleting it will remove it from ${dayCount === 1 ? "that day" : "those days"}.` +
+          " Its exercises and sets are deleted too."
+        : "This deletes the routine along with its exercises and sets. You can't undo this.";
+    const ok = await confirm({
+      title: `Delete "${name}"?`,
+      message,
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
+    await deleteRoutine(getClient(), routineId);
+    router.replace(backHref);
+  }
+
   return (
     <div className="flex flex-col min-h-[100dvh]">
-      <header className="sticky top-0 z-10 flex items-center gap-3 py-3 px-4 bg-[var(--bg)] border-b border-[var(--border)]">
-        <button
-          type="button"
-          onClick={() => router.push("/routines")}
-          aria-label="Back"
-          className="bg-transparent border-none text-lg text-[var(--text-muted)]"
-        >
-          ←
-        </button>
+      <header className="sticky top-[var(--safe-top)] z-10 flex items-center gap-3 py-3 px-4 bg-[var(--bg)] border-b border-[var(--border)]">
+        <BackButton href={backHref} />
         <input
           value={draftName}
           onChange={(e) => setDraftName(e.target.value)}
@@ -221,40 +245,30 @@ export default function RoutineEditorPage() {
         />
         <button
           type="button"
-          onClick={start}
-          disabled={exercises.length === 0}
-          className={`inline-flex items-center min-h-10 px-4 rounded-lg font-bold ${
-            exercises.length
-              ? "bg-[var(--accent)] text-white"
-              : "bg-[var(--surface-2)] text-[var(--text-muted)]"
-          }`}
+          onClick={save}
+          className="bg-transparent border-none px-1 text-base font-bold text-[var(--accent)]"
         >
-          Start
+          Save
         </button>
       </header>
 
-      <main className="flex-1 p-4">
-        <div className="mb-4">
-          <p className="text-sm font-semibold text-[var(--text-muted)] mb-2">
-            Scheduled days
-          </p>
-          <WeekdayPicker
-            value={scheduledDays}
-            onChange={(days) => setRoutineSchedule(getClient(), routineId, days)}
-          />
-          <p className="text-xs text-[var(--text-muted)] mt-2">
-            Picked days surface this routine as “Today’s workout” on the dashboard.
-          </p>
+      {programName && (
+        <div className="flex items-center gap-2 px-4 pt-3">
+          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--text-muted)]">
+            In program
+          </span>
+          <span className="rk-squircle-corners min-w-0 truncate rounded-[var(--radius-sm)] bg-[var(--accent-wash)] px-2 py-0.5 text-xs font-bold text-[var(--accent)]">
+            {programName}
+          </span>
         </div>
+      )}
 
+      <main className="flex-1 p-4">
         <div ref={listRef}>
           {ordered.map((re, i) => (
             <Fragment key={re.id}>
               <RoutineExerciseEditor
                 routineExercise={re}
-                index={i}
-                total={ordered.length}
-                onMove={(dir) => move(i, dir)}
                 inGroup={inGroup(i)}
                 linkedNext={linkedNext(i)}
                 onToggleNext={() => toggleSupersetNext(i)}
@@ -271,27 +285,33 @@ export default function RoutineEditorPage() {
         </div>
         <AddExercisePicker onPick={onPick} />
 
-        {exercises.length > 0 && (
+        <section className="mt-8">
+          <div className="mb-3 text-xs font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">
+            Routine
+          </div>
           <button
             type="button"
-            onClick={publish}
-            className="mt-3 min-h-11 w-full rounded-lg bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] font-semibold"
+            onClick={duplicate}
+            className="rk-squircle-corners min-h-11 w-full rounded-[var(--radius-md)] bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] font-bold py-3.5"
           >
-            {published ? "Published to Discover ✓" : "Publish to Discover"}
+            Duplicate routine
           </button>
-        )}
+          <p className="mt-2 text-xs text-[var(--text-muted)]">
+            Makes an independent copy. Edits to a duplicate don&apos;t touch the original or other
+            programs.
+          </p>
 
-        <button
-          type="button"
-          onClick={duplicate}
-          className="mt-2 min-h-11 w-full rounded-lg bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] font-semibold"
-        >
-          Duplicate routine
-        </button>
-        <p className="mt-2 text-xs text-[var(--text-muted)]">
-          Makes an independent copy — edits to it don’t touch the original.
-        </p>
+          <button
+            type="button"
+            onClick={remove}
+            className="mt-4 w-full bg-transparent border-none py-2 text-center text-sm font-semibold text-[var(--danger)]"
+          >
+            Delete routine
+          </button>
+        </section>
       </main>
+
+      {confirmDialog}
     </div>
   );
 }

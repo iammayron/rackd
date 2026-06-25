@@ -289,6 +289,21 @@ describe("programNextSlot", () => {
   it("weekly: wraps around the week back to the first day", () => {
     expect(programNextSlot(weekly, "weekly", 0, 4)?.routineId).toBe("push");
   });
+  it("weekly: falls back to the first ordered workout when no day is weekday-pinned", () => {
+    // A weekly program created in rotation (days carry only `order`, no
+    // weekday) — every day reads as rest "today", but skip-rest still offers
+    // the first scheduled workout in order.
+    const noWeekday = [
+      { order: 2, routineId: "pull" },
+      { order: 1, routineId: "push" },
+      { order: 3, routineId: "legs" },
+    ];
+    expect(programNextSlot(noWeekday, "weekly", 0, 3)?.routineId).toBe("push");
+  });
+  it("weekly: returns null when no day is weekday-pinned and every day is rest", () => {
+    const allRest = [{ order: 1 }, { order: 2 }];
+    expect(programNextSlot(allRest, "weekly", 0, 3)).toBeNull();
+  });
 
   const rot = [
     { order: 0, routineId: "push" },

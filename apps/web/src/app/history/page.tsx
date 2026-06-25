@@ -56,7 +56,7 @@ export default function HistoryPage() {
 
   return (
     <div className="flex flex-col min-h-[100dvh]">
-      <main className="flex-1 px-5 pt-5 pb-24">
+      <main className="flex-1 px-5 pt-5 pb-[calc(96px+var(--safe-bottom))]">
         <div className="flex items-center mb-5">
           <h1 className="text-2xl font-extrabold">Progress</h1>
           <Link
