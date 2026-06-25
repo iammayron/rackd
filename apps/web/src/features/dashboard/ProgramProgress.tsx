@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useMemo } from "react";
-import { programWeekProgress, type ProgramDayKind } from "@rackd/core";
+import { programDayKinds, programWeekProgress } from "@rackd/core";
 
 interface ProgramLike {
   scheduleMode?: "rotation" | "weekly";
@@ -61,7 +61,6 @@ export function ProgramProgress({
   // --- Week-block bar (blockWeeks set) -------------------------------------
   const week = useMemo(() => {
     if (blockWeeks <= 0) return null;
-    const totalDays = blockWeeks * 7;
     const now = Date.now();
     // Anchor day 1: program activation, falling back to the first logged
     // workout, then today, so pre-existing programs still render sensibly.
@@ -74,44 +73,41 @@ export function ProgramProgress({
         ? Math.min(...programSessions.map((s) => s.startedAt))
         : now);
     const anchorDay = dayIndex(anchorMs);
-    const anchorWeekday = new Date(anchorMs).getDay();
-    const todayIdx = dayIndex(now) - anchorDay;
+    const todayOffset = dayIndex(now) - anchorDay;
 
-    // Calendar days (since activation) on which a program workout was finished.
-    const doneDays = new Set<number>();
-    for (const s of programSessions) {
-      if (s.endedAt == null) continue;
-      const i = dayIndex(s.endedAt) - anchorDay;
-      if (i >= 0 && i < totalDays) doneDays.add(i);
-    }
+    // Day offsets (since the anchor) carrying a completed program workout.
+    const completedOffsets = programSessions
+      .filter((s) => s.endedAt != null)
+      .map((s) => dayIndex(s.endedAt!) - anchorDay);
 
-    // Is day `i` (since activation) a scheduled rest day?
+    // Reduce the schedule to "which days are rest" for the core classifier.
     const mode = program.scheduleMode ?? "rotation";
-    const workoutWeekdays = new Set(
-      programDays.filter((d) => d.routineId).map((d) => d.weekday),
-    );
-    const ordered = [...programDays].sort((a, b) => a.order - b.order);
-    const isRest = (i: number): boolean => {
-      if (mode === "weekly") {
-        return !workoutWeekdays.has((anchorWeekday + i) % 7);
-      }
-      // Rotation: assume one slot advances per calendar day from activation.
-      if (ordered.length === 0) return true;
-      return !ordered[i % ordered.length]!.routineId;
-    };
+    const schedule =
+      mode === "weekly"
+        ? {
+            mode: "weekly" as const,
+            workoutWeekdays: programDays
+              .filter((d) => d.routineId && d.weekday != null)
+              .map((d) => d.weekday!),
+          }
+        : {
+            mode: "rotation" as const,
+            restByOrder: [...programDays]
+              .sort((a, b) => a.order - b.order)
+              .map((d) => !d.routineId),
+          };
 
-    const dayKinds: ProgramDayKind[] = [];
-    for (let i = 0; i < totalDays; i++) {
-      if (i > todayIdx) dayKinds.push("future");
-      else if (doneDays.has(i)) dayKinds.push("done");
-      else if (isRest(i)) dayKinds.push("rest");
-      else if (i < todayIdx) dayKinds.push("missed");
-      else dayKinds.push("pending");
-    }
+    const dayKinds = programDayKinds({
+      blockWeeks,
+      anchorWeekday: new Date(anchorMs).getDay(),
+      todayOffset,
+      completedOffsets,
+      schedule,
+    });
 
     const progress = programWeekProgress(blockWeeks, dayKinds);
     const currentWeek = Math.min(
-      Math.max(Math.floor(todayIdx / 7) + 1, 1),
+      Math.max(Math.floor(todayOffset / 7) + 1, 1),
       blockWeeks,
     );
     return { ...progress, currentWeek };
