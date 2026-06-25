@@ -38,12 +38,24 @@ export function BottomSheet({
   // Accessible dialog: focus the sheet on open, close on Escape.
   useEffect(() => {
     if (!open) return;
-    panelRef.current?.focus();
+    // Pull focus into the dialog (a11y) only as a deferred fallback: if the
+    // content already focused something (e.g. an input), leave it — stealing
+    // focus to the panel here would blur the field and dismiss the mobile
+    // keyboard. Escape still works via the window listener regardless.
+    const id = requestAnimationFrame(() => {
+      const panel = panelRef.current;
+      if (panel && !panel.contains(document.activeElement)) {
+        panel.focus({ preventScroll: true });
+      }
+    });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      cancelAnimationFrame(id);
+      window.removeEventListener("keydown", onKey);
+    };
   }, [open, onClose]);
 
   // Reset drag offset whenever the sheet (re)opens.

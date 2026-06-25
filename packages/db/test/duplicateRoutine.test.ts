@@ -47,6 +47,25 @@ describe("duplicateRoutine", () => {
     expect((await routinesNamed("Push (copy 2)"))).toHaveLength(1);
   });
 
+  it('uses an explicit name verbatim (no "(copy)" suffix) when provided', async () => {
+    const src = await createRoutine({ ownerId: OWNER_A, name: "Push" });
+
+    // The save-back "this program" fork reuses the original name so it doesn't
+    // surface as a "(copy)"; the name is taken as-is even though it collides.
+    const copyId = await duplicateRoutine({ routineId: src.id, ownerId: OWNER_A, name: "Push" });
+    expect(copyId).not.toBeNull();
+    expect(copyId).not.toBe(src.id);
+    expect(await routinesNamed("Push")).toHaveLength(2);
+    expect(await routinesNamed("Push (copy)")).toHaveLength(0);
+  });
+
+  it('falls back to the "(copy)" name when the explicit name is blank', async () => {
+    const src = await createRoutine({ ownerId: OWNER_A, name: "Pull" });
+    const copyId = await duplicateRoutine({ routineId: src.id, ownerId: OWNER_A, name: "   " });
+    expect(copyId).not.toBeNull();
+    expect(await routinesNamed("Pull (copy)")).toHaveLength(1);
+  });
+
   it("deep-clones exercises and sets including targetRpe, tempo, notes", async () => {
     const src = await createRoutine({ ownerId: OWNER_A, name: "Legs" });
     const re = await addRoutineExercise({ routineId: src.id, exerciseId: "ex_squat", order: 1 });

@@ -685,18 +685,27 @@ export async function startSessionFromRoutine(args: {
   return session;
 }
 
-/** Duplicate a routine under a fresh "(copy)" name, deep-cloning exercises + sets. */
+/**
+ * Duplicate a routine, deep-cloning exercises + sets. Defaults to a fresh
+ * "(copy)" / "(copy N)" name; pass an explicit `name` to use it verbatim — the
+ * program-scoped save-back fork reuses the original name (no "(copy)" suffix).
+ */
 export async function duplicateRoutine(args: {
   routineId: string;
   ownerId: string;
+  /** Explicit name for the copy; when omitted, escalates a "(copy)" suffix. */
+  name?: string;
 }): Promise<string | null> {
   const [src] = await db.select().from(t.routines).where(eq(t.routines.id, args.routineId)).limit(1);
   if (!src) return null;
 
-  const existing = await db.select().from(t.routines).where(eq(t.routines.ownerId, args.ownerId));
-  const names = new Set(existing.map((r) => r.name));
-  let name = `${src.name} (copy)`;
-  for (let n = 2; names.has(name); n++) name = `${src.name} (copy ${n})`;
+  let name = args.name?.trim();
+  if (!name) {
+    const existing = await db.select().from(t.routines).where(eq(t.routines.ownerId, args.ownerId));
+    const names = new Set(existing.map((r) => r.name));
+    name = `${src.name} (copy)`;
+    for (let n = 2; names.has(name); n++) name = `${src.name} (copy ${n})`;
+  }
 
   const copy = await insertRow(t.routines, {
     ownerId: args.ownerId,
