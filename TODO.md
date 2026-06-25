@@ -12,22 +12,22 @@ Braindump from on-device testing. Each item gets discussed/scoped before impleme
 - [x] 6. Data getting lost when minimizing workout (persist set edits on blur + focus-guarded resync)
 - [x] 7. Fix drag and drop
 - [ ] 8. Fix exercise details slide up
-- [ ] 9. Close timer when it ends + send a notification to iPhone (via Web Push; Live Activities not possible on PWA)
-- [ ] 10. Timer backdrop
-- [ ] 11. Verify Triplit sync is actually working
+- [x] 9. Close timer when it ends + send a notification to iPhone (via Web Push; Live Activities not possible on PWA) — auto-close + local notification + queued web-push in `timer-store.ts`
+- [x] 10. Timer backdrop — dimmed scrim in `RestTimerBar.tsx`
+- [x] 11. ~~Verify Triplit sync is actually working~~ — obsolete: Triplit removed; data now syncs via Supabase Postgres + React Query (IndexedDB offline cache + mutation queue)
 - [x] 12. Status bar when scrolling
 - [x] 13. Home icon bar
-- [ ] 14. Some buttons are too close to the edge (safe-area / edge padding)
+- [ ] 14. Some buttons are too close to the edge (safe-area / edge padding) — vertical safe-area insets applied; horizontal (left/right) insets still missing
 - [x] 15. Weight & reps editing — tap cell opens slide-up sheet with [−] [typeable value] [+], select-all on focus, −/＋ steps (reps 1, weight 2.5kg/5lb), commit on Done/close
-- [ ] 16. Superset button is missing
-- [ ] 17. Bar weight + plate breakdown (barbell only)
+- [ ] 16. Superset button is missing — DB field + routine-editor toggle exist; in-workout menu action still stubbed ("coming soon")
+- [ ] 17. Bar weight + plate breakdown (barbell only) — per-side plate breakdown shipped (`PlatesPanel.tsx`); still missing the global bar-weight setting in Settings (bar hard-coded 20 kg / 45 lb)
   - Typed weight = TOTAL lifted incl. bar; min = bar weight; store the true total.
   - Global bar weight in Settings (default 45 lb / 20 kg), applied to barbell-category exercises only (auto-detected from equipment); others type normally.
   - Default a barbell exercise's starting weight to the bar weight, with help text.
   - Show per-side plate breakdown: per side = (total − bar) / 2, decomposed greedily from available plates — lb: 2.5/5/10/25/35/45; kg: 1.25/2.5/5/10/15/20/25. Display e.g. "45 bar + 25 each side".
   - If per-side isn't exactly achievable, show the closest combo and flag the remainder.
 - [ ] 18. Always scroll to current exercise
-- [ ] 19. Complete summary not computing properly
-- [ ] 20. Share not working
-- [ ] 21. Progress page is wrong
+- [ ] 19. Complete summary not computing properly — summary code reviewed and looks correct (`summary/page.tsx`); re-test on device to confirm
+- [ ] 20. Share not working — share is fully wired (native share + PNG/clipboard fallback); re-test on device to confirm
+- [ ] 21. Progress page is wrong — history/progress page implemented and computing (`history/page.tsx`); re-test on device to confirm
 - [ ] 22. "Done" status on the Home Screen
