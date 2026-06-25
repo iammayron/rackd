@@ -32,7 +32,9 @@ export function SaveBackSheet({
   const [mode, setMode] = useState<SaveBackMode>(
     both ? "everything" : diff.exercisesChanged ? "exercises" : "numbers",
   );
-  const [target, setTarget] = useState<SaveBackTarget>(programName ? "here" : "everywhere");
+  const [target, setTarget] = useState<SaveBackTarget>(
+    programName ? "here" : "everywhere",
+  );
   const [saving, setSaving] = useState(false);
 
   const options: { v: SaveBackMode; t: string; d: string }[] = [];
@@ -75,13 +77,13 @@ export function SaveBackSheet({
         <div className="pt-2.5 pb-1 flex justify-center shrink-0">
           <span className="w-[38px] h-[5px] rounded-full bg-[var(--border)]" />
         </div>
-        <div className="overflow-y-auto px-5 pt-2 pb-[calc(20px+env(safe-area-inset-bottom))]">
+        <div className="overflow-y-auto pt-2 pl-[max(20px,var(--safe-left))] pr-[max(20px,var(--safe-right))] pb-[calc(20px+env(safe-area-inset-bottom))]">
           <h2 className="mt-1 mb-0.5 text-[19px] font-extrabold">
             Save changes to {routineName}?
           </h2>
           <p className="mt-0 mb-4 text-[13.5px] text-[var(--text-muted)] leading-snug">
-            You changed this workout from its plan. Choose what to keep — or just log it as a
-            one-off.
+            You changed this workout from its plan. Choose what to keep — or
+            just log it as a one-off.
           </p>
 
           <div className="flex flex-col gap-2.5 mb-[18px]">
@@ -101,7 +103,11 @@ export function SaveBackSheet({
                   <span
                     aria-hidden="true"
                     className="mt-px shrink-0 w-5 h-5 rounded-full bg-[var(--surface)] box-border"
-                    style={{ border: on ? "6px solid var(--accent)" : "2px solid var(--border)" }}
+                    style={{
+                      border: on
+                        ? "6px solid var(--accent)"
+                        : "2px solid var(--border)",
+                    }}
                   />
                   <span className="min-w-0">
                     <span className="block font-bold text-[15px]">{o.t}</span>
@@ -137,10 +143,21 @@ export function SaveBackSheet({
             </div>
           )}
 
-          <Button variant="primary" size="lg" fullWidth disabled={saving} onClick={save}>
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            disabled={saving}
+            onClick={save}
+          >
             {saving ? "Saving…" : "Save changes"}
           </Button>
-          <Button variant="ghost" fullWidth onClick={onSkip} style={{ marginTop: 8 }}>
+          <Button
+            variant="ghost"
+            fullWidth
+            onClick={onSkip}
+            style={{ marginTop: 8 }}
+          >
             Just log it
           </Button>
         </div>
