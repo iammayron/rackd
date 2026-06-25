@@ -13,7 +13,11 @@ export const tokens = {
     text: "var(--text)",
     textMuted: "var(--text-muted)",
   },
-  radius: { sm: "var(--radius-sm)", base: "var(--radius)", lg: "var(--radius-lg)" },
+  radius: {
+    sm: "var(--radius-sm)",
+    base: "var(--radius)",
+    lg: "var(--radius-lg)",
+  },
 } as const;
 
 export function mmss(ms: number): string {
@@ -25,7 +29,11 @@ export function mmss(ms: number): string {
 
 // ── Design-system components ─────────────────────────────────────────────────
 export { Button } from "./components/Button";
-export type { ButtonProps, ButtonVariant, ButtonSize } from "./components/Button";
+export type {
+  ButtonProps,
+  ButtonVariant,
+  ButtonSize,
+} from "./components/Button";
 export { Card } from "./components/Card";
 export type { CardProps, CardVariant } from "./components/Card";
 export { Badge } from "./components/Badge";
@@ -35,7 +43,10 @@ export type { AvatarProps } from "./components/Avatar";
 export { Input } from "./components/Input";
 export type { InputProps } from "./components/Input";
 export { SegmentedControl } from "./components/SegmentedControl";
-export type { SegmentedControlProps, SegmentedOption } from "./components/SegmentedControl";
+export type {
+  SegmentedControlProps,
+  SegmentedOption,
+} from "./components/SegmentedControl";
 export { StatTile } from "./components/StatTile";
 export type { StatTileProps } from "./components/StatTile";
 export { ProgressBar } from "./components/ProgressBar";
@@ -46,9 +57,15 @@ export { TabBar } from "./components/TabBar";
 export type { TabBarProps, TabItem } from "./components/TabBar";
 export { RestTimerRing } from "./components/RestTimerRing";
 export type { RestTimerRingProps } from "./components/RestTimerRing";
-export { SetRow } from "./components/SetRow";
-export type { SetRowProps } from "./components/SetRow";
-export { MuscleVisualizer, muscleHue, exerciseGradient } from "./components/MuscleVisualizer";
+export {
+  MuscleVisualizer,
+  muscleHue,
+  exerciseGradient,
+} from "./components/MuscleVisualizer";
 export type { MuscleVisualizerProps } from "./components/MuscleVisualizer";
 export { ShareCard } from "./components/ShareCard";
-export type { ShareCardProps, ShareCardData, ShareCardTheme } from "./components/ShareCard";
+export type {
+  ShareCardProps,
+  ShareCardData,
+  ShareCardTheme,
+} from "./components/ShareCard";
