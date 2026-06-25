@@ -14,12 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Apply pending DB migrations BEFORE deploying, so the schema the new
-      # code expects exists before it serves traffic. Uses `drizzle-kit migrate`
-      # (applies the committed SQL files in drizzle/, idempotent via the
-      # migrations journal) — never `push`, so a stray schema.ts edit can't
-      # silently drop prod data on deploy. A failed migration fails the job and
-      # blocks the deploy. Needs the DATABASE_URL repo secret (pooler URL).
+      # Apply schema changes to prod BEFORE deploying, so the schema the new
+      # code expects exists before it serves traffic. Runs the same
+      # `pnpm db:migrate` (drizzle-kit push) we use locally: it diffs schema.ts
+      # against the live DB and applies the delta — no migrations journal to
+      # baseline, so it can't fail on a fresh/empty journal. A failed run fails
+      # the job and blocks the deploy. Needs the DATABASE_URL repo secret
+      # (use the SESSION pooler URL, port 5432).
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -27,8 +28,8 @@ jobs:
           cache: pnpm
       - name: Install deps
         run: pnpm install --frozen-lockfile
-      - name: Run DB migrations
-        run: pnpm --filter @rackd/db exec drizzle-kit migrate
+      - name: Apply DB schema
+        run: pnpm db:migrate
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
