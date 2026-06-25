@@ -11,7 +11,9 @@
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test --concurrency=1",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "db:migrate": "bash scripts/db.sh push",
+    "db:generate": "bash scripts/db.sh generate"
   },
   "devDependencies": {
     "turbo": "^2.3.3",
