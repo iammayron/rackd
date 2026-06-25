@@ -12,8 +12,10 @@ import * as schema from "./schema";
  */
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  // Supabase requires TLS in the cloud; the local stack ignores it.
-  ssl: process.env.DATABASE_SSL === "false" ? false : undefined,
+  // Supabase requires TLS, so default to SSL ON (relaxed cert check — Supabase's
+  // chain isn't in the default CA bundle). Set DATABASE_SSL=false for the local
+  // stack, which doesn't speak TLS.
+  ssl: process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false },
 });
 
 export const db = drizzle(pool, { schema });
