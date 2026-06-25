@@ -4,7 +4,7 @@ import { withUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
-const { routines } = schema;
+const { routines, routineExercises } = schema;
 
 /** PUT /api/routines/[id]/exercises/reorder — persist a full exercise reorder. */
 export const PUT = withUser(async (ownerId, req, ctx) => {
@@ -18,6 +18,16 @@ export const PUT = withUser(async (ownerId, req, ctx) => {
   if (routine.ownerId !== ownerId) return Response.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
-  await reorderRoutineExercises(body.orderedIds);
+  const ids: string[] = Array.isArray(body.orderedIds) ? body.orderedIds : [];
+  // Every id must belong to THIS routine — otherwise a crafted orderedIds could
+  // rewrite another routine's `order` (the repo updates blindly by id).
+  const children = await db
+    .select({ id: routineExercises.id })
+    .from(routineExercises)
+    .where(eq(routineExercises.routineId, id));
+  const owned = new Set(children.map((c) => c.id));
+  if (!ids.every((x) => owned.has(x))) return Response.json({ error: "Forbidden" }, { status: 403 });
+
+  await reorderRoutineExercises(ids);
   return Response.json({ ok: true });
 });
