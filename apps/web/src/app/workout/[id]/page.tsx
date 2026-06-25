@@ -307,6 +307,9 @@ export default function WorkoutPage() {
     queryClient.invalidateQueries({ queryKey: qk.sessions });
     queryClient.invalidateQueries({ queryKey: qk.activeSession });
     queryClient.invalidateQueries({ queryKey: qk.personalRecords });
+    // Finishing a scheduled workout advances the program's rotation cursor
+    // server-side; refetch so Home shows the next day.
+    queryClient.invalidateQueries({ queryKey: qk.programs });
     if (found && found.length > 0) {
       if (typeof navigator !== "undefined" && "vibrate" in navigator)
         navigator.vibrate([120, 60, 120]);

@@ -279,9 +279,54 @@ export async function finishSession(sessionId: string, now: number) {
   if (session) {
     // Carry an in-workout rest edit back to the routine for the next run.
     await syncRestToRoutine(sessionId);
+    // Move the program forward so the next day becomes "today".
+    await advanceProgramRotation(session);
     return detectAndRecordPRs({ sessionId, ownerId: session.ownerId, now });
   }
   return [];
+}
+
+/**
+ * Advance an active rotation program's cursor when one of its days is completed,
+ * so finishing a scheduled workout makes the next day "today". Without this the
+ * cursor only ever moved on an explicit Skip, leaving the program parked on the
+ * same day after every workout. The cursor is set to the day *after* the one
+ * just finished (matching `programTodaySlot`'s order-sorted indexing), which also
+ * handles finishing a day out of order (e.g. via the Home "Train next" button).
+ *
+ * No-op for quick (routine-less) sessions, weekly-mode programs, and sessions
+ * whose routine isn't part of the active program.
+ */
+async function advanceProgramRotation(session: {
+  ownerId: string;
+  routineId: string | null;
+}) {
+  if (!session.routineId) return;
+  const actives = await db
+    .select()
+    .from(t.programs)
+    .where(
+      and(eq(t.programs.ownerId, session.ownerId), eq(t.programs.active, true)),
+    );
+  for (const pr of actives) {
+    if ((pr.scheduleMode ?? "rotation") !== "rotation") continue;
+    const days = await db
+      .select()
+      .from(t.programDays)
+      .where(eq(t.programDays.programId, pr.id))
+      .orderBy(asc(t.programDays.order));
+    if (days.length === 0) continue;
+    const idx = days.findIndex((d) => d.routineId === session.routineId);
+    if (idx === -1) continue;
+    const next = (idx + 1) % days.length;
+    if (next !== (pr.rotationCursor ?? 0)) {
+      await db
+        .update(t.programs)
+        .set({ rotationCursor: next })
+        .where(eq(t.programs.id, pr.id));
+    }
+    break;
+  }
 }
 
 /**

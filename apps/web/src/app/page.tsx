@@ -177,17 +177,27 @@ export default function Home() {
   const nextName = routineName(nextSlot?.routineId);
   const isRest = !heroRoutineId;
 
-  // Today's scheduled routine already finished today → celebrate instead of
-  // offering to start it again. Match the routine and the calendar day.
+  // A program workout finished today → celebrate. Finishing advances the
+  // rotation cursor server-side, so `slot` already points at the *next* workout;
+  // we therefore detect "done" from the finished session itself, not the current
+  // slot. Most-recent-first so a second workout the same day wins the headline.
   const completedToday = useMemo(() => {
-    if (!heroRoutineId) return undefined;
+    if (!activeProgram) return undefined;
     const dayStart = new Date();
     dayStart.setHours(0, 0, 0, 0);
     const since = dayStart.getTime();
-    return finished.find(
-      (s) => s.routineId === heroRoutineId && (s.endedAt ?? 0) >= since,
-    );
-  }, [finished, heroRoutineId]);
+    return finished
+      .filter(
+        (s) =>
+          s.routineId &&
+          programRoutineIds.has(s.routineId) &&
+          (s.endedAt ?? 0) >= since,
+      )
+      .sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0))[0];
+  }, [activeProgram, finished, programRoutineIds]);
+  const completedName = completedToday
+    ? routineName(completedToday.routineId ?? undefined)
+    : undefined;
   const canSkip =
     !!activeProgram &&
     (activeProgram.scheduleMode ?? "rotation") === "rotation" &&
@@ -431,7 +441,7 @@ export default function Home() {
               <span aria-hidden="true">💪</span>
             </div>
             <div className="mt-1.5 text-sm font-semibold text-white/85">
-              {heroName} complete
+              {completedName} complete
             </div>
             <Button
               variant="secondary"
@@ -449,14 +459,14 @@ export default function Home() {
             >
               See your summary ›
             </Button>
-            {nextSlot?.routineId && nextName && (
+            {heroRoutineId && heroName && (
               <button
                 type="button"
-                onClick={() => startRoutine(nextSlot.routineId)}
+                onClick={() => startRoutine(heroRoutineId)}
                 disabled={starting}
                 className="block w-full mt-2.5 py-1.5 bg-transparent border-none cursor-pointer text-sm font-bold text-white/90 text-center disabled:opacity-60"
               >
-                {starting ? "Starting…" : `Train ${nextName} ›`}
+                {starting ? "Starting…" : `Train ${heroName} ›`}
               </button>
             )}
             <button
