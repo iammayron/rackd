@@ -5,9 +5,15 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { queryClient, startQueryPersistence } from "@/lib/query";
 import { flushQueue } from "@/lib/offline-queue";
-import { hydrateUnit } from "@/lib/units-store";
+import { hydrateUnit, useSyncUnitFromProfile } from "@/lib/units-store";
 import { LoginScreen } from "@/components/LoginScreen";
 import { ToastProvider } from "@/components/toast/ToastProvider";
+
+/** Signed-in shell: seeds runtime state that depends on an authed session. */
+function AppShell({ children }: { children: React.ReactNode }) {
+  useSyncUnitFromProfile();
+  return <>{children}</>;
+}
 
 /** Auth gate: spinner while resolving, login when signed out, app when signed in. */
 function Gate({ children }: { children: React.ReactNode }) {
@@ -27,7 +33,7 @@ function Gate({ children }: { children: React.ReactNode }) {
     return <div className="p-8 text-[var(--text-muted)]">Loading Rackd…</div>;
   }
   if (!user) return <LoginScreen />;
-  return <>{children}</>;
+  return <AppShell>{children}</AppShell>;
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
