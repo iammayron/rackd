@@ -15,8 +15,8 @@ Braindump from on-device testing. Each item gets discussed/scoped before impleme
 - [ ] 9. Close timer when it ends + send a notification to iPhone (via Web Push; Live Activities not possible on PWA)
 - [ ] 10. Timer backdrop
 - [ ] 11. Verify Triplit sync is actually working
-- [ ] 12. Status bar when scrolling
-- [ ] 13. Home icon bar
+- [x] 12. Status bar when scrolling
+- [x] 13. Home icon bar
 - [ ] 14. Some buttons are too close to the edge (safe-area / edge padding)
 - [x] 15. Weight & reps editing — tap cell opens slide-up sheet with [−] [typeable value] [+], select-all on focus, −/＋ steps (reps 1, weight 2.5kg/5lb), commit on Done/close
 - [ ] 16. Superset button is missing

@@ -3,32 +3,42 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
-  finishSession,
-  discardSession,
-  addSessionExercise,
-  addSet,
-  setSessionExerciseOrder,
-  reorderSessionExercises,
-  getSaveBackContext,
-  applySessionToRoutine,
-  duplicateRoutine,
-  updateProgramDay,
-  type DetectedPR,
-  type SaveBackMode,
-} from "@rackd/db";
+import { useQuery } from "@tanstack/react-query";
 import { diffSessionVsRoutine, type SessionDiff } from "@rackd/core";
-import { getClient } from "@/lib/triplit";
-import { getCurrentUserId } from "@/lib/auth";
-import { useQuery } from "@/lib/use-query";
+import { api } from "@/lib/api";
+import { queryClient, qk } from "@/lib/query";
 import type { ExerciseMediaData } from "@/components/ExerciseMedia";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { BackButton } from "@/components/BackButton";
 import { ExerciseCard } from "@/features/active-workout/ExerciseCard";
 import { RestTimerBar } from "@/features/active-workout/RestTimerBar";
 import { PrCelebration } from "@/features/active-workout/PrCelebration";
-import { SaveBackSheet, type SaveBackTarget } from "@/features/active-workout/SaveBackSheet";
+import {
+  SaveBackSheet,
+  type SaveBackMode,
+  type SaveBackTarget,
+} from "@/features/active-workout/SaveBackSheet";
 import { AddExercisePicker } from "@/features/routines/AddExercisePicker";
+import type { SetRowData } from "@/features/active-workout/SetRow";
+
+interface DetectedPR {
+  exerciseId: string;
+  type: "1rm" | "weight";
+  value: number;
+}
+
+/** What `GET /api/sessions/[id]/save-back-context` returns (was `@rackd/db`). */
+interface DiffExercise {
+  exerciseId: string;
+  sets: { weight: number; reps: number }[];
+}
+interface SaveBackContext {
+  routineId: string;
+  routineName: string;
+  prescription: DiffExercise[];
+  performed: DiffExercise[];
+  program: { programDayId: string; programName: string } | null;
+}
 
 interface SaveBackState {
   diff: SessionDiff;
@@ -46,6 +56,13 @@ interface SessionExerciseRow {
   restSec: number;
   supersetGroup?: number;
   exercise?: ExerciseMediaData | null;
+  sets?: SetRowData[];
+}
+
+/** The session tree returned by `GET /api/sessions/[id]`. */
+interface SessionTree {
+  id: string;
+  exercises: SessionExerciseRow[];
 }
 
 export default function WorkoutPage() {
@@ -54,15 +71,11 @@ export default function WorkoutPage() {
   const { confirm, dialog: confirmDialog } = useConfirm();
   const sessionId = params.id;
 
-  const { results: sessionExercises, fetching } = useQuery<SessionExerciseRow>(
-    (c) =>
-      c
-        .query("sessionExercises")
-        .Where("sessionId", "=", sessionId)
-        .Include("exercise")
-        .Order("order", "ASC"),
-    [sessionId],
-  );
+  const { data: session, isLoading: fetching } = useQuery({
+    queryKey: qk.session(sessionId),
+    queryFn: () => api<SessionTree>(`/api/sessions/${sessionId}`),
+  });
+  const sessionExercises = session?.exercises ?? [];
 
   const [prs, setPrs] = useState<DetectedPR[] | null>(null);
   const [saveBack, setSaveBack] = useState<SaveBackState | null>(null);
@@ -112,7 +125,10 @@ export default function WorkoutPage() {
     const onUp = () => {
       const ids = orderRef.current;
       setDragId(null);
-      void reorderSessionExercises(getClient(), ids);
+      void api(`/api/sessions/${sessionId}/exercises/reorder`, {
+        method: "PUT",
+        body: JSON.stringify({ orderedIds: ids }),
+      }).then(() => queryClient.invalidateQueries({ queryKey: qk.session(sessionId) }));
     };
     window.addEventListener("pointermove", onMovePtr, { passive: false });
     window.addEventListener("pointerup", onUp);
@@ -139,7 +155,9 @@ export default function WorkoutPage() {
    * and diverged from its prescription, offer save-back before the summary.
    */
   async function afterFinish() {
-    const ctx = await getSaveBackContext(getClient(), sessionId);
+    const ctx = await api<SaveBackContext | null>(
+      `/api/sessions/${sessionId}/save-back-context`,
+    );
     if (!ctx) return goSummary();
     const diff = diffSessionVsRoutine(ctx.prescription, ctx.performed);
     if (!diff.exercisesChanged && !diff.numbersChanged) return goSummary();
@@ -164,12 +182,20 @@ export default function WorkoutPage() {
       confirmLabel: "Discard",
     });
     if (!ok) return;
-    await discardSession(getClient(), sessionId);
+    await api(`/api/sessions/${sessionId}/discard`, { method: "POST" });
+    queryClient.invalidateQueries({ queryKey: qk.activeSession });
+    queryClient.invalidateQueries({ queryKey: qk.sessions });
     router.push("/");
   }
 
   async function finish() {
-    const found = await finishSession(getClient(), sessionId, Date.now());
+    const { prs: found } = await api<{ prs: DetectedPR[] }>(
+      `/api/sessions/${sessionId}/finish`,
+      { method: "POST" },
+    );
+    queryClient.invalidateQueries({ queryKey: qk.sessions });
+    queryClient.invalidateQueries({ queryKey: qk.activeSession });
+    queryClient.invalidateQueries({ queryKey: qk.personalRecords });
     if (found && found.length > 0) {
       if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate([120, 60, 120]);
       setPrs(found);
@@ -182,31 +208,42 @@ export default function WorkoutPage() {
   async function onSaveBack(mode: SaveBackMode, target: SaveBackTarget) {
     const sb = saveBack;
     if (!sb) return;
-    const client = getClient();
     if (target === "here" && sb.programDayId) {
-      const copyId = await duplicateRoutine(client, {
-        routineId: sb.routineId,
-        ownerId: getCurrentUserId(),
-      });
+      const { id: copyId } = await api<{ id: string }>(
+        `/api/routines/${sb.routineId}/duplicate`,
+        { method: "POST" },
+      );
       if (copyId) {
-        await updateProgramDay(client, sb.programDayId, { routineId: copyId });
-        await applySessionToRoutine(client, { sessionId, routineId: copyId, mode });
+        await api(`/api/program-days/${sb.programDayId}`, {
+          method: "PUT",
+          body: JSON.stringify({ routineId: copyId }),
+        });
+        await api(`/api/sessions/${sessionId}/save-back`, {
+          method: "POST",
+          body: JSON.stringify({ routineId: copyId, mode }),
+        });
       }
     } else {
-      await applySessionToRoutine(client, { sessionId, routineId: sb.routineId, mode });
+      await api(`/api/sessions/${sessionId}/save-back`, {
+        method: "POST",
+        body: JSON.stringify({ routineId: sb.routineId, mode }),
+      });
     }
+    queryClient.invalidateQueries({ queryKey: qk.routines });
     setSaveBack(null);
     goSummary();
   }
 
   async function onAddExercise(exerciseId: string) {
-    const client = getClient();
-    const se = await addSessionExercise(client, {
-      sessionId,
-      exerciseId,
-      order: sessionExercises.length + 1,
+    const se = await api<{ id: string }>(`/api/sessions/${sessionId}/exercises`, {
+      method: "POST",
+      body: JSON.stringify({ exerciseId, order: sessionExercises.length + 1 }),
     });
-    await addSet(client, { sessionExerciseId: se.id, order: 1 });
+    await api("/api/set-logs", {
+      method: "POST",
+      body: JSON.stringify({ sessionExerciseId: se.id, order: 1 }),
+    });
+    queryClient.invalidateQueries({ queryKey: qk.session(sessionId) });
   }
 
   async function move(index: number, dir: -1 | 1) {
@@ -215,11 +252,17 @@ export default function WorkoutPage() {
     const a = sessionExercises[index];
     const b = sessionExercises[j];
     if (!a || !b) return;
-    const client = getClient();
     await Promise.all([
-      setSessionExerciseOrder(client, a.id, b.order),
-      setSessionExerciseOrder(client, b.id, a.order),
+      api(`/api/session-exercises/${a.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ order: b.order }),
+      }),
+      api(`/api/session-exercises/${b.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ order: a.order }),
+      }),
     ]);
+    queryClient.invalidateQueries({ queryKey: qk.session(sessionId) });
   }
 
   return (

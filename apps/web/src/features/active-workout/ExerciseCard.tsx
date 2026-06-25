@@ -5,24 +5,21 @@ import type { PointerEvent } from "react";
 import { useRouter } from "next/navigation";
 import { nextWeight } from "@rackd/core";
 import { Badge, mmss } from "@rackd/ui";
-import {
-  addSet,
-  lastPerformance,
-  removeSessionExercise,
-  replaceSessionExercise,
-  updateSessionExercise,
-  updateSet,
-  type PrevSet,
-} from "@rackd/db";
-import { getClient } from "@/lib/triplit";
+import { api } from "@/lib/api";
+import { queryClient, qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
-import { useQuery } from "@/lib/use-query";
 import { useToast } from "@/components/toast/ToastProvider";
 import { ExerciseThumb, type ExerciseMediaData } from "@/components/ExerciseMedia";
 import { ReplaceExercisePicker } from "@/features/routines/ReplaceExercisePicker";
 import { SetRow, type SetRowData } from "./SetRow";
 import { PlatesPanel } from "./PlatesPanel";
 import { RestSheet } from "./RestSheet";
+
+interface PrevSet {
+  order: number;
+  weight: number;
+  reps: number;
+}
 
 const cap = (s: string) =>
   !s ? s : s.toLowerCase() === "fullbody" ? "Full body" : s.charAt(0).toUpperCase() + s.slice(1);
@@ -34,6 +31,7 @@ interface SessionExerciseRow {
   order: number;
   restSec: number;
   exercise?: ExerciseMediaData | null;
+  sets?: SetRowData[];
 }
 
 /**
@@ -63,23 +61,16 @@ export function ExerciseCard({
   const [showRest, setShowRest] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showReplace, setShowReplace] = useState(false);
-  const { results: sets } = useQuery<SetRowData>(
-    (c) =>
-      c
-        .query("setLogs")
-        .Where("sessionExerciseId", "=", sessionExercise.id)
-        .Order("order", "ASC"),
-    [sessionExercise.id],
-  );
+  // Sets come down from the session tree the page loads; keep them ordered.
+  const sets = [...(sessionExercise.sets ?? [])].sort((a, b) => a.order - b.order);
 
   // "prev" = this exercise's last completed performance in a finished session.
   const [prev, setPrev] = useState<PrevSet[] | null>(null);
   useEffect(() => {
     let cancelled = false;
-    lastPerformance(getClient(), {
-      exerciseId: sessionExercise.exerciseId,
-      excludeSessionId: sessionExercise.sessionId,
-    }).then((p) => {
+    api<PrevSet[] | null>(
+      `/api/exercises/${sessionExercise.exerciseId}/last-performance?excludeSessionId=${sessionExercise.sessionId}`,
+    ).then((p) => {
       if (!cancelled) setPrev(p);
     });
     return () => {
@@ -118,10 +109,15 @@ export function ExerciseCard({
       action: {
         label: "Copy",
         onClick: async () => {
-          const client = getClient();
           await Promise.all(
-            targets.map((t) => updateSet(client, t.id, { weight: set.weight, reps: set.reps })),
+            targets.map((t) =>
+              api(`/api/set-logs/${t.id}`, {
+                method: "PUT",
+                body: JSON.stringify({ weight: set.weight, reps: set.reps }),
+              }),
+            ),
           );
+          queryClient.invalidateQueries({ queryKey: qk.session(sessionExercise.sessionId) });
           toast.success(`Copied to ${targets.length} set${targets.length === 1 ? "" : "s"}`);
         },
       },
@@ -134,12 +130,16 @@ export function ExerciseCard({
     const fallback = prevFor(order) ?? prev?.[prev.length - 1];
     // first set of the session → suggest the progressive-overload weight
     const firstWeight = suggestedWeight ?? fallback?.weight ?? 0;
-    await addSet(getClient(), {
-      sessionExerciseId: sessionExercise.id,
-      order,
-      weight: last?.weight ?? firstWeight,
-      reps: last?.reps ?? prevTop?.reps ?? fallback?.reps ?? 0,
+    await api("/api/set-logs", {
+      method: "POST",
+      body: JSON.stringify({
+        sessionExerciseId: sessionExercise.id,
+        order,
+        weight: last?.weight ?? firstWeight,
+        reps: last?.reps ?? prevTop?.reps ?? fallback?.reps ?? 0,
+      }),
     });
+    queryClient.invalidateQueries({ queryKey: qk.session(sessionExercise.sessionId) });
   }
 
   return (
@@ -206,13 +206,22 @@ export function ExerciseCard({
           onReplace={() => setShowReplace(true)}
           onViewDetails={goDetails}
           onSuperset={() => toast.info("Supersets are coming soon")}
-          onRemove={() => removeSessionExercise(getClient(), sessionExercise.id)}
+          onRemove={async () => {
+            await api(`/api/session-exercises/${sessionExercise.id}`, { method: "DELETE" });
+            queryClient.invalidateQueries({ queryKey: qk.session(sessionExercise.sessionId) });
+          }}
         />
       </div>
 
       <ReplaceExercisePicker
         currentExerciseId={sessionExercise.exerciseId}
-        onReplace={(newId) => replaceSessionExercise(getClient(), sessionExercise.id, newId)}
+        onReplace={async (newId) => {
+          await api(`/api/session-exercises/${sessionExercise.id}/replace`, {
+            method: "POST",
+            body: JSON.stringify({ exerciseId: newId }),
+          });
+          queryClient.invalidateQueries({ queryKey: qk.session(sessionExercise.sessionId) });
+        }}
         open={showReplace}
         onOpenChange={setShowReplace}
       />
@@ -220,7 +229,13 @@ export function ExerciseCard({
       <RestSheet
         open={showRest}
         restSec={sessionExercise.restSec}
-        onChange={(sec) => updateSessionExercise(getClient(), sessionExercise.id, { restSec: sec })}
+        onChange={async (sec) => {
+          await api(`/api/session-exercises/${sessionExercise.id}`, {
+            method: "PUT",
+            body: JSON.stringify({ restSec: sec }),
+          });
+          queryClient.invalidateQueries({ queryKey: qk.session(sessionExercise.sessionId) });
+        }}
         onClose={() => setShowRest(false)}
       />
 
@@ -250,6 +265,7 @@ export function ExerciseCard({
           <SetRow
             key={s.id}
             data={s}
+            sessionId={sessionExercise.sessionId}
             restSec={sessionExercise.restSec}
             startsRest={startsRest}
             prevLabel={p ? `${display(p.weight)}×${p.reps}` : undefined}

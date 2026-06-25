@@ -1,4 +1,3 @@
-import type { Client } from "./index";
 import {
   createProgram,
   createRoutine,
@@ -168,32 +167,31 @@ export const PROGRAM_TEMPLATES: ProgramTemplate[] = [
 
 /** Clone a template into the user's own program + routines. Returns program id. */
 export async function cloneProgramTemplate(
-  client: Client,
   template: ProgramTemplate,
   ownerId: string,
 ): Promise<string> {
-  const program = await createProgram(client, { ownerId, name: template.name });
+  const program = await createProgram({ ownerId, name: template.name });
 
   for (let i = 0; i < template.days.length; i++) {
     const day = template.days[i]!;
-    const routine = await createRoutine(client, { ownerId, name: day.name, order: i });
+    const routine = await createRoutine({ ownerId, name: day.name, order: i });
     for (let j = 0; j < day.exercises.length; j++) {
       const ex = day.exercises[j]!;
-      const re = await addRoutineExercise(client, {
+      const re = await addRoutineExercise({
         routineId: routine.id,
         exerciseId: ex.exerciseId,
         order: j + 1,
         restSec: ex.rest,
       });
       for (let s = 0; s < ex.sets; s++) {
-        await addRoutineSet(client, {
+        await addRoutineSet({
           routineExerciseId: re.id,
           order: s + 1,
           targetReps: ex.reps,
         });
       }
     }
-    await addProgramDay(client, {
+    await addProgramDay({
       programId: program.id,
       order: i + 1,
       name: day.name,

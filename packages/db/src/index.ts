@@ -1,4 +1,5 @@
-import { TriplitClient } from "@triplit/client";
+import { eq, and, gte, lte, asc, desc } from "drizzle-orm";
+import { uuidv7 } from "uuidv7";
 import { estimate1RM } from "@rackd/core";
 import type {
   TrainingGoal,
@@ -7,65 +8,67 @@ import type {
   ScheduledPush,
   PushSubscriptionRecord,
 } from "@rackd/core";
-import { schema, roles } from "./schema";
+import { db } from "./db";
+import * as t from "./schema";
 
-export { schema, roles } from "./schema";
-export type { Schema } from "./schema";
-export { SEED_EXERCISES, seedExercises } from "./seed";
+export { db } from "./db";
+export type { DB } from "./db";
+export * as schema from "./schema";
+export { SEED_EXERCISES } from "./seed";
 export type { SeedExercise } from "./seed";
+export { seedExercises } from "./seed-pg";
 export { PROGRAM_TEMPLATES, cloneProgramTemplate } from "./templates";
 export type { ProgramTemplate } from "./templates";
 
 /**
- * Single client factory (DRY). Apps create one client; UI never touches
- * Triplit directly — go through the repository functions below.
+ * Repository layer — one command function per intent. API route handlers call
+ * these (never the Drizzle `db` directly from a route's body), keeping mutations
+ * in one place. Functions are id-based; the route enforces ownership (it derives
+ * `ownerId` from the JWT and scopes its own reads / passes it into creates).
+ *
+ * Row ids are app-generated (uuidv7) — never DB-generated — so a child can be
+ * created referencing a parent in the same request without a round-trip.
  */
-export function createClient(opts?: {
-  serverUrl?: string;
-  token?: string;
-  /** "memory" (default) or "indexeddb" for persistent local-first storage. */
-  storage?: "memory" | "indexeddb";
-  /** IndexedDB database name. */
-  dbName?: string;
+const newId = (): string => uuidv7();
+
+/* The repo plumbing below is intentionally loosely typed: a single generic
+ * insert/owner-lookup helper across 16 tables can't be expressed through
+ * Drizzle's per-table insert/select generics without per-call casts, so the two
+ * helpers take `any` tables. Public functions keep precise argument types; route
+ * handlers type their JSON responses at the edge. */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/** Derive ownerId from a parent row so child rows stay owner-scoped (DRY). */
+async function ownerOf(table: any, id: string): Promise<string> {
+  const [row] = await db
+    .select({ ownerId: table.ownerId })
+    .from(table)
+    .where(eq(table.id, id))
+    .limit(1);
+  return (row?.ownerId as string) ?? "";
+}
+
+/** Insert one row (id auto-filled) and return it. */
+async function insertRow(table: any, values: Record<string, unknown>): Promise<any> {
+  const rows = await db
+    .insert(table)
+    .values({ id: newId(), ...values })
+    .returning();
+  return (rows as any[])[0];
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+/* ---------------------------------------------------------------------------
+ * Sessions (live workout tree)
+ * ------------------------------------------------------------------------- */
+
+export async function startSession(args: {
+  ownerId: string;
+  routineId?: string;
+  name: string;
+  now: number;
 }) {
-  return new TriplitClient({
-    schema,
-    roles,
-    serverUrl: opts?.serverUrl,
-    token: opts?.token,
-    storage:
-      opts?.storage === "indexeddb"
-        ? { type: "indexeddb", name: opts?.dbName ?? "myfit" }
-        : opts?.storage,
-    autoConnect: Boolean(opts?.serverUrl),
-    // Push the client schema (incl. relationships) so server-side queries like
-    // .Include("exercise") are valid. Needed for our self-hosted schemaless server.
-    syncSchema: Boolean(opts?.serverUrl),
-  });
-}
-
-export type Client = ReturnType<typeof createClient>;
-
-/**
- * Repository layer — one command function per intent. UI calls these,
- * not the client. Keeps mutations in one place and the engine swappable.
- */
-
-/** Derive ownerId from a parent row so child collections stay owner-scoped (DRY). */
-async function ownerOf(
-  client: Client,
-  collection: "sessions" | "sessionExercises" | "routines" | "routineExercises" | "programs",
-  id: string,
-): Promise<string> {
-  const row = await client.fetchById(collection, id);
-  return (row as { ownerId?: string } | null)?.ownerId ?? "";
-}
-
-export async function startSession(
-  client: Client,
-  args: { ownerId: string; routineId?: string; name: string; now: number },
-) {
-  return client.insert("sessions", {
+  return insertRow(t.sessions, {
     ownerId: args.ownerId,
     routineId: args.routineId,
     name: args.name,
@@ -74,12 +77,14 @@ export async function startSession(
 }
 
 /** Add an exercise to a live session (a session "card"). */
-export async function addSessionExercise(
-  client: Client,
-  args: { sessionId: string; exerciseId: string; order: number; restSec?: number },
-) {
-  return client.insert("sessionExercises", {
-    ownerId: await ownerOf(client, "sessions", args.sessionId),
+export async function addSessionExercise(args: {
+  sessionId: string;
+  exerciseId: string;
+  order: number;
+  restSec?: number;
+}) {
+  return insertRow(t.sessionExercises, {
+    ownerId: await ownerOf(t.sessions, args.sessionId),
     sessionId: args.sessionId,
     exerciseId: args.exerciseId,
     order: args.order,
@@ -87,123 +92,89 @@ export async function addSessionExercise(
   });
 }
 
-export async function setSessionExerciseOrder(client: Client, id: string, order: number) {
-  return client.update("sessionExercises", id, (e) => {
-    e.order = order;
-  });
+export async function setSessionExerciseOrder(id: string, order: number) {
+  await db.update(t.sessionExercises).set({ order }).where(eq(t.sessionExercises.id, id));
 }
 
 /** Patch mutable fields of a live session exercise (currently its rest time). */
-export async function updateSessionExercise(
-  client: Client,
-  id: string,
-  patch: { restSec?: number },
-) {
-  return client.update("sessionExercises", id, (e) => {
-    if (patch.restSec !== undefined) e.restSec = patch.restSec;
-  });
+export async function updateSessionExercise(id: string, patch: { restSec?: number }) {
+  if (patch.restSec === undefined) return;
+  await db.update(t.sessionExercises).set({ restSec: patch.restSec }).where(eq(t.sessionExercises.id, id));
 }
 
-export async function setRoutineExerciseOrder(client: Client, id: string, order: number) {
-  return client.update("routineExercises", id, (e) => {
-    e.order = order;
-  });
+export async function setRoutineExerciseOrder(id: string, order: number) {
+  await db.update(t.routineExercises).set({ order }).where(eq(t.routineExercises.id, id));
 }
 
 /** Patch mutable fields of a routine exercise (currently its rest time). */
-export async function updateRoutineExercise(
-  client: Client,
-  id: string,
-  patch: { restSec?: number },
-) {
-  return client.update("routineExercises", id, (e) => {
-    if (patch.restSec !== undefined) e.restSec = patch.restSec;
-  });
+export async function updateRoutineExercise(id: string, patch: { restSec?: number }) {
+  if (patch.restSec === undefined) return;
+  await db.update(t.routineExercises).set({ restSec: patch.restSec }).where(eq(t.routineExercises.id, id));
 }
 
 /**
  * Persist a full reorder of a session's exercises: `order` becomes the 1-based
- * position in `orderedIds`. Only mutates `sessionExercises` — the source routine
- * is untouched (session is a deep copy of the plan).
+ * position in `orderedIds`. Only touches `sessionExercises` (session is a deep
+ * copy of the plan — the routine is untouched).
  */
-export async function reorderSessionExercises(client: Client, orderedIds: string[]) {
+export async function reorderSessionExercises(orderedIds: string[]) {
   await Promise.all(
     orderedIds.map((id, i) =>
-      client.update("sessionExercises", id, (e) => {
-        e.order = i + 1;
-      }),
+      db.update(t.sessionExercises).set({ order: i + 1 }).where(eq(t.sessionExercises.id, id)),
     ),
   );
 }
 
 /** Persist a full reorder: `order` becomes the 1-based position in `orderedIds`. */
-export async function reorderRoutineExercises(client: Client, orderedIds: string[]) {
+export async function reorderRoutineExercises(orderedIds: string[]) {
   await Promise.all(
     orderedIds.map((id, i) =>
-      client.update("routineExercises", id, (e) => {
-        e.order = i + 1;
-      }),
+      db.update(t.routineExercises).set({ order: i + 1 }).where(eq(t.routineExercises.id, id)),
     ),
   );
 }
 
-export async function setRoutineExerciseSuperset(
-  client: Client,
-  id: string,
-  group: number | undefined,
-) {
-  return client.update("routineExercises", id, (e) => {
-    e.supersetGroup = group;
-  });
+export async function setRoutineExerciseSuperset(id: string, group: number | undefined) {
+  await db
+    .update(t.routineExercises)
+    .set({ supersetGroup: group ?? null })
+    .where(eq(t.routineExercises.id, id));
 }
 
 /**
  * Swap which library exercise a routine slot points at, keeping its order,
- * superset link, rest and prescribed sets. The `exercise` relation re-resolves
- * via `$exerciseId`, so the new name/media flow through automatically.
+ * superset link, rest and prescribed sets.
  */
-export async function replaceRoutineExercise(
-  client: Client,
-  id: string,
-  newExerciseId: string,
-) {
-  return client.update("routineExercises", id, (e) => {
-    e.exerciseId = newExerciseId;
-  });
+export async function replaceRoutineExercise(id: string, newExerciseId: string) {
+  await db
+    .update(t.routineExercises)
+    .set({ exerciseId: newExerciseId })
+    .where(eq(t.routineExercises.id, id));
 }
 
-/**
- * Swap which library exercise a live session slot points at, keeping its order
- * and rest. Mutates only `sessionExercises` — the source routine is untouched
- * (the session is a deep copy of the plan). The `exercise` relation re-resolves
- * via `$exerciseId`, so the new name/media flow through automatically.
- */
-export async function replaceSessionExercise(
-  client: Client,
-  id: string,
-  newExerciseId: string,
-) {
-  return client.update("sessionExercises", id, (e) => {
-    e.exerciseId = newExerciseId;
-  });
+/** Swap which library exercise a live session slot points at, keeping order/rest. */
+export async function replaceSessionExercise(id: string, newExerciseId: string) {
+  await db
+    .update(t.sessionExercises)
+    .set({ exerciseId: newExerciseId })
+    .where(eq(t.sessionExercises.id, id));
 }
 
-/** Remove an exercise from a live session, including its logged sets. */
-export async function removeSessionExercise(client: Client, sessionExerciseId: string) {
-  const sets = await client.fetch(
-    client.query("setLogs").Where("sessionExerciseId", "=", sessionExerciseId),
-  );
-  for (const s of sets) await client.delete("setLogs", s.id);
-  await client.delete("sessionExercises", sessionExerciseId);
+/** Remove an exercise from a live session, including its logged sets (FK cascade). */
+export async function removeSessionExercise(sessionExerciseId: string) {
+  await db.delete(t.sessionExercises).where(eq(t.sessionExercises.id, sessionExerciseId));
 }
 
 /** Add an empty (uncompleted) set row to a session exercise. */
-export async function addSet(
-  client: Client,
-  args: { sessionExerciseId: string; order: number; type?: string; weight?: number; reps?: number },
-) {
-  return client.insert("setLogs", {
-    ownerId: await ownerOf(client, "sessionExercises", args.sessionExerciseId),
+export async function addSet(args: {
+  sessionExerciseId: string;
+  order: number;
+  type?: string;
+  weight?: number;
+  reps?: number;
+}) {
+  return insertRow(t.setLogs, {
+    ownerId: await ownerOf(t.sessionExercises, args.sessionExerciseId),
     sessionExerciseId: args.sessionExerciseId,
     order: args.order,
     type: args.type ?? "normal",
@@ -214,39 +185,34 @@ export async function addSet(
 }
 
 export async function updateSet(
-  client: Client,
   id: string,
   patch: { weight?: number; reps?: number; rpe?: number; completed?: boolean },
 ) {
-  return client.update("setLogs", id, (s) => {
-    if (patch.weight !== undefined) s.weight = patch.weight;
-    if (patch.reps !== undefined) s.reps = patch.reps;
-    // `"rpe" in patch` (not `!== undefined`) so callers can CLEAR rpe by passing
-    // `rpe: undefined`. Absent key = leave it untouched; present-but-undefined =
-    // reset to no effort. Other fields stay guard-by-undefined so a partial
-    // patch never nulls them.
-    if ("rpe" in patch) s.rpe = patch.rpe;
-    if (patch.completed !== undefined) s.completed = patch.completed;
-  });
+  const set: Record<string, unknown> = {};
+  if (patch.weight !== undefined) set.weight = patch.weight;
+  if (patch.reps !== undefined) set.reps = patch.reps;
+  // `"rpe" in patch` (not `!== undefined`) so callers can CLEAR rpe by passing
+  // `rpe: undefined`. Absent key = leave untouched; present-but-undefined = reset.
+  if ("rpe" in patch) set.rpe = patch.rpe ?? null;
+  if (patch.completed !== undefined) set.completed = patch.completed;
+  if (Object.keys(set).length === 0) return;
+  await db.update(t.setLogs).set(set).where(eq(t.setLogs.id, id));
 }
 
-export async function deleteSet(client: Client, id: string) {
-  return client.delete("setLogs", id);
+export async function deleteSet(id: string) {
+  await db.delete(t.setLogs).where(eq(t.setLogs.id, id));
 }
 
-export async function logSet(
-  client: Client,
-  args: {
-    sessionExerciseId: string;
-    order: number;
-    weight: number;
-    reps: number;
-    rpe?: number;
-    type?: string;
-  },
-) {
-  return client.insert("setLogs", {
-    ownerId: await ownerOf(client, "sessionExercises", args.sessionExerciseId),
+export async function logSet(args: {
+  sessionExerciseId: string;
+  order: number;
+  weight: number;
+  reps: number;
+  rpe?: number;
+  type?: string;
+}) {
+  return insertRow(t.setLogs, {
+    ownerId: await ownerOf(t.sessionExercises, args.sessionExerciseId),
     sessionExerciseId: args.sessionExerciseId,
     order: args.order,
     weight: args.weight,
@@ -257,48 +223,39 @@ export async function logSet(
   });
 }
 
-export async function finishSession(client: Client, sessionId: string, now: number) {
-  await client.update("sessions", sessionId, (s) => {
-    s.endedAt = now;
-  });
-  const session = await client.fetchById("sessions", sessionId);
+export async function finishSession(sessionId: string, now: number) {
+  await db.update(t.sessions).set({ endedAt: now }).where(eq(t.sessions.id, sessionId));
+  const [session] = await db.select().from(t.sessions).where(eq(t.sessions.id, sessionId)).limit(1);
   if (session) {
-    // Rest is config/prescription (not performance), so carry an in-workout
-    // rest edit back to the routine for the next run. Safe alongside the
-    // optional save-back flow — both write the same session rest value.
-    await syncRestToRoutine(client, sessionId);
-    return detectAndRecordPRs(client, { sessionId, ownerId: session.ownerId, now });
+    // Carry an in-workout rest edit back to the routine for the next run.
+    await syncRestToRoutine(sessionId);
+    return detectAndRecordPRs({ sessionId, ownerId: session.ownerId, now });
   }
   return [];
 }
 
 /**
  * Carry per-exercise rest edits made during a live workout back to the source
- * routine so the next run starts from the same rest timers. ONLY the `restSec`
- * config is synced — performed sets/loads are never pushed to the routine
- * (that's the explicit, user-driven save-back flow).
- *
- * sessionExercises hold no link to their source routineExercise, so we map by
- * `exerciseId` within the session's `routineId`, using `order` to pair up when a
- * routine repeats the same exercise. Exercises added mid-session (no routine
- * slot) are skipped; removed ones keep their existing rest. No-ops for ad-hoc
- * sessions (no routineId).
+ * routine so the next run starts from the same rest timers. ONLY `restSec` is
+ * synced; performed sets/loads are never pushed (that's the explicit save-back).
+ * Pairs session exercises to routine slots by exerciseId, using order for dupes.
  */
-async function syncRestToRoutine(client: Client, sessionId: string) {
-  const session = await client.fetchById("sessions", sessionId);
+async function syncRestToRoutine(sessionId: string) {
+  const [session] = await db.select().from(t.sessions).where(eq(t.sessions.id, sessionId)).limit(1);
   if (!session?.routineId) return;
 
-  const routineExs = await client.fetch(
-    client.query("routineExercises").Where("routineId", "=", session.routineId),
-  );
+  const routineExs = await db
+    .select()
+    .from(t.routineExercises)
+    .where(eq(t.routineExercises.routineId, session.routineId));
   if (routineExs.length === 0) return;
 
-  const sessionExs = await client.fetch(
-    client.query("sessionExercises").Where("sessionId", "=", sessionId),
-  );
+  const sessionExs = await db
+    .select()
+    .from(t.sessionExercises)
+    .where(eq(t.sessionExercises.sessionId, sessionId));
   if (sessionExs.length === 0) return;
 
-  // Group routine slots by exerciseId (order-sorted) to pair duplicates by position.
   const slotsByExId = new Map<string, typeof routineExs>();
   for (const re of routineExs) {
     const list = slotsByExId.get(re.exerciseId) ?? [];
@@ -311,12 +268,10 @@ async function syncRestToRoutine(client: Client, sessionId: string) {
   const orderedSes = [...sessionExs].sort((a, b) => a.order - b.order);
   for (const se of orderedSes) {
     const slot = slotsByExId.get(se.exerciseId)?.find((re) => !claimed.has(re.id));
-    if (!slot) continue; // added/replaced mid-session — no matching routine slot
+    if (!slot) continue;
     claimed.add(slot.id);
     if (slot.restSec !== se.restSec) {
-      await client.update("routineExercises", slot.id, (re) => {
-        re.restSec = se.restSec;
-      });
+      await db.update(t.routineExercises).set({ restSec: se.restSec }).where(eq(t.routineExercises.id, slot.id));
     }
   }
 }
@@ -329,29 +284,26 @@ export interface DetectedPR {
 
 /**
  * After a session, record new all-time PRs (est 1RM + max weight) per exercise.
- * personalRecords acts as the running ledger; the contributing set is flagged
- * isPr so history can badge it. Idempotent enough: re-running won't beat an
- * already-recorded equal best.
+ * personalRecords is the running ledger; the contributing set is flagged isPr.
  */
-export async function detectAndRecordPRs(
-  client: Client,
-  args: { sessionId: string; ownerId: string; now: number },
-): Promise<DetectedPR[]> {
+export async function detectAndRecordPRs(args: {
+  sessionId: string;
+  ownerId: string;
+  now: number;
+}): Promise<DetectedPR[]> {
   const found: DetectedPR[] = [];
-  const ses = await client.fetch(
-    client.query("sessionExercises").Where("sessionId", "=", args.sessionId),
-  );
+  const ses = await db
+    .select()
+    .from(t.sessionExercises)
+    .where(eq(t.sessionExercises.sessionId, args.sessionId));
 
   for (const se of ses) {
-    const sets = await client.fetch(
-      client
-        .query("setLogs")
-        .Where("sessionExerciseId", "=", se.id)
-        .Where("completed", "=", true),
-    );
+    const sets = await db
+      .select()
+      .from(t.setLogs)
+      .where(and(eq(t.setLogs.sessionExerciseId, se.id), eq(t.setLogs.completed, true)));
     if (sets.length === 0) continue;
 
-    // best set by estimated 1RM, and the heaviest set
     let best1rmSet = sets[0]!;
     let best1rm = 0;
     let topWeightSet = sets[0]!;
@@ -365,15 +317,14 @@ export async function detectAndRecordPRs(
     }
     best1rm = Math.round(best1rm);
 
-    const prior1rm = await client.fetchOne(
-      client
-        .query("personalRecords")
-        .Where("exerciseId", "=", se.exerciseId)
-        .Where("type", "=", "1rm")
-        .Order("value", "DESC"),
-    );
+    const [prior1rm] = await db
+      .select()
+      .from(t.personalRecords)
+      .where(and(eq(t.personalRecords.exerciseId, se.exerciseId), eq(t.personalRecords.type, "1rm")))
+      .orderBy(desc(t.personalRecords.value))
+      .limit(1);
     if (best1rm > 0 && (!prior1rm || best1rm > prior1rm.value)) {
-      await client.insert("personalRecords", {
+      await insertRow(t.personalRecords, {
         ownerId: args.ownerId,
         exerciseId: se.exerciseId,
         type: "1rm",
@@ -381,21 +332,18 @@ export async function detectAndRecordPRs(
         sessionId: args.sessionId,
         achievedAt: args.now,
       });
-      await client.update("setLogs", best1rmSet.id, (s) => {
-        s.isPr = true;
-      });
+      await db.update(t.setLogs).set({ isPr: true }).where(eq(t.setLogs.id, best1rmSet.id));
       found.push({ exerciseId: se.exerciseId, type: "1rm", value: best1rm });
     }
 
-    const priorW = await client.fetchOne(
-      client
-        .query("personalRecords")
-        .Where("exerciseId", "=", se.exerciseId)
-        .Where("type", "=", "weight")
-        .Order("value", "DESC"),
-    );
+    const [priorW] = await db
+      .select()
+      .from(t.personalRecords)
+      .where(and(eq(t.personalRecords.exerciseId, se.exerciseId), eq(t.personalRecords.type, "weight")))
+      .orderBy(desc(t.personalRecords.value))
+      .limit(1);
     if (topWeightSet.weight > 0 && (!priorW || topWeightSet.weight > priorW.value)) {
-      await client.insert("personalRecords", {
+      await insertRow(t.personalRecords, {
         ownerId: args.ownerId,
         exerciseId: se.exerciseId,
         type: "weight",
@@ -403,21 +351,25 @@ export async function detectAndRecordPRs(
         sessionId: args.sessionId,
         achievedAt: args.now,
       });
-      await client.update("setLogs", topWeightSet.id, (s) => {
-        s.isPr = true;
-      });
+      await db.update(t.setLogs).set({ isPr: true }).where(eq(t.setLogs.id, topWeightSet.id));
       found.push({ exerciseId: se.exerciseId, type: "weight", value: topWeightSet.weight });
     }
   }
   return found;
 }
 
-/** Log a bodyweight entry. */
-export async function logBodyweight(
-  client: Client,
-  args: { ownerId: string; weightKg: number; now: number; note?: string },
-) {
-  return client.insert("bodyMetrics", {
+/* ---------------------------------------------------------------------------
+ * Body weight
+ * ------------------------------------------------------------------------- */
+
+/** Log a bodyweight entry into bodyMetrics. */
+export async function logBodyweight(args: {
+  ownerId: string;
+  weightKg: number;
+  now: number;
+  note?: string;
+}) {
+  return insertRow(t.bodyMetrics, {
     ownerId: args.ownerId,
     weightKg: args.weightKg,
     date: args.now,
@@ -425,16 +377,13 @@ export async function logBodyweight(
   });
 }
 
-/* ---------------------------------------------------------------------------
- * Body-weight log — timestamped weight history for the progress chart.
- * ------------------------------------------------------------------------- */
-
 /** Add a body-weight entry. Weight canonical (kg); loggedAt epoch ms. */
-export async function addBodyWeightLog(
-  client: Client,
-  args: { ownerId: string; weightKg: number; loggedAt: number },
-) {
-  return client.insert("bodyWeightLogs", {
+export async function addBodyWeightLog(args: {
+  ownerId: string;
+  weightKg: number;
+  loggedAt: number;
+}) {
+  return insertRow(t.bodyWeightLogs, {
     ownerId: args.ownerId,
     weightKg: args.weightKg,
     loggedAt: args.loggedAt,
@@ -442,36 +391,35 @@ export async function addBodyWeightLog(
 }
 
 /** Body-weight entries within [from, to] epoch ms (inclusive), oldest→newest. */
-export async function bodyWeightLogsInRange(
-  client: Client,
-  args: { ownerId: string; from: number; to: number },
-) {
-  return client.fetch(
-    client
-      .query("bodyWeightLogs")
-      .Where("ownerId", "=", args.ownerId)
-      .Where("loggedAt", ">=", args.from)
-      .Where("loggedAt", "<=", args.to)
-      .Order("loggedAt", "ASC"),
-  );
+export async function bodyWeightLogsInRange(args: { ownerId: string; from: number; to: number }) {
+  return db
+    .select()
+    .from(t.bodyWeightLogs)
+    .where(
+      and(
+        eq(t.bodyWeightLogs.ownerId, args.ownerId),
+        gte(t.bodyWeightLogs.loggedAt, args.from),
+        lte(t.bodyWeightLogs.loggedAt, args.to),
+      ),
+    )
+    .orderBy(asc(t.bodyWeightLogs.loggedAt));
 }
 
 /** Most recent body-weight entry, or null if none. */
-export async function latestBodyWeightLog(client: Client, ownerId: string) {
-  return client.fetchOne(
-    client
-      .query("bodyWeightLogs")
-      .Where("ownerId", "=", ownerId)
-      .Order("loggedAt", "DESC"),
-  );
+export async function latestBodyWeightLog(ownerId: string) {
+  const [row] = await db
+    .select()
+    .from(t.bodyWeightLogs)
+    .where(eq(t.bodyWeightLogs.ownerId, ownerId))
+    .orderBy(desc(t.bodyWeightLogs.loggedAt))
+    .limit(1);
+  return row ?? null;
 }
 
 /* ---------------------------------------------------------------------------
- * Profile + settings — one row per user. UI goes through these, never the
- * client directly. Weights canonical (kg), height cm.
+ * Profile + settings — one row per user.
  * ------------------------------------------------------------------------- */
 
-/** Fields a caller may update; id/ownerId are immutable. */
 export interface ProfilePatch {
   displayName?: string;
   photoUrl?: string;
@@ -485,46 +433,40 @@ export interface ProfilePatch {
   defaultReps?: number;
 }
 
-/**
- * The current user's profile, creating a default row if none exists.
- * Defaults (unitPreference "metric", restSec 120, sets 3, reps 10) come from
- * the schema, so a bare insert is enough.
- */
-export async function getProfile(client: Client, ownerId: string) {
-  const existing = await client.fetchOne(
-    client.query("userProfile").Where("ownerId", "=", ownerId),
-  );
+/** The current user's profile, creating a default row if none exists. */
+export async function getProfile(ownerId: string) {
+  const [existing] = await db
+    .select()
+    .from(t.userProfile)
+    .where(eq(t.userProfile.ownerId, ownerId))
+    .limit(1);
   if (existing) return existing;
-  return client.insert("userProfile", { ownerId });
+  return insertRow(t.userProfile, { ownerId });
 }
 
 /** Update allowed profile fields. Ensures the row exists first. */
-export async function updateProfile(client: Client, ownerId: string, patch: ProfilePatch) {
-  const profile = await getProfile(client, ownerId);
-  return client.update("userProfile", profile.id, (p) => {
-    if (patch.displayName !== undefined) p.displayName = patch.displayName;
-    if (patch.photoUrl !== undefined) p.photoUrl = patch.photoUrl;
-    if (patch.heightCm !== undefined) p.heightCm = patch.heightCm;
-    if (patch.currentWeightKg !== undefined) p.currentWeightKg = patch.currentWeightKg;
-    if (patch.goalWeightKg !== undefined) p.goalWeightKg = patch.goalWeightKg;
-    if (patch.trainingGoal !== undefined) p.trainingGoal = patch.trainingGoal;
-    if (patch.unitPreference !== undefined) p.unitPreference = patch.unitPreference;
-    if (patch.defaultRestSec !== undefined) p.defaultRestSec = patch.defaultRestSec;
-    if (patch.defaultSets !== undefined) p.defaultSets = patch.defaultSets;
-    if (patch.defaultReps !== undefined) p.defaultReps = patch.defaultReps;
-  });
+export async function updateProfile(ownerId: string, patch: ProfilePatch) {
+  const profile = await getProfile(ownerId);
+  const set: Record<string, unknown> = {};
+  if (patch.displayName !== undefined) set.displayName = patch.displayName;
+  if (patch.photoUrl !== undefined) set.photoUrl = patch.photoUrl;
+  if (patch.heightCm !== undefined) set.heightCm = patch.heightCm;
+  if (patch.currentWeightKg !== undefined) set.currentWeightKg = patch.currentWeightKg;
+  if (patch.goalWeightKg !== undefined) set.goalWeightKg = patch.goalWeightKg;
+  if (patch.trainingGoal !== undefined) set.trainingGoal = patch.trainingGoal;
+  if (patch.unitPreference !== undefined) set.unitPreference = patch.unitPreference;
+  if (patch.defaultRestSec !== undefined) set.defaultRestSec = patch.defaultRestSec;
+  if (patch.defaultSets !== undefined) set.defaultSets = patch.defaultSets;
+  if (patch.defaultReps !== undefined) set.defaultReps = patch.defaultReps;
+  if (Object.keys(set).length === 0) return profile;
+  const [row] = await db.update(t.userProfile).set(set).where(eq(t.userProfile.id, profile.id)).returning();
+  return row;
 }
 
-/**
- * Log a body-weight entry and mirror it onto the profile's currentWeightKg.
- * Writes a bodyWeightLogs row (history) + updates the profile (latest value).
- */
-export async function logBodyWeight(
-  client: Client,
-  args: { ownerId: string; weightKg: number; loggedAt: number },
-) {
-  const log = await addBodyWeightLog(client, args);
-  await updateProfile(client, args.ownerId, { currentWeightKg: args.weightKg });
+/** Log a body-weight entry and mirror it onto the profile's currentWeightKg. */
+export async function logBodyWeight(args: { ownerId: string; weightKg: number; loggedAt: number }) {
+  const log = await addBodyWeightLog(args);
+  await updateProfile(args.ownerId, { currentWeightKg: args.weightKg });
   return log;
 }
 
@@ -536,29 +478,25 @@ export interface ExerciseStatPoint {
   topWeight: number;
 }
 
-/**
- * Per-session stats for one exercise across finished sessions, oldest→newest.
- * Powers the trend charts. Computed client-side (fine for one exercise).
- */
-export async function exerciseStats(
-  client: Client,
-  exerciseId: string,
-): Promise<ExerciseStatPoint[]> {
-  const ses = await client.fetch(
-    client.query("sessionExercises").Where("exerciseId", "=", exerciseId),
-  );
+/** Per-session stats for one exercise across finished sessions, oldest→newest. */
+export async function exerciseStats(exerciseId: string): Promise<ExerciseStatPoint[]> {
+  const ses = await db
+    .select()
+    .from(t.sessionExercises)
+    .where(eq(t.sessionExercises.exerciseId, exerciseId));
   if (ses.length === 0) return [];
 
-  const sessions = await client.fetch(client.query("sessions"));
+  const sessions = await db.select().from(t.sessions);
   const byId = new Map(sessions.map((s) => [s.id, s]));
 
   const points: ExerciseStatPoint[] = [];
   for (const se of ses) {
     const session = byId.get(se.sessionId);
     if (!session || session.endedAt == null) continue;
-    const sets = await client.fetch(
-      client.query("setLogs").Where("sessionExerciseId", "=", se.id).Where("completed", "=", true),
-    );
+    const sets = await db
+      .select()
+      .from(t.setLogs)
+      .where(and(eq(t.setLogs.sessionExerciseId, se.id), eq(t.setLogs.completed, true)));
     if (sets.length === 0) continue;
     let best1rm = 0;
     let volume = 0;
@@ -580,14 +518,16 @@ export async function exerciseStats(
 }
 
 /* ---------------------------------------------------------------------------
- * Routines (the saved plan). Prescription tree, separate from sessions.
+ * Routines (saved plan tree)
  * ------------------------------------------------------------------------- */
 
-export async function createRoutine(
-  client: Client,
-  args: { ownerId: string; name: string; order?: number; category?: string },
-) {
-  return client.insert("routines", {
+export async function createRoutine(args: {
+  ownerId: string;
+  name: string;
+  order?: number;
+  category?: string;
+}) {
+  return insertRow(t.routines, {
     ownerId: args.ownerId,
     name: args.name,
     order: args.order ?? 0,
@@ -595,79 +535,40 @@ export async function createRoutine(
   });
 }
 
-export async function renameRoutine(client: Client, id: string, name: string) {
-  return client.update("routines", id, (r) => {
-    r.name = name;
-  });
+export async function renameRoutine(id: string, name: string) {
+  await db.update(t.routines).set({ name }).where(eq(t.routines.id, id));
 }
 
-/**
- * Set (or clear) a routine's free-text focus/split tag (Push, Pull, Legs…).
- * Pass `undefined`/empty to clear it — the Plans page then falls back to a
- * name-derived label.
- */
-export async function setRoutineCategory(client: Client, id: string, category?: string) {
-  const value = category?.trim() || undefined;
-  return client.update("routines", id, (r) => {
-    r.category = value;
-  });
+/** Set (or clear) a routine's free-text focus/split tag (Push, Pull, Legs…). */
+export async function setRoutineCategory(id: string, category?: string) {
+  const value = category?.trim() || null;
+  await db.update(t.routines).set({ category: value }).where(eq(t.routines.id, id));
 }
 
-/**
- * Set the weekdays a routine is scheduled for (0=Sun … 6=Sat) — the
- * "today's workout" mechanism. Assigning a fresh Set overwrites the old days
- * (Triplit's update proxy clears removed members). Owner-scoped via the row.
- */
-export async function setRoutineSchedule(client: Client, id: string, days: number[]) {
+/** Set the weekdays a routine is scheduled for (0=Sun … 6=Sat). */
+export async function setRoutineSchedule(id: string, days: number[]) {
   const clean = [...new Set(days)].filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
-  return client.update("routines", id, (r) => {
-    r.scheduledDays = new Set(clean);
-  });
+  await db.update(t.routines).set({ scheduledDays: clean }).where(eq(t.routines.id, id));
 }
 
 /**
- * Delete a routine and everything that hangs off it. Triplit has no FK cascade,
- * so we remove children-first (same manual pattern as discardSession): each
- * routineExercise's routineSets, then the routineExercises, then the routine.
- *
- * A routine can also be referenced by program days (a program day points to a
- * routineId). Deleting the routine without touching them would leave dangling
- * refs that render as a stale routine name, so we first detach every program
- * day that points here by clearing its routineId — turning it into a Rest slot
- * while keeping the program's day/weekday structure intact (id-based, via
- * updateProgramDay).
+ * Delete a routine and everything that hangs off it. FK cascades handle the
+ * prescription tree (routineExercises → routineSets); referencing program days
+ * and history sessions are SET NULL (`routineId` back-refs), so a deleted
+ * routine never leaves dangling refs.
  */
-export async function deleteRoutine(client: Client, id: string) {
-  // Detach referencing program days first so none point at a deleted routine.
-  const refDays = await client.fetch(
-    client.query("programDays").Where("routineId", "=", id),
-  );
-  for (const d of refDays) {
-    await client.update("programDays", d.id, (day) => {
-      day.routineId = undefined;
-    });
-  }
-
-  // Then cascade the prescription tree (routineExercises → routineSets).
-  const exs = await client.fetch(
-    client.query("routineExercises").Where("routineId", "=", id),
-  );
-  for (const ex of exs) {
-    const sets = await client.fetch(
-      client.query("routineSets").Where("routineExerciseId", "=", ex.id),
-    );
-    for (const s of sets) await client.delete("routineSets", s.id);
-    await client.delete("routineExercises", ex.id);
-  }
-  await client.delete("routines", id);
+export async function deleteRoutine(id: string) {
+  await db.delete(t.routines).where(eq(t.routines.id, id));
 }
 
-export async function addRoutineExercise(
-  client: Client,
-  args: { routineId: string; exerciseId: string; order: number; restSec?: number },
-) {
-  return client.insert("routineExercises", {
-    ownerId: await ownerOf(client, "routines", args.routineId),
+export async function addRoutineExercise(args: {
+  routineId: string;
+  exerciseId: string;
+  order: number;
+  restSec?: number;
+}) {
+  return insertRow(t.routineExercises, {
+    ownerId: await ownerOf(t.routines, args.routineId),
     routineId: args.routineId,
     exerciseId: args.exerciseId,
     order: args.order,
@@ -675,57 +576,44 @@ export async function addRoutineExercise(
   });
 }
 
-/**
- * Add an exercise to a routine pre-filled from the user's profile defaults:
- * `defaultSets` routineSets (each `targetReps` = `defaultReps`) and the
- * routineExercise's `restSec` = `defaultRestSec`. Falls back to 3 sets /
- * 10 reps / 120s rest when no profile defaults exist.
- */
-export async function addRoutineExerciseWithDefaults(
-  client: Client,
-  args: { routineId: string; exerciseId: string; order: number; ownerId: string },
-) {
-  const profile = await getProfile(client, args.ownerId);
+/** Add an exercise to a routine pre-filled from the user's profile defaults. */
+export async function addRoutineExerciseWithDefaults(args: {
+  routineId: string;
+  exerciseId: string;
+  order: number;
+  ownerId: string;
+}) {
+  const profile = await getProfile(args.ownerId);
   const sets = profile.defaultSets ?? 3;
   const reps = profile.defaultReps ?? 10;
   const restSec = profile.defaultRestSec ?? 120;
 
-  const re = await addRoutineExercise(client, {
+  const re = await addRoutineExercise({
     routineId: args.routineId,
     exerciseId: args.exerciseId,
     order: args.order,
     restSec,
   });
   for (let i = 0; i < sets; i++) {
-    await addRoutineSet(client, {
-      routineExerciseId: re.id,
-      order: i + 1,
-      targetReps: reps,
-    });
+    await addRoutineSet({ routineExerciseId: re.id, order: i + 1, targetReps: reps });
   }
   return re;
 }
 
-export async function removeRoutineExercise(client: Client, id: string) {
-  const sets = await client.fetch(
-    client.query("routineSets").Where("routineExerciseId", "=", id),
-  );
-  for (const s of sets) await client.delete("routineSets", s.id);
-  await client.delete("routineExercises", id);
+/** Remove an exercise from a routine, including its sets (FK cascade). */
+export async function removeRoutineExercise(id: string) {
+  await db.delete(t.routineExercises).where(eq(t.routineExercises.id, id));
 }
 
-export async function addRoutineSet(
-  client: Client,
-  args: {
-    routineExerciseId: string;
-    order: number;
-    targetReps?: number;
-    targetWeight?: number;
-    type?: string;
-  },
-) {
-  return client.insert("routineSets", {
-    ownerId: await ownerOf(client, "routineExercises", args.routineExerciseId),
+export async function addRoutineSet(args: {
+  routineExerciseId: string;
+  order: number;
+  targetReps?: number;
+  targetWeight?: number;
+  type?: string;
+}) {
+  return insertRow(t.routineSets, {
+    ownerId: await ownerOf(t.routineExercises, args.routineExerciseId),
     routineExerciseId: args.routineExerciseId,
     order: args.order,
     type: args.type ?? "normal",
@@ -735,42 +623,41 @@ export async function addRoutineSet(
 }
 
 export async function updateRoutineSet(
-  client: Client,
   id: string,
   patch: { targetReps?: number; targetWeight?: number },
 ) {
-  return client.update("routineSets", id, (s) => {
-    if (patch.targetReps !== undefined) s.targetReps = patch.targetReps;
-    if (patch.targetWeight !== undefined) s.targetWeight = patch.targetWeight;
-  });
+  const set: Record<string, unknown> = {};
+  if (patch.targetReps !== undefined) set.targetReps = patch.targetReps;
+  if (patch.targetWeight !== undefined) set.targetWeight = patch.targetWeight;
+  if (Object.keys(set).length === 0) return;
+  await db.update(t.routineSets).set(set).where(eq(t.routineSets.id, id));
 }
 
-export async function deleteRoutineSet(client: Client, id: string) {
-  return client.delete("routineSets", id);
+export async function deleteRoutineSet(id: string) {
+  await db.delete(t.routineSets).where(eq(t.routineSets.id, id));
 }
 
-/**
- * Start a live session from a saved routine: deep-copy the prescription tree
- * into the session tree (targets become the starting weight/reps, uncompleted).
- * This is what keeps plan and history independent.
- */
-export async function startSessionFromRoutine(
-  client: Client,
-  args: { routineId: string; ownerId: string; now: number },
-) {
-  const routine = await client.fetchById("routines", args.routineId);
-  const session = await client.insert("sessions", {
+/** Start a live session from a saved routine: deep-copy the prescription tree. */
+export async function startSessionFromRoutine(args: {
+  routineId: string;
+  ownerId: string;
+  now: number;
+}) {
+  const [routine] = await db.select().from(t.routines).where(eq(t.routines.id, args.routineId)).limit(1);
+  const session = await insertRow(t.sessions, {
     ownerId: args.ownerId,
     routineId: args.routineId,
     name: routine?.name ?? "Workout",
     startedAt: args.now,
   });
 
-  const exs = await client.fetch(
-    client.query("routineExercises").Where("routineId", "=", args.routineId).Order("order", "ASC"),
-  );
+  const exs = await db
+    .select()
+    .from(t.routineExercises)
+    .where(eq(t.routineExercises.routineId, args.routineId))
+    .orderBy(asc(t.routineExercises.order));
   for (const ex of exs) {
-    const se = await client.insert("sessionExercises", {
+    const se = await insertRow(t.sessionExercises, {
       ownerId: args.ownerId,
       sessionId: session.id,
       exerciseId: ex.exerciseId,
@@ -778,11 +665,13 @@ export async function startSessionFromRoutine(
       supersetGroup: ex.supersetGroup,
       restSec: ex.restSec,
     });
-    const sets = await client.fetch(
-      client.query("routineSets").Where("routineExerciseId", "=", ex.id).Order("order", "ASC"),
-    );
+    const sets = await db
+      .select()
+      .from(t.routineSets)
+      .where(eq(t.routineSets.routineExerciseId, ex.id))
+      .orderBy(asc(t.routineSets.order));
     for (const rs of sets) {
-      await client.insert("setLogs", {
+      await insertRow(t.setLogs, {
         ownerId: args.ownerId,
         sessionExerciseId: se.id,
         order: rs.order,
@@ -796,40 +685,34 @@ export async function startSessionFromRoutine(
   return session;
 }
 
-/**
- * Duplicate a routine into the user's library under a fresh "(copy)" name,
- * deep-cloning its exercises + sets (incl. superset groups, rest, targets). The
- * copy is fully independent — editing it never touches the original. Returns the
- * new routine id (or null when the source is missing).
- */
-export async function duplicateRoutine(
-  client: Client,
-  args: { routineId: string; ownerId: string },
-): Promise<string | null> {
-  const src = await client.fetchById("routines", args.routineId);
+/** Duplicate a routine under a fresh "(copy)" name, deep-cloning exercises + sets. */
+export async function duplicateRoutine(args: {
+  routineId: string;
+  ownerId: string;
+}): Promise<string | null> {
+  const [src] = await db.select().from(t.routines).where(eq(t.routines.id, args.routineId)).limit(1);
   if (!src) return null;
 
-  // Unique "(copy)" name within the owner's routines.
-  const existing = await client.fetch(
-    client.query("routines").Where("ownerId", "=", args.ownerId),
-  );
+  const existing = await db.select().from(t.routines).where(eq(t.routines.ownerId, args.ownerId));
   const names = new Set(existing.map((r) => r.name));
   let name = `${src.name} (copy)`;
   for (let n = 2; names.has(name); n++) name = `${src.name} (copy ${n})`;
 
-  const copy = await client.insert("routines", {
+  const copy = await insertRow(t.routines, {
     ownerId: args.ownerId,
     name,
     notes: src.notes,
     order: src.order ?? 0,
-    scheduledDays: src.scheduledDays ? new Set(src.scheduledDays) : undefined,
+    scheduledDays: src.scheduledDays ?? null,
   });
 
-  const exs = await client.fetch(
-    client.query("routineExercises").Where("routineId", "=", args.routineId).Order("order", "ASC"),
-  );
+  const exs = await db
+    .select()
+    .from(t.routineExercises)
+    .where(eq(t.routineExercises.routineId, args.routineId))
+    .orderBy(asc(t.routineExercises.order));
   for (const ex of exs) {
-    const re = await client.insert("routineExercises", {
+    const re = await insertRow(t.routineExercises, {
       ownerId: args.ownerId,
       routineId: copy.id,
       exerciseId: ex.exerciseId,
@@ -838,11 +721,13 @@ export async function duplicateRoutine(
       restSec: ex.restSec,
       notes: ex.notes,
     });
-    const sets = await client.fetch(
-      client.query("routineSets").Where("routineExerciseId", "=", ex.id).Order("order", "ASC"),
-    );
+    const sets = await db
+      .select()
+      .from(t.routineSets)
+      .where(eq(t.routineSets.routineExerciseId, ex.id))
+      .orderBy(asc(t.routineSets.order));
     for (const s of sets) {
-      await client.insert("routineSets", {
+      await insertRow(t.routineSets, {
         ownerId: args.ownerId,
         routineExerciseId: re.id,
         order: s.order,
@@ -858,7 +743,7 @@ export async function duplicateRoutine(
 }
 
 /* ---------------------------------------------------------------------------
- * Save-back (#3) — push a finished session's changes back into its routine.
+ * Save-back — push a finished session's changes back into its routine.
  * ------------------------------------------------------------------------- */
 
 export type SaveBackMode = "numbers" | "exercises" | "everything";
@@ -876,27 +761,24 @@ interface PlanEntry {
   }>;
 }
 
-/**
- * Rewrite a routine's prescription from a finished session, per mode:
- *  - "numbers"    keep the prescribed lineup; adopt the weights/reps performed.
- *  - "exercises"  adopt the performed lineup; keep prescribed numbers where the
- *                 exercise already existed (new exercises take performed numbers).
- *  - "everything" adopt lineup AND numbers exactly as performed.
- * Only the routine tree is rewritten — the session (history) is untouched.
- */
-export async function applySessionToRoutine(
-  client: Client,
-  args: { sessionId: string; routineId: string; mode: SaveBackMode },
-) {
-  // Performed lineup + the loads actually logged.
-  const ses = await client.fetch(
-    client.query("sessionExercises").Where("sessionId", "=", args.sessionId).Order("order", "ASC"),
-  );
+/** Rewrite a routine's prescription from a finished session, per mode. */
+export async function applySessionToRoutine(args: {
+  sessionId: string;
+  routineId: string;
+  mode: SaveBackMode;
+}) {
+  const ses = await db
+    .select()
+    .from(t.sessionExercises)
+    .where(eq(t.sessionExercises.sessionId, args.sessionId))
+    .orderBy(asc(t.sessionExercises.order));
   const performed: PlanEntry[] = [];
   for (const se of ses) {
-    const sets = await client.fetch(
-      client.query("setLogs").Where("sessionExerciseId", "=", se.id).Order("order", "ASC"),
-    );
+    const sets = await db
+      .select()
+      .from(t.setLogs)
+      .where(eq(t.setLogs.sessionExerciseId, se.id))
+      .orderBy(asc(t.setLogs.order));
     performed.push({
       exerciseId: se.exerciseId,
       supersetGroup: se.supersetGroup ?? undefined,
@@ -910,16 +792,19 @@ export async function applySessionToRoutine(
     });
   }
 
-  // Current prescription (kept for "numbers"/"exercises" modes).
-  const oldEx = await client.fetch(
-    client.query("routineExercises").Where("routineId", "=", args.routineId).Order("order", "ASC"),
-  );
+  const oldEx = await db
+    .select()
+    .from(t.routineExercises)
+    .where(eq(t.routineExercises.routineId, args.routineId))
+    .orderBy(asc(t.routineExercises.order));
   const oldPlan: PlanEntry[] = [];
   const oldSetsByExerciseId = new Map<string, PlanEntry["sets"]>();
   for (const re of oldEx) {
-    const sets = await client.fetch(
-      client.query("routineSets").Where("routineExerciseId", "=", re.id).Order("order", "ASC"),
-    );
+    const sets = await db
+      .select()
+      .from(t.routineSets)
+      .where(eq(t.routineSets.routineExerciseId, re.id))
+      .orderBy(asc(t.routineSets.order));
     const entry: PlanEntry = {
       exerciseId: re.exerciseId,
       supersetGroup: re.supersetGroup ?? undefined,
@@ -943,7 +828,6 @@ export async function applySessionToRoutine(
     const performedByExId = new Map(performed.map((p) => [p.exerciseId, p.sets]));
     plan = oldPlan.map((o) => ({ ...o, sets: performedByExId.get(o.exerciseId) ?? o.sets }));
   } else {
-    // "exercises": performed lineup, keep prescribed numbers where they existed.
     plan = performed.map((p) => ({
       exerciseId: p.exerciseId,
       supersetGroup: p.supersetGroup,
@@ -952,18 +836,12 @@ export async function applySessionToRoutine(
     }));
   }
 
-  // Replace the routine tree.
-  const ownerId = await ownerOf(client, "routines", args.routineId);
-  for (const re of oldEx) {
-    const sets = await client.fetch(
-      client.query("routineSets").Where("routineExerciseId", "=", re.id),
-    );
-    for (const s of sets) await client.delete("routineSets", s.id);
-    await client.delete("routineExercises", re.id);
-  }
+  const ownerId = await ownerOf(t.routines, args.routineId);
+  // Replace the routine tree (routineSets cascade with their exercise).
+  await db.delete(t.routineExercises).where(eq(t.routineExercises.routineId, args.routineId));
   let order = 1;
   for (const entry of plan) {
-    const re = await client.insert("routineExercises", {
+    const re = await insertRow(t.routineExercises, {
       ownerId,
       routineId: args.routineId,
       exerciseId: entry.exerciseId,
@@ -973,7 +851,7 @@ export async function applySessionToRoutine(
     });
     let so = 1;
     for (const s of entry.sets) {
-      await client.insert("routineSets", {
+      await insertRow(t.routineSets, {
         ownerId,
         routineExerciseId: re.id,
         order: so++,
@@ -990,50 +868,48 @@ export async function applySessionToRoutine(
 export interface SaveBackContext {
   routineId: string;
   routineName: string;
-  /** Flattened plan vs performed, ready for `diffSessionVsRoutine` in @rackd/core. */
   prescription: DiffExercise[];
   performed: DiffExercise[];
-  /** Set when the session's routine is a day in the user's ACTIVE program. */
   program: { programDayId: string; programName: string } | null;
 }
 
-/**
- * Gather everything the finish flow needs to offer save-back: the routine this
- * session came from, the prescription vs performed sets (for the pure diff), and
- * whether the routine belongs to the active program (enables the "here" target).
- * Returns null for ad-hoc sessions (no routineId) or a missing routine.
- */
-export async function getSaveBackContext(
-  client: Client,
-  sessionId: string,
-): Promise<SaveBackContext | null> {
-  const session = await client.fetchById("sessions", sessionId);
+/** Gather everything the finish flow needs to offer save-back. */
+export async function getSaveBackContext(sessionId: string): Promise<SaveBackContext | null> {
+  const [session] = await db.select().from(t.sessions).where(eq(t.sessions.id, sessionId)).limit(1);
   if (!session?.routineId) return null;
-  const routine = await client.fetchById("routines", session.routineId);
+  const [routine] = await db.select().from(t.routines).where(eq(t.routines.id, session.routineId)).limit(1);
   if (!routine) return null;
 
-  const presEx = await client.fetch(
-    client.query("routineExercises").Where("routineId", "=", session.routineId).Order("order", "ASC"),
-  );
+  const presEx = await db
+    .select()
+    .from(t.routineExercises)
+    .where(eq(t.routineExercises.routineId, session.routineId))
+    .orderBy(asc(t.routineExercises.order));
   const prescription: DiffExercise[] = [];
   for (const re of presEx) {
-    const sets = await client.fetch(
-      client.query("routineSets").Where("routineExerciseId", "=", re.id).Order("order", "ASC"),
-    );
+    const sets = await db
+      .select()
+      .from(t.routineSets)
+      .where(eq(t.routineSets.routineExerciseId, re.id))
+      .orderBy(asc(t.routineSets.order));
     prescription.push({
       exerciseId: re.exerciseId,
       sets: sets.map((s) => ({ weight: s.targetWeight ?? 0, reps: s.targetReps ?? 0 })),
     });
   }
 
-  const ses = await client.fetch(
-    client.query("sessionExercises").Where("sessionId", "=", sessionId).Order("order", "ASC"),
-  );
+  const ses = await db
+    .select()
+    .from(t.sessionExercises)
+    .where(eq(t.sessionExercises.sessionId, sessionId))
+    .orderBy(asc(t.sessionExercises.order));
   const performed: DiffExercise[] = [];
   for (const se of ses) {
-    const sets = await client.fetch(
-      client.query("setLogs").Where("sessionExerciseId", "=", se.id).Order("order", "ASC"),
-    );
+    const sets = await db
+      .select()
+      .from(t.setLogs)
+      .where(eq(t.setLogs.sessionExerciseId, se.id))
+      .orderBy(asc(t.setLogs.order));
     performed.push({
       exerciseId: se.exerciseId,
       sets: sets.map((s) => ({ weight: s.weight, reps: s.reps })),
@@ -1041,126 +917,91 @@ export async function getSaveBackContext(
   }
 
   let program: SaveBackContext["program"] = null;
-  const actives = await client.fetch(
-    client.query("programs").Where("ownerId", "=", session.ownerId).Where("active", "=", true),
-  );
+  const actives = await db
+    .select()
+    .from(t.programs)
+    .where(and(eq(t.programs.ownerId, session.ownerId), eq(t.programs.active, true)));
   for (const pr of actives) {
-    const day = await client.fetchOne(
-      client
-        .query("programDays")
-        .Where("programId", "=", pr.id)
-        .Where("routineId", "=", session.routineId),
-    );
+    const [day] = await db
+      .select()
+      .from(t.programDays)
+      .where(and(eq(t.programDays.programId, pr.id), eq(t.programDays.routineId, session.routineId)))
+      .limit(1);
     if (day) {
       program = { programDayId: day.id, programName: pr.name };
       break;
     }
   }
 
-  return {
-    routineId: session.routineId,
-    routineName: routine.name,
-    prescription,
-    performed,
-    program,
-  };
+  return { routineId: session.routineId, routineName: routine.name, prescription, performed, program };
 }
 
 /* ---------------------------------------------------------------------------
  * Programs (ordered named days, each mapped to a routine)
  * ------------------------------------------------------------------------- */
 
-export async function createProgram(
-  client: Client,
-  args: { ownerId: string; name: string; order?: number; blockWeeks?: number },
-) {
-  const created = await client.insert("programs", {
+export async function createProgram(args: {
+  ownerId: string;
+  name: string;
+  order?: number;
+  blockWeeks?: number;
+}) {
+  const created = await insertRow(t.programs, {
     ownerId: args.ownerId,
     name: args.name,
     order: args.order ?? 0,
     blockWeeks: args.blockWeeks,
   });
-  // First/only program becomes active by default so Home always has something to
-  // drive "today". Only auto-activate when this is the SOLE program for the owner;
-  // a 2nd+ program must be activated explicitly via setProgramActive (exclusive),
-  // so we can never create a double-active. Single place that covers every create
-  // path (Plans "+ New", template clone → createProgram). NB: a "no active program"
-  // check here is racy — right after an insert the active query can momentarily
-  // return empty under Triplit eventual consistency and activate without clearing.
-  const all = await client.fetch(
-    client.query("programs").Where("ownerId", "=", args.ownerId),
-  );
+  // First/only program becomes active by default so Home always drives "today".
+  const all = await db.select().from(t.programs).where(eq(t.programs.ownerId, args.ownerId));
   if (all.length === 1) {
-    await client.update("programs", created.id, (p) => {
-      p.active = true;
-    });
+    await db.update(t.programs).set({ active: true }).where(eq(t.programs.id, created.id));
+    created.active = true;
   }
   return created;
 }
 
-export async function renameProgram(client: Client, id: string, name: string) {
-  return client.update("programs", id, (p) => {
-    p.name = name;
-  });
+export async function renameProgram(id: string, name: string) {
+  await db.update(t.programs).set({ name }).where(eq(t.programs.id, id));
 }
 
-/**
- * Mark one program as the active one (drives the dashboard "today's workout"),
- * clearing the flag on the owner's other programs. Only one active at a time.
- */
-export async function setProgramActive(
-  client: Client,
-  args: { programId: string; ownerId: string },
-) {
-  const all = await client.fetch(
-    client.query("programs").Where("ownerId", "=", args.ownerId),
-  );
+/** Mark one program active (clears the flag on the owner's others). */
+export async function setProgramActive(args: { programId: string; ownerId: string }) {
+  const all = await db.select().from(t.programs).where(eq(t.programs.ownerId, args.ownerId));
   for (const p of all) {
     const shouldBe = p.id === args.programId;
     if (!!p.active !== shouldBe) {
-      await client.update("programs", p.id, (x) => {
-        x.active = shouldBe;
-      });
+      await db.update(t.programs).set({ active: shouldBe }).where(eq(t.programs.id, p.id));
     }
   }
 }
 
-/**
- * Patch a program's schedule mode, rotation cursor, and/or block length.
- * `blockWeeks` is present-keyed (not `!== undefined`) so callers can CLEAR it by
- * passing `blockWeeks: undefined` (empty/0 in the editor = unset); a value of 0
- * is normalised to undefined.
- */
+/** Patch a program's schedule mode, rotation cursor, and/or block length. */
 export async function setProgramSchedule(
-  client: Client,
   id: string,
   patch: { scheduleMode?: "rotation" | "weekly"; rotationCursor?: number; blockWeeks?: number },
 ) {
-  return client.update("programs", id, (p) => {
-    if (patch.scheduleMode !== undefined) p.scheduleMode = patch.scheduleMode;
-    if (patch.rotationCursor !== undefined) p.rotationCursor = patch.rotationCursor;
-    if ("blockWeeks" in patch) p.blockWeeks = patch.blockWeeks ? patch.blockWeeks : undefined;
-  });
+  const set: Record<string, unknown> = {};
+  if (patch.scheduleMode !== undefined) set.scheduleMode = patch.scheduleMode;
+  if (patch.rotationCursor !== undefined) set.rotationCursor = patch.rotationCursor;
+  if ("blockWeeks" in patch) set.blockWeeks = patch.blockWeeks ? patch.blockWeeks : null;
+  if (Object.keys(set).length === 0) return;
+  await db.update(t.programs).set(set).where(eq(t.programs.id, id));
 }
 
-export async function deleteProgram(client: Client, id: string) {
-  const days = await client.fetch(client.query("programDays").Where("programId", "=", id));
-  for (const d of days) await client.delete("programDays", d.id);
-  await client.delete("programs", id);
+export async function deleteProgram(id: string) {
+  await db.delete(t.programs).where(eq(t.programs.id, id));
 }
 
-export async function addProgramDay(
-  client: Client,
-  args: {
-    programId: string;
-    order: number;
-    name?: string;
-    routineId?: string;
-    weekday?: number;
-  },
-) {
-  return client.insert("programDays", {
-    ownerId: await ownerOf(client, "programs", args.programId),
+export async function addProgramDay(args: {
+  programId: string;
+  order: number;
+  name?: string;
+  routineId?: string;
+  weekday?: number;
+}) {
+  return insertRow(t.programDays, {
+    ownerId: await ownerOf(t.programs, args.programId),
     programId: args.programId,
     order: args.order,
     name: args.name ?? `Day ${args.order}`,
@@ -1170,31 +1011,27 @@ export async function addProgramDay(
 }
 
 export async function updateProgramDay(
-  client: Client,
   id: string,
   patch: { name?: string; routineId?: string; weekday?: number },
 ) {
-  return client.update("programDays", id, (d) => {
-    if (patch.name !== undefined) d.name = patch.name;
-    // `"routineId" in patch` (not `!== undefined`) so callers can CLEAR the
-    // assignment — turning the day into a Rest slot — by passing
-    // `routineId: undefined`. An absent key leaves the routine untouched.
-    if ("routineId" in patch) d.routineId = patch.routineId;
-    if (patch.weekday !== undefined) d.weekday = patch.weekday;
-  });
+  const set: Record<string, unknown> = {};
+  if (patch.name !== undefined) set.name = patch.name;
+  // `"routineId" in patch` so callers can CLEAR the assignment (→ Rest slot).
+  if ("routineId" in patch) set.routineId = patch.routineId ?? null;
+  if (patch.weekday !== undefined) set.weekday = patch.weekday;
+  if (Object.keys(set).length === 0) return;
+  await db.update(t.programDays).set(set).where(eq(t.programDays.id, id));
 }
 
-export async function removeProgramDay(client: Client, id: string) {
-  return client.delete("programDays", id);
+export async function removeProgramDay(id: string) {
+  await db.delete(t.programDays).where(eq(t.programDays.id, id));
 }
 
 /** Persist a full reorder: `order` becomes the 1-based position in `orderedIds`. */
-export async function reorderProgramDays(client: Client, orderedIds: string[]) {
+export async function reorderProgramDays(orderedIds: string[]) {
   await Promise.all(
     orderedIds.map((id, i) =>
-      client.update("programDays", id, (d) => {
-        d.order = i + 1;
-      }),
+      db.update(t.programDays).set({ order: i + 1 }).where(eq(t.programDays.id, id)),
     ),
   );
 }
@@ -1210,33 +1047,41 @@ interface SharedSnapshotExercise {
 }
 
 /** Snapshot a routine into the public catalog so others can discover + clone it. */
-export async function publishRoutine(
-  client: Client,
-  args: { routineId: string; ownerId: string; authorName: string; now: number },
-) {
-  const routine = await client.fetchById("routines", args.routineId);
+export async function publishRoutine(args: {
+  routineId: string;
+  ownerId: string;
+  authorName: string;
+  now: number;
+}) {
+  const [routine] = await db.select().from(t.routines).where(eq(t.routines.id, args.routineId)).limit(1);
   if (!routine) return null;
 
-  const exs = await client.fetch(
-    client
-      .query("routineExercises")
-      .Where("routineId", "=", args.routineId)
-      .Include("exercise")
-      .Order("order", "ASC"),
-  );
+  const exs = await db
+    .select({
+      id: t.routineExercises.id,
+      exerciseId: t.routineExercises.exerciseId,
+      order: t.routineExercises.order,
+      name: t.exercises.name,
+    })
+    .from(t.routineExercises)
+    .leftJoin(t.exercises, eq(t.routineExercises.exerciseId, t.exercises.id))
+    .where(eq(t.routineExercises.routineId, args.routineId))
+    .orderBy(asc(t.routineExercises.order));
   const snapshot: SharedSnapshotExercise[] = [];
   for (const ex of exs) {
-    const sets = await client.fetch(
-      client.query("routineSets").Where("routineExerciseId", "=", ex.id).Order("order", "ASC"),
-    );
+    const sets = await db
+      .select()
+      .from(t.routineSets)
+      .where(eq(t.routineSets.routineExerciseId, ex.id))
+      .orderBy(asc(t.routineSets.order));
     snapshot.push({
       exerciseId: ex.exerciseId,
-      name: (ex as { exercise?: { name?: string } }).exercise?.name ?? "Exercise",
+      name: ex.name ?? "Exercise",
       sets: sets.map((s) => ({ reps: s.targetReps ?? 0, weight: s.targetWeight ?? 0 })),
     });
   }
 
-  return client.insert("sharedRoutines", {
+  return insertRow(t.sharedRoutines, {
     ownerId: args.ownerId,
     authorName: args.authorName,
     name: routine.name,
@@ -1255,22 +1100,18 @@ export interface SharedRoutineRow {
 }
 
 /** Clone a shared routine into the user's own routines. Returns the new routine id. */
-export async function cloneSharedRoutine(
-  client: Client,
-  args: { shared: SharedRoutineRow; ownerId: string },
-): Promise<string> {
+export async function cloneSharedRoutine(args: {
+  shared: SharedRoutineRow;
+  ownerId: string;
+}): Promise<string> {
   const snapshot = JSON.parse(args.shared.exercisesJson) as SharedSnapshotExercise[];
-  const routine = await createRoutine(client, { ownerId: args.ownerId, name: args.shared.name });
+  const routine = await createRoutine({ ownerId: args.ownerId, name: args.shared.name });
   for (let i = 0; i < snapshot.length; i++) {
     const ex = snapshot[i]!;
-    const re = await addRoutineExercise(client, {
-      routineId: routine.id,
-      exerciseId: ex.exerciseId,
-      order: i + 1,
-    });
+    const re = await addRoutineExercise({ routineId: routine.id, exerciseId: ex.exerciseId, order: i + 1 });
     for (let s = 0; s < ex.sets.length; s++) {
       const set = ex.sets[s]!;
-      await addRoutineSet(client, {
+      await addRoutineSet({
         routineExerciseId: re.id,
         order: s + 1,
         targetReps: set.reps,
@@ -1291,105 +1132,75 @@ export interface PrevSet {
   reps: number;
 }
 
-/**
- * Last completed performance of an exercise in a prior finished session.
- * Powers the "prev" column + auto-fill. One-shot fetch (not reactive).
- */
-export async function lastPerformance(
-  client: Client,
-  args: { exerciseId: string; excludeSessionId?: string },
-): Promise<PrevSet[] | null> {
-  const seRows = await client.fetch(
-    client.query("sessionExercises").Where("exerciseId", "=", args.exerciseId),
-  );
+/** Last completed performance of an exercise in a prior finished session. */
+export async function lastPerformance(args: {
+  exerciseId: string;
+  excludeSessionId?: string;
+}): Promise<PrevSet[] | null> {
+  const seRows = await db
+    .select()
+    .from(t.sessionExercises)
+    .where(eq(t.sessionExercises.exerciseId, args.exerciseId));
   if (seRows.length === 0) return null;
 
-  const sessions = await client.fetch(client.query("sessions"));
+  const sessions = await db.select().from(t.sessions);
   const startedById = new Map(sessions.map((s) => [s.id, s]));
 
-  // most-recent prior session that actually has this exercise and is finished
   const candidates = seRows
     .map((se) => ({ se, session: startedById.get(se.sessionId) }))
-    .filter(
-      (c) =>
-        c.session &&
-        c.session.id !== args.excludeSessionId &&
-        c.session.endedAt != null,
-    )
+    .filter((c) => c.session && c.session.id !== args.excludeSessionId && c.session.endedAt != null)
     .sort((a, b) => (b.session!.startedAt ?? 0) - (a.session!.startedAt ?? 0));
 
   const best = candidates[0];
   if (!best) return null;
 
-  const sets = await client.fetch(
-    client
-      .query("setLogs")
-      .Where("sessionExerciseId", "=", best.se.id)
-      .Where("completed", "=", true)
-      .Order("order", "ASC"),
-  );
+  const sets = await db
+    .select()
+    .from(t.setLogs)
+    .where(and(eq(t.setLogs.sessionExerciseId, best.se.id), eq(t.setLogs.completed, true)))
+    .orderBy(asc(t.setLogs.order));
   if (sets.length === 0) return null;
   return sets.map((s) => ({ order: s.order, weight: s.weight, reps: s.reps }));
 }
 
-/**
- * Discard a session entirely: cascade-delete its setLogs and sessionExercises,
- * then the session row itself, so no orphans remain. Triplit has no FK cascade,
- * so we delete children-first (same manual pattern as deleteRoutine /
- * removeSessionExercise). Irreversible — the workout and everything logged in
- * it are gone (used to abandon an in-progress workout, endedAt still null).
- */
-export async function discardSession(client: Client, sessionId: string) {
-  const exs = await client.fetch(
-    client.query("sessionExercises").Where("sessionId", "=", sessionId),
-  );
-  for (const ex of exs) {
-    const sets = await client.fetch(
-      client.query("setLogs").Where("sessionExerciseId", "=", ex.id),
-    );
-    for (const s of sets) await client.delete("setLogs", s.id);
-    await client.delete("sessionExercises", ex.id);
-  }
-  await client.delete("sessions", sessionId);
+/** Discard a session entirely (FK cascade clears its exercises + set logs). */
+export async function discardSession(sessionId: string) {
+  await db.delete(t.sessions).where(eq(t.sessions.id, sessionId));
 }
 
 /* ---------------------------------------------------------------------------
- * Web Push — device subscriptions + the scheduled-push queue that the
- * server-side sender (apps/push) drains. Background notifications need this:
- * a backgrounded PWA's JS is suspended, so the rest-over alert must be sent
- * server-side at the timer's endAt. UI/worker go through these, never the
- * client directly.
+ * Web Push — device subscriptions + the scheduled-push queue.
  * ------------------------------------------------------------------------- */
 
-/**
- * Store (or refresh) a device's push subscription, deduped by `endpoint`.
- * Endpoints are globally unique per subscription, so a repeat call updates the
- * existing row's keys rather than piling up duplicates. Returns the row.
- */
-export async function savePushSubscription(
-  client: Client,
-  args: {
-    ownerId: string;
-    endpoint: string;
-    p256dh: string;
-    auth: string;
-    userAgent?: string;
-    now: number;
-  },
-) {
-  const existing = await client.fetchOne(
-    client.query("pushSubscriptions").Where("endpoint", "=", args.endpoint),
-  );
+/** Store (or refresh) a device's push subscription, deduped by `endpoint`. */
+export async function savePushSubscription(args: {
+  ownerId: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  userAgent?: string;
+  now: number;
+}) {
+  const [existing] = await db
+    .select()
+    .from(t.pushSubscriptions)
+    .where(eq(t.pushSubscriptions.endpoint, args.endpoint))
+    .limit(1);
   if (existing) {
-    await client.update("pushSubscriptions", existing.id, (s) => {
-      s.ownerId = args.ownerId;
-      s.p256dh = args.p256dh;
-      s.auth = args.auth;
-      if (args.userAgent !== undefined) s.userAgent = args.userAgent;
-    });
-    return existing;
+    const set: Record<string, unknown> = {
+      ownerId: args.ownerId,
+      p256dh: args.p256dh,
+      auth: args.auth,
+    };
+    if (args.userAgent !== undefined) set.userAgent = args.userAgent;
+    const [row] = await db
+      .update(t.pushSubscriptions)
+      .set(set)
+      .where(eq(t.pushSubscriptions.id, existing.id))
+      .returning();
+    return row;
   }
-  return client.insert("pushSubscriptions", {
+  return insertRow(t.pushSubscriptions, {
     ownerId: args.ownerId,
     endpoint: args.endpoint,
     p256dh: args.p256dh,
@@ -1400,30 +1211,25 @@ export async function savePushSubscription(
 }
 
 /** All push subscriptions (devices) for a user. */
-export async function getPushSubscriptions(client: Client, ownerId: string) {
-  return client.fetch(
-    client.query("pushSubscriptions").Where("ownerId", "=", ownerId),
-  );
+export async function getPushSubscriptions(ownerId: string) {
+  return db.select().from(t.pushSubscriptions).where(eq(t.pushSubscriptions.ownerId, ownerId));
 }
 
 /** Remove a stored subscription (e.g. the push service reported it expired). */
-export async function deletePushSubscription(client: Client, id: string) {
-  return client.delete("pushSubscriptions", id);
+export async function deletePushSubscription(id: string) {
+  await db.delete(t.pushSubscriptions).where(eq(t.pushSubscriptions.id, id));
 }
 
 /** Queue a push for `fireAt`. Returns the row so the caller can reschedule/cancel it. */
-export async function schedulePush(
-  client: Client,
-  args: {
-    ownerId: string;
-    subscriptionId: string;
-    fireAt: number;
-    title: string;
-    body: string;
-    now: number;
-  },
-) {
-  return client.insert("scheduledPushes", {
+export async function schedulePush(args: {
+  ownerId: string;
+  subscriptionId: string;
+  fireAt: number;
+  title: string;
+  body: string;
+  now: number;
+}) {
+  return insertRow(t.scheduledPushes, {
     ownerId: args.ownerId,
     subscriptionId: args.subscriptionId,
     fireAt: args.fireAt,
@@ -1435,45 +1241,42 @@ export async function schedulePush(
 }
 
 /** Move a still-pending scheduled push to a new fire time (rest +/- time). */
-export async function reschedulePush(client: Client, id: string, fireAt: number) {
-  return client.update("scheduledPushes", id, (p) => {
-    if (p.status === "pending") p.fireAt = fireAt;
-  });
+export async function reschedulePush(id: string, fireAt: number) {
+  await db
+    .update(t.scheduledPushes)
+    .set({ fireAt })
+    .where(and(eq(t.scheduledPushes.id, id), eq(t.scheduledPushes.status, "pending")));
 }
 
 /** Cancel a scheduled push (rest skipped, or fired locally in the foreground). */
-export async function cancelScheduledPush(client: Client, id: string) {
-  return client.delete("scheduledPushes", id);
+export async function cancelScheduledPush(id: string) {
+  await db.delete(t.scheduledPushes).where(eq(t.scheduledPushes.id, id));
 }
 
-/** A pending scheduled push with its target subscription resolved (Included). */
+/** A pending scheduled push with its target subscription resolved. */
 export interface PendingPushRow extends ScheduledPush {
   subscription: PushSubscriptionRecord | null;
 }
 
 /**
- * Live-subscribe to every pending push (across all owners), with each row's
- * target `subscription` Included so the sender has endpoint+keys in one read.
- * The set stays fresh as the client reschedules (fireAt changes), cancels (row
- * removed) or fires locally; the sender decides *when* to deliver by comparing
- * `fireAt` to the wall clock. Server-side only — call with a service-token
- * client so permissions are bypassed. Returns an unsubscribe fn.
+ * Every pending push (across all owners), each with its target `subscription`
+ * joined so the sender has endpoint+keys in one read. The server-side sender
+ * (apps/push) polls this; it decides *when* to deliver by comparing `fireAt` to
+ * the wall clock. One-shot — replaces the old Triplit live subscription.
  */
-export function subscribePendingPushes(
-  client: Client,
-  onResults: (rows: PendingPushRow[]) => void,
-  onError?: (error: unknown) => void,
-): () => void {
-  return client.subscribe(
-    client.query("scheduledPushes").Where("status", "=", "pending").Include("subscription"),
-    (results) => onResults(results as unknown as PendingPushRow[]),
-    onError,
-  );
+export async function getPendingPushes(): Promise<PendingPushRow[]> {
+  const rows = await db
+    .select()
+    .from(t.scheduledPushes)
+    .leftJoin(t.pushSubscriptions, eq(t.scheduledPushes.subscriptionId, t.pushSubscriptions.id))
+    .where(eq(t.scheduledPushes.status, "pending"));
+  return rows.map((r) => ({
+    ...(r.scheduled_pushes as unknown as ScheduledPush),
+    subscription: (r.push_subscriptions as unknown as PushSubscriptionRecord | null) ?? null,
+  }));
 }
 
 /** Mark a scheduled push delivered so the sender never sends it twice. */
-export async function markPushSent(client: Client, id: string) {
-  return client.update("scheduledPushes", id, (p) => {
-    p.status = "sent";
-  });
+export async function markPushSent(id: string) {
+  await db.update(t.scheduledPushes).set({ status: "sent" }).where(eq(t.scheduledPushes.id, id));
 }

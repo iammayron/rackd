@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, Badge, Input } from "@rackd/ui";
+import { useQuery } from "@tanstack/react-query";
 import { useUnit } from "@/lib/units-store";
-import { useQuery } from "@/lib/use-query";
+import { api } from "@/lib/api";
+import { qk } from "@/lib/query";
 import { BackButton } from "@/components/BackButton";
 
 interface PRRow {
@@ -52,11 +54,15 @@ export default function PRsPage() {
   const { unit, display } = useUnit();
   const [search, setSearch] = useState("");
 
-  // Owner-scoped by Triplit permissions; newest first.
-  const { results: prs } = useQuery<PRRow>((c) =>
-    c.query("personalRecords").Order("achievedAt", "DESC"),
-  );
-  const { results: exercises } = useQuery<ExerciseRow>((c) => c.query("exercises"));
+  // Owner-scoped server-side; newest first (the API orders by achievedAt desc).
+  const { data: prs = [] } = useQuery({
+    queryKey: qk.personalRecords,
+    queryFn: () => api<PRRow[]>("/api/personal-records"),
+  });
+  const { data: exercises = [] } = useQuery({
+    queryKey: qk.exercises,
+    queryFn: () => api<ExerciseRow[]>("/api/exercises"),
+  });
 
   const rows = useMemo<BestPR[]>(() => {
     const exMap = new Map(exercises.map((e) => [e.id, e]));

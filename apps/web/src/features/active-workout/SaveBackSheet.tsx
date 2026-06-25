@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Button, SegmentedControl } from "@rackd/ui";
 import type { SessionDiff } from "@rackd/core";
-import type { SaveBackMode } from "@rackd/db";
 
+export type SaveBackMode = "numbers" | "exercises" | "everything";
 export type SaveBackTarget = "here" | "everywhere";
 
 /**

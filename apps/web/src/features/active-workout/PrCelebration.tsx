@@ -1,7 +1,12 @@
 "use client";
 
-import type { DetectedPR } from "@rackd/db";
 import { useUnit } from "@/lib/units-store";
+
+interface DetectedPR {
+  exerciseId: string;
+  type: "1rm" | "weight";
+  value: number;
+}
 
 /**
  * Celebration overlay shown when a finished workout sets new PRs.

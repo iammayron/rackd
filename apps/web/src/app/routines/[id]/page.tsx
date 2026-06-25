@@ -3,17 +3,9 @@
 import { Fragment, Suspense, useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import {
-  renameRoutine,
-  addRoutineExerciseWithDefaults,
-  setRoutineExerciseSuperset,
-  reorderRoutineExercises,
-  duplicateRoutine,
-  deleteRoutine,
-} from "@rackd/db";
-import { getClient } from "@/lib/triplit";
-import { getCurrentUserId } from "@/lib/auth";
-import { useQuery } from "@/lib/use-query";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { queryClient, qk } from "@/lib/query";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { BackButton } from "@/components/BackButton";
 import type { ExerciseMediaData } from "@/components/ExerciseMedia";
@@ -22,11 +14,30 @@ import { AddExercisePicker } from "@/features/routines/AddExercisePicker";
 
 interface RoutineExerciseRow {
   id: string;
+  routineId: string;
   order: number;
   exerciseId: string;
   restSec: number;
   supersetGroup?: number;
   exercise?: ExerciseMediaData | null;
+}
+
+interface RoutineDetail {
+  id: string;
+  name: string;
+  exercises: RoutineExerciseRow[];
+}
+
+interface ProgramDay {
+  id: string;
+  programId: string;
+  routineId: string | null;
+}
+
+interface ProgramDetail {
+  id: string;
+  name: string;
+  days: ProgramDay[];
 }
 
 export default function RoutineEditorPage() {
@@ -63,35 +74,36 @@ function RoutineEditor() {
       ? "/routines"
       : "/programs";
 
-  const { results: routine } = useQuery<{
-    id: string;
-    name: string;
-  }>((c) => c.query("routines").Where("id", "=", routineId), [routineId]);
-  const name = routine[0]?.name ?? "";
+  const { data: routine } = useQuery({
+    queryKey: qk.routine(routineId),
+    queryFn: () => api<RoutineDetail>(`/api/routines/${routineId}`),
+  });
+  const name = routine?.name ?? "";
+  const exercises = routine?.exercises ?? [];
 
-  const { results: program } = useQuery<{ id: string; name: string }>(
-    (c) => c.query("programs").Where("id", "=", programId ?? "__none__"),
-    [programId],
-  );
-  const programName = programId ? program[0]?.name : undefined;
+  const { data: program } = useQuery({
+    queryKey: qk.program(programId ?? ""),
+    queryFn: () => api<ProgramDetail>(`/api/programs/${programId}`),
+    enabled: Boolean(programId),
+  });
+  const programName = programId ? program?.name : undefined;
 
-  const { results: exercises } = useQuery<RoutineExerciseRow>(
-    (c) =>
-      c
-        .query("routineExercises")
-        .Where("routineId", "=", routineId)
-        .Include("exercise")
-        .Order("order", "ASC"),
-    [routineId],
-  );
-
-  // Owner-wide program days (Triplit is owner-scoped) so we can warn before a
-  // delete that this routine is wired into one or more programs. Mirrors the
-  // shared-routine detection in the program editor.
-  const { results: referencingDays } = useQuery<{ id: string; programId: string }>(
-    (c) => c.query("programDays").Where("routineId", "=", routineId),
-    [routineId],
-  );
+  // Owner-wide program days so we can warn before a delete that this routine is
+  // wired into one or more programs. Mirrors the shared-routine detection in the
+  // program editor. No single endpoint returns days-by-routine, so fan out over
+  // the owner's programs and collect days that point at this routine.
+  const { data: referencingDays = [] } = useQuery({
+    queryKey: [...qk.routine(routineId), "referencing-days"] as const,
+    queryFn: async () => {
+      const programs = await api<{ id: string }[]>("/api/programs");
+      const details = await Promise.all(
+        programs.map((p) => api<ProgramDetail>(`/api/programs/${p.id}`)),
+      );
+      return details
+        .flatMap((p) => p.days)
+        .filter((d) => d.routineId === routineId);
+    },
+  });
 
   const [draftName, setDraftName] = useState(name);
   useEffect(() => setDraftName(name), [name]);
@@ -141,7 +153,10 @@ function RoutineEditor() {
     const onUp = () => {
       const ids = orderRef.current;
       setDragId(null);
-      void reorderRoutineExercises(getClient(), ids);
+      void api(`/api/routines/${routineId}/exercises/reorder`, {
+        method: "PUT",
+        body: JSON.stringify({ orderedIds: ids }),
+      }).then(() => queryClient.invalidateQueries({ queryKey: qk.routine(routineId) }));
     };
     window.addEventListener("pointermove", onMovePtr, { passive: false });
     window.addEventListener("pointerup", onUp);
@@ -161,12 +176,11 @@ function RoutineEditor() {
 
   async function onPick(exerciseId: string) {
     // pre-fill from the user's profile defaults (sets/reps/rest)
-    await addRoutineExerciseWithDefaults(getClient(), {
-      routineId,
-      exerciseId,
-      order: exercises.length + 1,
-      ownerId: getCurrentUserId(),
+    await api(`/api/routines/${routineId}/exercises`, {
+      method: "POST",
+      body: JSON.stringify({ exerciseId, order: exercises.length + 1 }),
     });
+    queryClient.invalidateQueries({ queryKey: qk.routine(routineId) });
   }
 
   // two exercises are supersetted when they share a non-null group
@@ -179,23 +193,30 @@ function RoutineEditor() {
     return linkedNext(i) || (i > 0 && linkedNext(i - 1));
   }
 
+  async function setSuperset(id: string, supersetGroup: number | null) {
+    await api(`/api/routine-exercises/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ supersetGroup }),
+    });
+  }
+
   async function toggleSupersetNext(i: number) {
     const a = exercises[i];
     const b = exercises[i + 1];
     if (!a || !b) return;
-    const client = getClient();
     if (linkedNext(i)) {
       // unlink b; clear a too if it isn't part of the previous pair
-      await setRoutineExerciseSuperset(client, b.id, undefined);
+      await setSuperset(b.id, null);
       const prev = exercises[i - 1];
       if (!(prev && prev.supersetGroup === a.supersetGroup)) {
-        await setRoutineExerciseSuperset(client, a.id, undefined);
+        await setSuperset(a.id, null);
       }
     } else {
       const group = a.supersetGroup ?? a.order;
-      if (a.supersetGroup == null) await setRoutineExerciseSuperset(client, a.id, group);
-      await setRoutineExerciseSuperset(client, b.id, group);
+      if (a.supersetGroup == null) await setSuperset(a.id, group);
+      await setSuperset(b.id, group);
     }
+    queryClient.invalidateQueries({ queryKey: qk.routine(routineId) });
   }
 
   // Edits persist live as you type, so Save is "I'm done": return to where you
@@ -204,11 +225,22 @@ function RoutineEditor() {
     router.replace(backHref);
   }
 
-  async function duplicate() {
-    const newId = await duplicateRoutine(getClient(), {
-      routineId,
-      ownerId: getCurrentUserId(),
+  async function rename() {
+    if (!draftName.trim()) return;
+    await api(`/api/routines/${routineId}`, {
+      method: "PUT",
+      body: JSON.stringify({ name: draftName.trim() }),
     });
+    queryClient.invalidateQueries({ queryKey: qk.routines });
+    queryClient.invalidateQueries({ queryKey: qk.routine(routineId) });
+  }
+
+  async function duplicate() {
+    const { id: newId } = await api<{ id: string }>(
+      `/api/routines/${routineId}/duplicate`,
+      { method: "POST" },
+    );
+    queryClient.invalidateQueries({ queryKey: qk.routines });
     if (newId) router.push(`/routines/${newId}`);
   }
 
@@ -228,7 +260,8 @@ function RoutineEditor() {
       confirmLabel: "Delete",
     });
     if (!ok) return;
-    await deleteRoutine(getClient(), routineId);
+    await api(`/api/routines/${routineId}`, { method: "DELETE" });
+    queryClient.invalidateQueries({ queryKey: qk.routines });
     router.replace(backHref);
   }
 
@@ -239,7 +272,7 @@ function RoutineEditor() {
         <input
           value={draftName}
           onChange={(e) => setDraftName(e.target.value)}
-          onBlur={() => draftName.trim() && renameRoutine(getClient(), routineId, draftName.trim())}
+          onBlur={rename}
           aria-label="Routine name"
           className="flex-1 bg-transparent border-none text-lg font-bold text-[var(--text)] focus:outline-none"
         />

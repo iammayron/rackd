@@ -1,78 +1,98 @@
-# Deploying MyFit (home box + Tailscale)
+# Deploying rackd (Fly.io)
 
-Three services run on your always-on box: **Supabase** (auth), the **sync server**
-(Triplit), and the **web** PWA. Devices reach them over your **tailnet** (private,
-no public internet). All free.
+The web PWA runs as a single Fly Machine (`rackd` at `rackd.fly.dev`). Data lives
+in **Supabase Postgres** (accessed via Drizzle), auth is **Supabase Cloud**, and
+profile photos go to **Tigris** (S3-compatible). Pushes to `main` auto-deploy via
+GitHub Actions. Full first-time setup (provisioning accounts, bucket policy,
+custom domains) is in `docs/specs/fly-setup-guide.md`; this is the practical
+deploy reference.
 
-## Prerequisites (on the box)
+## Prerequisites
 
-- Docker + Docker Compose
-- Supabase CLI (`supabase`)
-- Tailscale (box joined to your tailnet). Note its tailnet host, e.g. `gymbox.tailXXXX.ts.net`.
+- `flyctl` installed and logged in (`fly auth login`).
+- The `rackd` Fly app exists (`fly apps list`). The app name lives in `fly.toml`.
+- A Supabase Cloud project (auth + Postgres) and a Tigris bucket provisioned.
 
-## 1. Supabase (auth)
+## 1. Secrets (runtime, server-side only)
 
-```bash
-supabase start                                   # first run pulls images
-# config.toml already sets: signing_keys_path = "./signing_keys.json".
-# With that set, the CLI MANAGES that file — seed it empty, then append a key:
-printf '[]' > supabase/signing_keys.json
-supabase gen signing-key --algorithm RS256 --append
-supabase stop && supabase start                  # apply RS256
-```
-
-> Triplit verifies **RS256/HS256** only — Supabase's default ES256 won't work,
-> hence the RS256 signing key. `signing_keys.json` is gitignored (private).
-
-Grab the values:
+Set once; persist across deploys. These never reach the client bundle:
 
 ```bash
-supabase status -o env        # API_URL, ANON_KEY
-curl -s http://127.0.0.1:54321/auth/v1/.well-known/jwks.json   # RS256 public JWK (the single key object → SUPABASE_JWT_SECRET)
+fly secrets set \
+  DATABASE_URL="postgresql://...@...supabase.co:5432/postgres?sslmode=require" \
+  SUPABASE_SERVICE_ROLE_KEY="eyJ..." \
+  S3_ENDPOINT="https://fly.storage.tigris.dev" \
+  S3_PUBLIC_URL="https://rackd-photos.fly.storage.tigris.dev" \
+  S3_BUCKET="rackd-photos" \
+  S3_REGION="auto" \
+  S3_ACCESS_KEY="tid_..." \
+  S3_SECRET_KEY="tsec_..." \
+  VAPID_PUBLIC_KEY="..." \
+  VAPID_PRIVATE_KEY="..." \
+  VAPID_SUBJECT="mailto:you@example.com"
 ```
 
-## 2. .env (repo root)
+- `DATABASE_URL` — Supabase project's Postgres connection string (Project Settings
+  → Database). Used by Drizzle in `@rackd/db` and by the push poller.
+- `SUPABASE_SERVICE_ROLE_KEY` — server-side JWT validation in `lib/api-auth.ts`.
+- `S3_*` — Tigris credentials from `fly storage create` (bucket must allow public
+  reads so `<img>` can load photos — see the setup guide).
+- `VAPID_*` — web-push keys (generate with `npx web-push generate-vapid-keys`).
+
+## 2. Build-time env (`NEXT_PUBLIC_*`)
+
+These are baked into the client bundle at build time, so they're passed as
+**build args**, not secrets:
 
 ```bash
-cp .env.example .env
+fly deploy --remote-only \
+  --build-arg NEXT_PUBLIC_SUPABASE_URL="https://xxxx.supabase.co" \
+  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJ..." \
+  --build-arg NEXT_PUBLIC_VAPID_PUBLIC_KEY="..."
 ```
 
-Fill it (use the **tailnet host**, not localhost, so phones can reach the services):
+The Dockerfile (`apps/web/Dockerfile`) declares these as `ARG`. Once baked they
+persist in the image until the next build — only pass them again when they change.
 
-```
-JWT_SECRET=<openssl rand -hex 32>                     # sync service-token secret
-SUPABASE_JWT_SECRET=<the single public JWK JSON from JWKS>
-NEXT_PUBLIC_SUPABASE_URL=http://<box>.tailXXXX.ts.net:54321
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<ANON_KEY from supabase status>
-NEXT_PUBLIC_TRIPLIT_URL=http://<box>.tailXXXX.ts.net:8787
-```
+## 3. Database migrations
 
-> Bind Supabase to the tailnet too (config.toml `[api] / [studio]` host, or front it).
-> Add `http://<box>.tailXXXX.ts.net:3000` to Supabase `[auth] additional_redirect_urls`.
-
-## 3. Run the app
+Schema changes are applied with Drizzle, pointed at the same `DATABASE_URL`:
 
 ```bash
-docker compose up -d --build
+DATABASE_URL="postgresql://..." pnpm --filter @rackd/db db:generate  # write SQL
+DATABASE_URL="postgresql://..." pnpm --filter @rackd/db db:push      # apply
 ```
 
-- web → `http://<box>.tailXXXX.ts.net:3000`
-- sync → `:8787`
+## 4. Seed the exercise library (one-time)
 
-`NEXT_PUBLIC_*` are baked at build → if they change, rebuild: `docker compose up -d --build web`.
+The exercise library is inserted into Postgres once, not per login:
 
-## 4. Install on your phone
+```bash
+DATABASE_URL="postgresql://..." pnpm --filter @rackd/db seed
+```
 
-Open the web URL on your phone (on the tailnet) → browser menu → **Add to Home Screen**.
-Runs full-screen, offline-capable, syncing to your box.
+## 5. Auto-deploy (GitHub Actions)
+
+Every push to `main` deploys via `.github/workflows/deploy.yml`. Required repo
+secrets (Settings → Secrets and variables → Actions):
+
+- `FLY_API_TOKEN` — `fly tokens create deploy -x 999999h`
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+  `NEXT_PUBLIC_VAPID_PUBLIC_KEY` — passed as build args in the workflow.
+
+## 6. Verify
+
+```bash
+fly status                       # machine running?
+fly logs                         # startup errors?
+curl -I https://rackd.fly.dev    # 200?
+```
+
+Open `https://rackd.fly.dev` — you should land on the Supabase login screen.
 
 ## Notes
 
-- **Schema changes** → rebuild the sync image (`docker compose up -d --build sync`); it bakes the schema at startup.
-- Secrets: never commit `.env` or `supabase/signing_keys.json`.
-- Switching Supabase signing keys invalidates sessions — sign out/in.
-- **`SUPABASE_JWT_SECRET` must match the live signing key.** If sync rejects
-  tokens (401 / `InvalidTokenSignature`), the key rotated. Refresh it:
-  `curl -s http://<box>:54321/auth/v1/.well-known/jwks.json` → take `keys[0]`
-  (the public JWK object) → set it as `SUPABASE_JWT_SECRET` in `.env` →
-  `docker compose up -d sync`. The token's `kid` (header) must equal the JWK's `kid`.
+- Machines `auto_stop`/`auto_start` (min 0 running) — the first request after idle
+  has a short cold start. Fine for a personal app.
+- Never commit secrets. Local dev reads them from `apps/web/.env.local`
+  (see `.env.example`).

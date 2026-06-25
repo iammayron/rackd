@@ -1,16 +1,50 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { fromKg, toKg as coreToKg, type TrainingGoal, type Unit } from "@rackd/core";
-import { getProfile, updateProfile, type ProfilePatch } from "@rackd/db";
+import {
+  fromKg,
+  toKg as coreToKg,
+  type TrainingGoal,
+  type Unit,
+  type UnitPreference,
+} from "@rackd/core";
 import { mmss, Card, Button, SegmentedControl, Input } from "@rackd/ui";
-import { getClient } from "@/lib/triplit";
-import { getCurrentUserId, useAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
+import { queryClient, qk } from "@/lib/query";
+import { useAuth } from "@/lib/auth";
 import { useUnit, useUnitStore } from "@/lib/units-store";
 import { useTheme, type Theme } from "@/lib/theme";
 import { Avatar } from "@/components/Avatar";
 import { uploadProfilePhoto, PHOTO_ACCEPT } from "@/lib/upload-photo";
 import { useToast } from "@/components/toast/ToastProvider";
+
+/** Editable profile fields (was @rackd/db's ProfilePatch). */
+interface ProfilePatch {
+  displayName?: string;
+  photoUrl?: string;
+  heightCm?: number;
+  currentWeightKg?: number;
+  goalWeightKg?: number;
+  trainingGoal?: TrainingGoal;
+  unitPreference?: UnitPreference;
+  defaultRestSec?: number;
+  defaultSets?: number;
+  defaultReps?: number;
+}
+
+/** The profile fields this form reads (GET /api/profile). */
+interface Profile {
+  displayName?: string | null;
+  photoUrl?: string | null;
+  heightCm?: number | null;
+  currentWeightKg?: number | null;
+  goalWeightKg?: number | null;
+  trainingGoal?: TrainingGoal | null;
+  unitPreference: UnitPreference;
+  defaultRestSec: number;
+  defaultSets: number;
+  defaultReps: number;
+}
 
 const GOAL_OPTIONS: { value: TrainingGoal; label: string }[] = [
   { value: "build_muscle", label: "Build muscle" },
@@ -138,7 +172,7 @@ export function SettingsForm() {
   // edits like the name). The reconvert effect re-displays the numbers instead.
   useEffect(() => {
     let cancelled = false;
-    getProfile(getClient(), getCurrentUserId()).then((p) => {
+    api<Profile>("/api/profile").then((p) => {
       if (cancelled) return;
       // Profile is the durable home for the measurement system — sync the
       // runtime kg/lb toggle to it so the choice survives across devices. If
@@ -221,7 +255,11 @@ export function SettingsForm() {
       const url = await uploadProfilePhoto(file);
       setPhotoUrl(url);
       // Persist just the photo so it survives even if the user never hits Save.
-      await updateProfile(getClient(), getCurrentUserId(), { photoUrl: url });
+      await api("/api/profile", {
+        method: "PUT",
+        body: JSON.stringify({ photoUrl: url } satisfies ProfilePatch),
+      });
+      queryClient.invalidateQueries({ queryKey: qk.profile });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Photo upload failed.");
     } finally {
@@ -231,7 +269,11 @@ export function SettingsForm() {
 
   async function removePhoto() {
     setPhotoUrl("");
-    await updateProfile(getClient(), getCurrentUserId(), { photoUrl: "" });
+    await api("/api/profile", {
+      method: "PUT",
+      body: JSON.stringify({ photoUrl: "" } satisfies ProfilePatch),
+    });
+    queryClient.invalidateQueries({ queryKey: qk.profile });
   }
 
   /** Flip the measurement system: re-displays weights/heights app-wide live. */
@@ -277,7 +319,11 @@ export function SettingsForm() {
       defaultReps: reps,
     };
     try {
-      await updateProfile(getClient(), getCurrentUserId(), patch);
+      await api("/api/profile", {
+        method: "PUT",
+        body: JSON.stringify(patch),
+      });
+      queryClient.invalidateQueries({ queryKey: qk.profile });
       toast.success("Settings saved");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't save settings.");

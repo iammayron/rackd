@@ -1,22 +1,21 @@
 "use client";
 
 import { useMemo } from "react";
-import { sessionVolume, weekStartIndex } from "@rackd/core";
-import type { SetLog } from "@rackd/core";
+import { useQuery } from "@tanstack/react-query";
+import { weekStartIndex } from "@rackd/core";
 import { useUnit } from "@/lib/units-store";
-import { useQuery } from "@/lib/use-query";
+import { api } from "@/lib/api";
+import { qk } from "@/lib/query";
 
 interface SessionRow {
   id: string;
   startedAt: number;
 }
 
-interface SessionExerciseRow {
-  id: string;
-  sessionId: string;
+interface WeeklyVolumeRow {
+  weekStart: number;
+  volume: number;
 }
-
-type SetRow = Pick<SetLog, "id" | "sessionExerciseId" | "weight" | "reps" | "completed">;
 
 const DAY_MS = 86_400_000;
 
@@ -28,27 +27,29 @@ function dayIndex(ms: number): number {
 /** Dashboard card: this week's workout count + training volume (Mon–Sun). */
 export function WeeklyVolumeCard() {
   const { unit, display } = useUnit();
-  const { results: sessions } = useQuery<SessionRow>((c) => c.query("sessions"));
-  const { results: sessionExercises } = useQuery<SessionExerciseRow>((c) =>
-    c.query("sessionExercises"),
-  );
-  const { results: setLogs } = useQuery<SetRow>((c) => c.query("setLogs"));
+  const { data: sessions = [] } = useQuery({
+    queryKey: qk.sessions,
+    queryFn: () => api<SessionRow[]>("/api/sessions"),
+  });
+  const { data: weeklyVolume = [] } = useQuery({
+    queryKey: qk.weeklyVolume,
+    queryFn: () => api<WeeklyVolumeRow[]>("/api/stats/weekly-volume"),
+  });
 
-  const { workouts, volumeKg } = useMemo(() => {
+  const workouts = useMemo(() => {
     const now = Date.now();
     const start = weekStartIndex(dayIndex(now), new Date(now).getDay());
     const inWeek = (ms: number) => dayIndex(ms) >= start;
+    return sessions.filter((s) => inWeek(s.startedAt)).length;
+  }, [sessions]);
 
-    const weekSessionIds = new Set(
-      sessions.filter((s) => inWeek(s.startedAt)).map((s) => s.id),
-    );
-    const weekSeIds = new Set(
-      sessionExercises.filter((se) => weekSessionIds.has(se.sessionId)).map((se) => se.id),
-    );
-    const weekSets = setLogs.filter((s) => weekSeIds.has(s.sessionExerciseId));
-
-    return { workouts: weekSessionIds.size, volumeKg: sessionVolume(weekSets as SetLog[]) };
-  }, [sessions, sessionExercises, setLogs]);
+  const volumeKg = useMemo(() => {
+    const now = Date.now();
+    const weekStart = weekStartIndex(dayIndex(now), new Date(now).getDay()) * DAY_MS;
+    return weeklyVolume
+      .filter((w) => w.weekStart >= weekStart)
+      .reduce((sum, w) => sum + w.volume, 0);
+  }, [weeklyVolume]);
 
   const volume = Math.round(display(volumeKg, 0)).toLocaleString();
 

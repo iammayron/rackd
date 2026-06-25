@@ -3,17 +3,11 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  createProgram,
-  createRoutine,
-  setProgramActive,
-  PROGRAM_TEMPLATES,
-  cloneProgramTemplate,
-} from "@rackd/db";
+import { useQuery, useQueries } from "@tanstack/react-query";
+import type { ProgramTemplate } from "@rackd/db";
 import { Card, Button, Badge, SegmentedControl } from "@rackd/ui";
-import { getClient } from "@/lib/triplit";
-import { getCurrentUserId } from "@/lib/auth";
-import { useQuery } from "@/lib/use-query";
+import { api } from "@/lib/api";
+import { queryClient, qk } from "@/lib/query";
 import { Nav } from "@/components/Nav";
 
 interface ProgramRow {
@@ -38,10 +32,6 @@ interface RoutineRow {
   name: string;
   order: number;
   category?: string;
-}
-interface RoutineExerciseRow {
-  id: string;
-  routineId: string;
 }
 
 const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -92,18 +82,38 @@ const EYEBROW =
 export default function ProgramsPage() {
   const router = useRouter();
 
-  const { results: programs } = useQuery<ProgramRow>((c) =>
-    c.query("programs").Order("order", "ASC"),
-  );
-  const { results: days } = useQuery<DayRow>((c) =>
-    c.query("programDays").Order("order", "ASC"),
-  );
-  const { results: routines } = useQuery<RoutineRow>((c) =>
-    c.query("routines").Order("order", "ASC"),
-  );
-  const { results: routineExercises } = useQuery<RoutineExerciseRow>((c) =>
-    c.query("routineExercises"),
-  );
+  const { data: programs = [] } = useQuery({
+    queryKey: qk.programs,
+    queryFn: () => api<ProgramRow[]>("/api/programs"),
+  });
+  const { data: routines = [] } = useQuery({
+    queryKey: qk.routines,
+    queryFn: () => api<RoutineRow[]>("/api/routines"),
+  });
+  const { data: templates = [] } = useQuery({
+    queryKey: ["program-templates"],
+    queryFn: () => api<ProgramTemplate[]>("/api/program-templates"),
+  });
+
+  // Each program's days (with nested routine) come from the program detail
+  // endpoint; fan out one query per program.
+  const programDetailQueries = useQueries({
+    queries: programs.map((p) => ({
+      queryKey: qk.program(p.id),
+      queryFn: () => api<ProgramRow & { days: (DayRow & { routine: RoutineRow | null })[] }>(
+        `/api/programs/${p.id}`,
+      ),
+    })),
+  });
+
+  // Exercise counts per routine come from each routine's detail (nested
+  // exercises); fan out one query per routine.
+  const routineDetailQueries = useQueries({
+    queries: routines.map((r) => ({
+      queryKey: qk.routine(r.id),
+      queryFn: () => api<RoutineRow & { exercises: unknown[] }>(`/api/routines/${r.id}`),
+    })),
+  });
 
   const [tab, setTab] = useState<"programs" | "routines">("programs");
   const [browsing, setBrowsing] = useState(false);
@@ -112,9 +122,12 @@ export default function ProgramsPage() {
 
   const exCountByRoutine = useMemo(() => {
     const m = new Map<string, number>();
-    for (const re of routineExercises) m.set(re.routineId, (m.get(re.routineId) ?? 0) + 1);
+    for (const q of routineDetailQueries) {
+      const d = q.data;
+      if (d) m.set(d.id, d.exercises.length);
+    }
     return m;
-  }, [routineExercises]);
+  }, [routineDetailQueries]);
 
   const routineById = useMemo(() => {
     const m = new Map<string, RoutineRow>();
@@ -124,14 +137,15 @@ export default function ProgramsPage() {
 
   const daysByProgram = useMemo(() => {
     const m = new Map<string, DayRow[]>();
-    for (const d of days) {
-      const arr = m.get(d.programId) ?? [];
-      arr.push(d);
-      m.set(d.programId, arr);
+    for (const q of programDetailQueries) {
+      const d = q.data;
+      if (!d) continue;
+      const arr = d.days.map((day) => ({ ...day }));
+      arr.sort((a, b) => a.order - b.order);
+      m.set(d.id, arr);
     }
-    for (const arr of m.values()) arr.sort((a, b) => a.order - b.order);
     return m;
-  }, [days]);
+  }, [programDetailQueries]);
 
   /** Build the display model for one program card from the loaded rows. */
   function programView(p: ProgramRow) {
@@ -178,22 +192,22 @@ export default function ProgramsPage() {
   async function newProgram() {
     if (busy) return;
     setBusy(true);
-    const p = await createProgram(getClient(), {
-      ownerId: getCurrentUserId(),
-      name: "New Program",
-      order: programs.length,
+    const p = await api<ProgramRow>("/api/programs", {
+      method: "POST",
+      body: JSON.stringify({ name: "New Program", order: programs.length }),
     });
+    queryClient.invalidateQueries({ queryKey: qk.programs });
     router.push(`/programs/${p.id}`);
   }
 
   async function newRoutine() {
     if (busy) return;
     setBusy(true);
-    const r = await createRoutine(getClient(), {
-      ownerId: getCurrentUserId(),
-      name: "New Routine",
-      order: routines.length,
+    const r = await api<RoutineRow>("/api/routines", {
+      method: "POST",
+      body: JSON.stringify({ name: "New Routine", order: routines.length }),
     });
+    queryClient.invalidateQueries({ queryKey: qk.routines });
     router.push(`/routines/${r.id}`);
   }
 
@@ -202,16 +216,24 @@ export default function ProgramsPage() {
     else void newRoutine();
   }
 
-  function activate(programId: string) {
-    return setProgramActive(getClient(), { programId, ownerId: getCurrentUserId() });
+  async function activate(programId: string) {
+    await api(`/api/programs/${programId}`, {
+      method: "PUT",
+      body: JSON.stringify({ active: true }),
+    });
+    queryClient.invalidateQueries({ queryKey: qk.programs });
   }
 
   async function useTemplate(templateId: string) {
     if (cloning) return;
-    const tpl = PROGRAM_TEMPLATES.find((t) => t.id === templateId);
+    const tpl = templates.find((t) => t.id === templateId);
     if (!tpl) return;
     setCloning(true);
-    const id = await cloneProgramTemplate(getClient(), tpl, getCurrentUserId());
+    const { id } = await api<{ id: string }>(`/api/program-templates/${templateId}/clone`, {
+      method: "POST",
+    });
+    queryClient.invalidateQueries({ queryKey: qk.programs });
+    queryClient.invalidateQueries({ queryKey: qk.routines });
     router.push(`/programs/${id}`);
   }
 
@@ -405,7 +427,7 @@ export default function ProgramsPage() {
             </Button>
           </header>
           <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-            {PROGRAM_TEMPLATES.map((t) => (
+            {templates.map((t) => (
               <Card key={t.id} variant="feature">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="text-lg font-bold flex-1">{t.name}</h3>

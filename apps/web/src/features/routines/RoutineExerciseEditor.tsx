@@ -3,20 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { Badge, mmss } from "@rackd/ui";
-import {
-  addRoutineSet,
-  updateRoutineSet,
-  deleteRoutineSet,
-  removeRoutineExercise,
-  replaceRoutineExercise,
-  updateRoutineExercise,
-  lastPerformance,
-  type PrevSet,
-} from "@rackd/db";
-import { getClient } from "@/lib/triplit";
+import { api } from "@/lib/api";
+import { queryClient, qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
-import { useQuery } from "@/lib/use-query";
 import { ExerciseThumb, type ExerciseMediaData } from "@/components/ExerciseMedia";
 import { ReplaceExercisePicker } from "@/features/routines/ReplaceExercisePicker";
 import { HeaderMenu } from "@/features/active-workout/ExerciseCard";
@@ -29,6 +20,7 @@ const cap = (s: string) =>
 
 interface RoutineExerciseRow {
   id: string;
+  routineId: string;
   order: number;
   exerciseId: string;
   restSec: number;
@@ -40,6 +32,19 @@ interface RoutineSetData {
   order: number;
   targetWeight?: number;
   targetReps?: number;
+}
+
+/** Last completed performance of an exercise (was a `@rackd/db` type). */
+interface PrevSet {
+  order: number;
+  weight: number;
+  reps: number;
+}
+
+/** The nested routine-exercise shape from GET /api/routines/[id]. */
+interface RoutineDetailExercise {
+  id: string;
+  sets: RoutineSetData[];
 }
 
 /**
@@ -68,23 +73,28 @@ export function RoutineExerciseEditor({
   const [showMenu, setShowMenu] = useState(false);
   const [showReplace, setShowReplace] = useState(false);
 
-  const { results: sets } = useQuery<RoutineSetData>(
-    (c) =>
-      c.query("routineSets").Where("routineExerciseId", "=", routineExercise.id).Order("order", "ASC"),
-    [routineExercise.id],
-  );
+  // Sets live inside the owning routine's nested fetch; read them from that
+  // cached query (no extra request) and keep them ordered.
+  const { data: sets = [] } = useQuery({
+    queryKey: qk.routine(routineExercise.routineId),
+    queryFn: () =>
+      api<{ exercises: RoutineDetailExercise[] }>(
+        `/api/routines/${routineExercise.routineId}`,
+      ),
+    select: (routine) =>
+      [...(routine.exercises.find((e) => e.id === routineExercise.id)?.sets ?? [])].sort(
+        (a, b) => a.order - b.order,
+      ),
+  });
 
   // "prev" = this exercise's last completed performance in a finished session.
-  const [prev, setPrev] = useState<PrevSet[] | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    lastPerformance(getClient(), { exerciseId: routineExercise.exerciseId }).then((p) => {
-      if (!cancelled) setPrev(p);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [routineExercise.exerciseId]);
+  const { data: prev = null } = useQuery({
+    queryKey: qk.lastPerformance(routineExercise.exerciseId),
+    queryFn: () =>
+      api<PrevSet[] | null>(
+        `/api/exercises/${routineExercise.exerciseId}/last-performance`,
+      ),
+  });
 
   function prevFor(order: number): PrevSet | undefined {
     return prev?.find((p) => p.order === order);
@@ -98,14 +108,21 @@ export function RoutineExerciseEditor({
     router.push(`/exercise/${routineExercise.exerciseId}`);
   }
 
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: qk.routine(routineExercise.routineId) });
+
   async function onAddSet() {
     const last = sets[sets.length - 1];
-    await addRoutineSet(getClient(), {
-      routineExerciseId: routineExercise.id,
-      order: sets.length + 1,
-      targetWeight: last?.targetWeight,
-      targetReps: last?.targetReps ?? 8,
+    await api("/api/routine-sets", {
+      method: "POST",
+      body: JSON.stringify({
+        routineExerciseId: routineExercise.id,
+        order: sets.length + 1,
+        targetWeight: last?.targetWeight,
+        targetReps: last?.targetReps ?? 8,
+      }),
     });
+    invalidate();
   }
 
   return (
@@ -166,13 +183,22 @@ export function RoutineExerciseEditor({
           onReplace={() => setShowReplace(true)}
           onViewDetails={goDetails}
           onSuperset={onToggleNext}
-          onRemove={() => removeRoutineExercise(getClient(), routineExercise.id)}
+          onRemove={async () => {
+            await api(`/api/routine-exercises/${routineExercise.id}`, { method: "DELETE" });
+            invalidate();
+          }}
         />
       </div>
 
       <ReplaceExercisePicker
         currentExerciseId={routineExercise.exerciseId}
-        onReplace={(newId) => replaceRoutineExercise(getClient(), routineExercise.id, newId)}
+        onReplace={async (newId) => {
+          await api(`/api/routine-exercises/${routineExercise.id}/replace`, {
+            method: "POST",
+            body: JSON.stringify({ exerciseId: newId }),
+          });
+          invalidate();
+        }}
         open={showReplace}
         onOpenChange={setShowReplace}
       />
@@ -180,7 +206,13 @@ export function RoutineExerciseEditor({
       <RestSheet
         open={showRest}
         restSec={routineExercise.restSec}
-        onChange={(sec) => updateRoutineExercise(getClient(), routineExercise.id, { restSec: sec })}
+        onChange={async (sec) => {
+          await api(`/api/routine-exercises/${routineExercise.id}`, {
+            method: "PUT",
+            body: JSON.stringify({ restSec: sec }),
+          });
+          invalidate();
+        }}
         onClose={() => setShowRest(false)}
       />
 
@@ -197,6 +229,7 @@ export function RoutineExerciseEditor({
           <RoutineSetRow
             key={s.id}
             data={s}
+            routineId={routineExercise.routineId}
             prevLabel={p ? `${display(p.weight)}×${p.reps}` : undefined}
           />
         );
@@ -224,7 +257,15 @@ const CELL =
  * {@link SetValueSheet} interaction as the live workout), plus delete. No RPE
  * or ✓-complete — those are performance-only.
  */
-function RoutineSetRow({ data, prevLabel }: { data: RoutineSetData; prevLabel?: string }) {
+function RoutineSetRow({
+  data,
+  routineId,
+  prevLabel,
+}: {
+  data: RoutineSetData;
+  routineId: string;
+  prevLabel?: string;
+}) {
   const { unit, display, toKg } = useUnit();
   const [weight, setWeight] = useState(data.targetWeight ? String(display(data.targetWeight)) : "");
   const [reps, setReps] = useState(String(data.targetReps || ""));
@@ -247,7 +288,11 @@ function RoutineSetRow({ data, prevLabel }: { data: RoutineSetData; prevLabel?: 
     setWeight(value ? String(value) : "");
     weightWriting.current = true;
     try {
-      await updateRoutineSet(getClient(), data.id, { targetWeight: value ? toKg(value) : 0 });
+      await api(`/api/routine-sets/${data.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ targetWeight: value ? toKg(value) : 0 }),
+      });
+      queryClient.invalidateQueries({ queryKey: qk.routine(routineId) });
     } finally {
       weightWriting.current = false;
     }
@@ -256,7 +301,11 @@ function RoutineSetRow({ data, prevLabel }: { data: RoutineSetData; prevLabel?: 
     setReps(value ? String(value) : "");
     repsWriting.current = true;
     try {
-      await updateRoutineSet(getClient(), data.id, { targetReps: value });
+      await api(`/api/routine-sets/${data.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ targetReps: value }),
+      });
+      queryClient.invalidateQueries({ queryKey: qk.routine(routineId) });
     } finally {
       repsWriting.current = false;
     }
@@ -312,7 +361,10 @@ function RoutineSetRow({ data, prevLabel }: { data: RoutineSetData; prevLabel?: 
 
       <button
         type="button"
-        onClick={() => deleteRoutineSet(getClient(), data.id)}
+        onClick={async () => {
+          await api(`/api/routine-sets/${data.id}`, { method: "DELETE" });
+          queryClient.invalidateQueries({ queryKey: qk.routine(routineId) });
+        }}
         aria-label="Delete set"
         className="ms-auto shrink-0 min-h-11 w-7 bg-transparent border-none text-lg text-[var(--text-muted)]"
       >

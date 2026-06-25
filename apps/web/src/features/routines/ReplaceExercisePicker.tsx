@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@/lib/use-query";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { qk } from "@/lib/query";
 import { ExerciseThumb } from "@/components/ExerciseMedia";
 import { BottomSheet } from "@/components/BottomSheet";
 
@@ -34,9 +36,11 @@ export function ReplaceExercisePicker({
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
-  const { results: exercises } = useQuery<ExerciseRow>((c) =>
-    c.query("exercises").Order("name", "ASC"),
-  );
+  const { data: exercises = [] } = useQuery({
+    queryKey: qk.exercises,
+    queryFn: () => api<ExerciseRow[]>("/api/exercises"),
+    select: (rows) => [...rows].sort((a, b) => a.name.localeCompare(b.name)),
+  });
   const controlled = openProp !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlled ? openProp : internalOpen;

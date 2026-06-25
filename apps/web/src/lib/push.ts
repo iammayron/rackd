@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  savePushSubscription,
-  schedulePush,
-  reschedulePush,
-  cancelScheduledPush,
-} from "@rackd/db";
-import { getClient } from "@/lib/triplit";
+import { api } from "@/lib/api";
 import { getCurrentUserId } from "@/lib/auth";
 
 /**
@@ -125,16 +119,18 @@ export async function registerPushSubscription(): Promise<string | null> {
   const p256dh = json.keys?.p256dh;
   const auth = json.keys?.auth;
   if (!endpoint || !p256dh || !auth) return null;
-  const ownerId = getCurrentUserId();
-  if (!ownerId) return null;
+  // Short-circuit when signed out (the API would 401 anyway). Owner is derived
+  // server-side from the JWT — never sent in the payload.
+  if (!getCurrentUserId()) return null;
   try {
-    const row = await savePushSubscription(getClient(), {
-      ownerId,
-      endpoint,
-      p256dh,
-      auth,
-      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
-      now: Date.now(),
+    const row = await api<{ id: string }>("/api/push-subscriptions", {
+      method: "POST",
+      body: JSON.stringify({
+        endpoint,
+        p256dh,
+        auth,
+        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+      }),
     });
     return row.id;
   } catch {
@@ -160,15 +156,14 @@ export async function scheduleRestPush(fireAt: number): Promise<void> {
     await cancelRestPush();
     const subscriptionId = await registerPushSubscription();
     if (!subscriptionId) return;
-    const ownerId = getCurrentUserId();
-    if (!ownerId) return;
-    const row = await schedulePush(getClient(), {
-      ownerId,
-      subscriptionId,
-      fireAt,
-      title: REST_OVER.title,
-      body: REST_OVER.body,
-      now: Date.now(),
+    const row = await api<{ id: string }>("/api/scheduled-pushes", {
+      method: "POST",
+      body: JSON.stringify({
+        subscriptionId,
+        fireAt,
+        title: REST_OVER.title,
+        body: REST_OVER.body,
+      }),
     });
     scheduledPushId = row.id;
   } catch {
@@ -181,7 +176,10 @@ export async function rescheduleRestPush(fireAt: number): Promise<void> {
   const id = scheduledPushId;
   if (!id) return;
   try {
-    await reschedulePush(getClient(), id, fireAt);
+    await api(`/api/scheduled-pushes/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ fireAt }),
+    });
   } catch {
     // best-effort
   }
@@ -196,7 +194,7 @@ export async function cancelRestPush(): Promise<void> {
   scheduledPushId = null;
   if (!id) return;
   try {
-    await cancelScheduledPush(getClient(), id);
+    await api(`/api/scheduled-pushes/${id}`, { method: "DELETE" });
   } catch {
     // best-effort
   }

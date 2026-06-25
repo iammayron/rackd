@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { mmss } from "@rackd/ui";
-import { getCurrentUserId } from "@/lib/auth";
-import { useQuery } from "@/lib/use-query";
+import { api } from "@/lib/api";
+import { qk } from "@/lib/query";
 import { useTimerStore } from "./timer-store";
 
 interface ActiveSessionRow {
@@ -22,14 +23,10 @@ interface ActiveSessionRow {
  */
 export function MiniWorkoutBar() {
   const pathname = usePathname();
-  const { results } = useQuery<ActiveSessionRow>((c) =>
-    c
-      .query("sessions")
-      .Where("ownerId", "=", getCurrentUserId())
-      .Where("endedAt", "isDefined", false)
-      .Order("startedAt", "DESC"),
-  );
-  const active = results[0];
+  const { data: active } = useQuery({
+    queryKey: qk.activeSession,
+    queryFn: () => api<ActiveSessionRow | null>("/api/sessions/active"),
+  });
 
   const status = useTimerStore((s) => s.state.status);
   // subscribe to `now` so the countdown re-renders each tick

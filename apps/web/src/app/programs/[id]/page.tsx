@@ -3,22 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
-  renameProgram,
-  addProgramDay,
-  setProgramActive,
-  setProgramSchedule,
-  createRoutine,
-  duplicateRoutine,
-  updateProgramDay,
-  removeProgramDay,
-  reorderProgramDays,
-  deleteProgram,
-} from "@rackd/db";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import { Badge, SegmentedControl } from "@rackd/ui";
-import { getClient } from "@/lib/triplit";
-import { getCurrentUserId } from "@/lib/auth";
-import { useQuery } from "@/lib/use-query";
+import { api } from "@/lib/api";
+import { queryClient, qk } from "@/lib/query";
 import { useToast } from "@/components/toast/ToastProvider";
 import { BottomSheet } from "@/components/BottomSheet";
 import { BackButton } from "@/components/BackButton";
@@ -33,6 +21,7 @@ import { ProgramDaySheet, type RoutineChoice } from "@/features/programs/Program
 interface ProgramRow {
   id: string;
   name: string;
+  order?: number;
   active?: boolean;
   scheduleMode?: "rotation" | "weekly";
   rotationCursor?: number;
@@ -50,9 +39,8 @@ interface RoutineRow {
   name: string;
   category?: string;
 }
-interface RoutineExerciseRow {
-  id: string;
-  routineId: string;
+interface ProgramDetail extends ProgramRow {
+  days: (DayRow & { programId: string; routineId?: string | null; routine: RoutineRow | null })[];
 }
 
 const EYEBROW =
@@ -108,43 +96,86 @@ export default function ProgramEditorPage() {
   const { confirm, dialog: confirmDialog } = useConfirm();
   const programId = params.id;
 
-  const { results: program } = useQuery<ProgramRow>(
-    (c) => c.query("programs").Where("id", "=", programId),
-    [programId],
-  );
-  const p = program[0];
+  const { data: programDetail } = useQuery({
+    queryKey: qk.program(programId),
+    queryFn: () => api<ProgramDetail>(`/api/programs/${programId}`),
+    enabled: Boolean(programId),
+  });
+  const p = programDetail;
   const name = p?.name ?? "";
   const mode = p?.scheduleMode ?? "rotation";
   const blockWeeks = p?.blockWeeks ?? 0;
 
-  const { results: days } = useQuery<DayRow>(
-    (c) => c.query("programDays").Where("programId", "=", programId).Order("order", "ASC"),
-    [programId],
+  // This program's days come from the nested program detail.
+  const days: DayRow[] = useMemo(
+    () =>
+      (programDetail?.days ?? [])
+        .map((d) => ({
+          id: d.id,
+          order: d.order,
+          name: d.name,
+          routineId: d.routineId ?? undefined,
+          weekday: d.weekday,
+        }))
+        .sort((a, b) => a.order - b.order),
+    [programDetail],
   );
-  const { results: routines } = useQuery<RoutineRow>((c) => c.query("routines").Order("name", "ASC"));
-  const { results: routineExercises } = useQuery<RoutineExerciseRow>((c) =>
-    c.query("routineExercises"),
+
+  const { data: routinesRaw = [] } = useQuery({
+    queryKey: qk.routines,
+    queryFn: () => api<RoutineRow[]>("/api/routines"),
+  });
+  const routines = useMemo(
+    () => [...routinesRaw].sort((a, b) => a.name.localeCompare(b.name)),
+    [routinesRaw],
   );
-  const { results: allPrograms } = useQuery<ProgramRow>((c) =>
-    c.query("programs").Order("order", "ASC"),
-  );
-  // All of the owner's program days (Triplit is owner-scoped), used to detect
-  // when a routine is shared by 2+ programs — the only case where the edit
-  // scope (everywhere vs fork) actually matters.
-  const { results: allProgramDays } = useQuery<{
-    id: string;
-    programId: string;
-    routineId?: string;
-  }>((c) => c.query("programDays"));
+
+  const { data: allPrograms = [] } = useQuery({
+    queryKey: qk.programs,
+    queryFn: () => api<ProgramRow[]>("/api/programs"),
+  });
+
+  // Exercise counts per routine come from each routine's detail (nested
+  // exercises); fan out one query per routine.
+  const routineDetailQueries = useQueries({
+    queries: routinesRaw.map((r) => ({
+      queryKey: qk.routine(r.id),
+      queryFn: () => api<RoutineRow & { exercises: unknown[] }>(`/api/routines/${r.id}`),
+    })),
+  });
+
+  // Every program's days (with their routineId), used to detect when a routine
+  // is shared by 2+ programs — the only case where the edit scope (everywhere
+  // vs fork) actually matters. Fan out one detail query per program.
+  const allProgramDetailQueries = useQueries({
+    queries: allPrograms.map((prog) => ({
+      queryKey: qk.program(prog.id),
+      queryFn: () => api<ProgramDetail>(`/api/programs/${prog.id}`),
+    })),
+  });
+  const allProgramDays = useMemo(() => {
+    const out: { id: string; programId: string; routineId?: string }[] = [];
+    for (const q of allProgramDetailQueries) {
+      const d = q.data;
+      if (!d) continue;
+      for (const day of d.days) {
+        out.push({ id: day.id, programId: d.id, routineId: day.routineId ?? undefined });
+      }
+    }
+    return out;
+  }, [allProgramDetailQueries]);
 
   // After deleting the active program, prompt to activate one of the survivors.
   const [postDeleteChoices, setPostDeleteChoices] = useState<ProgramChoice[] | null>(null);
 
   const exCountByRoutine = useMemo(() => {
     const m = new Map<string, number>();
-    for (const re of routineExercises) m.set(re.routineId, (m.get(re.routineId) ?? 0) + 1);
+    for (const q of routineDetailQueries) {
+      const d = q.data;
+      if (d) m.set(d.id, d.exercises.length);
+    }
     return m;
-  }, [routineExercises]);
+  }, [routineDetailQueries]);
 
   const routineById = useMemo(() => {
     const m = new Map<string, RoutineRow>();
@@ -202,17 +233,49 @@ export default function ProgramEditorPage() {
   const [editingName, setEditingName] = useState(false);
   const [weeksSheetOpen, setWeeksSheetOpen] = useState(false);
 
+  /** Persist a program name change, then refresh the program detail. */
+  async function renameProgram(next: string) {
+    await api(`/api/programs/${programId}`, {
+      method: "PUT",
+      body: JSON.stringify({ name: next }),
+    });
+    queryClient.invalidateQueries({ queryKey: qk.program(programId) });
+  }
+
   function commitName() {
     const next = draftName.trim();
-    if (next) renameProgram(getClient(), programId, next);
+    if (next) void renameProgram(next);
     else setDraftName(name);
     setEditingName(false);
   }
 
   /** Set the block length from a preset; `undefined` = Ongoing (no block). */
-  function setBlock(weeks: number | undefined) {
-    void setProgramSchedule(getClient(), programId, { blockWeeks: weeks });
+  async function setBlock(weeks: number | undefined) {
+    await api(`/api/programs/${programId}`, {
+      method: "PUT",
+      body: JSON.stringify({ blockWeeks: weeks }),
+    });
+    queryClient.invalidateQueries({ queryKey: qk.program(programId) });
     setWeeksSheetOpen(false);
+  }
+
+  /** Persist the schedule mode, then refresh the program detail. */
+  async function setScheduleMode(scheduleMode: "rotation" | "weekly") {
+    await api(`/api/programs/${programId}`, {
+      method: "PUT",
+      body: JSON.stringify({ scheduleMode }),
+    });
+    queryClient.invalidateQueries({ queryKey: qk.program(programId) });
+  }
+
+  /** Mark this program active, then refresh affected lists. */
+  async function activateProgram(id: string) {
+    await api(`/api/programs/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ active: true }),
+    });
+    queryClient.invalidateQueries({ queryKey: qk.programs });
+    queryClient.invalidateQueries({ queryKey: qk.program(id) });
   }
 
   // ── Drag-to-reorder (pointer-based, works on touch + mouse) ──────────────
@@ -297,7 +360,13 @@ export default function ProgramEditorPage() {
     const finalOrder = dragOrderRef.current;
     // Persist only when the sequence actually changed.
     if (finalOrder && finalOrder.join(",") !== days.map((d) => d.id).join(",")) {
-      void reorderProgramDays(getClient(), finalOrder);
+      void (async () => {
+        await api(`/api/programs/${programId}/days/reorder`, {
+          method: "PUT",
+          body: JSON.stringify({ orderedIds: finalOrder }),
+        });
+        queryClient.invalidateQueries({ queryKey: qk.program(programId) });
+      })();
     } else {
       setDragOrder(null);
     }
@@ -331,7 +400,17 @@ export default function ProgramEditorPage() {
 
   async function addDay() {
     if (days.length >= 7) return;
-    await addProgramDay(getClient(), { programId, order: days.length + 1 });
+    await api(`/api/programs/${programId}/days`, {
+      method: "POST",
+      body: JSON.stringify({ order: days.length + 1 }),
+    });
+    queryClient.invalidateQueries({ queryKey: qk.program(programId) });
+  }
+
+  /** Remove a program day, then refresh this program's detail. */
+  async function removeDay(dayId: string) {
+    await api(`/api/program-days/${dayId}`, { method: "DELETE" });
+    queryClient.invalidateQueries({ queryKey: qk.program(programId) });
   }
 
   // Edit scope is chosen up front (Option A, "fork on entry") and reused by
@@ -355,25 +434,38 @@ export default function ProgramEditorPage() {
   /**
    * Fork a routine into an independent copy and repoint every day in THIS
    * program that references it (leaving the shared routine + other programs
-   * untouched), then open the copy's editor. Reuses `duplicateRoutine` — the
-   * same logic the old "Edit here only" used.
+   * untouched), then open the copy's editor. Reuses the duplicate endpoint —
+   * the same logic the old "Edit here only" used.
    */
   async function editOnlyThisProgram(routineId: string) {
-    const copyId = await duplicateRoutine(getClient(), {
-      routineId,
-      ownerId: getCurrentUserId(),
+    const { id: copyId } = await api<{ id: string }>(`/api/routines/${routineId}/duplicate`, {
+      method: "POST",
     });
     if (!copyId) return;
     const refs = days.filter((d) => d.routineId === routineId);
-    await Promise.all(refs.map((d) => updateProgramDay(getClient(), d.id, { routineId: copyId })));
+    await Promise.all(
+      refs.map((d) =>
+        api(`/api/program-days/${d.id}`, {
+          method: "PUT",
+          body: JSON.stringify({ routineId: copyId }),
+        }),
+      ),
+    );
+    queryClient.invalidateQueries({ queryKey: qk.routines });
+    queryClient.invalidateQueries({ queryKey: qk.program(programId) });
     router.push(`/routines/${copyId}?programId=${programId}`);
   }
 
   /** Rotation: assign/clear the routine on the open program day. */
-  function assignRoutine(routineId: string | undefined) {
+  async function assignRoutine(routineId: string | undefined) {
     if (!openDayId) return;
-    void updateProgramDay(getClient(), openDayId, { routineId });
+    const target = openDayId;
     setOpenDayId(null);
+    await api(`/api/program-days/${target}`, {
+      method: "PUT",
+      body: JSON.stringify({ routineId: routineId ?? null }),
+    });
+    queryClient.invalidateQueries({ queryKey: qk.program(programId) });
   }
 
   /**
@@ -384,17 +476,19 @@ export default function ProgramEditorPage() {
   async function assignWeekday(weekday: number, routineId: string | undefined) {
     const existing = dayByWeekday.get(weekday);
     if (routineId === undefined) {
-      if (existing) await removeProgramDay(getClient(), existing.id);
+      if (existing) await api(`/api/program-days/${existing.id}`, { method: "DELETE" });
     } else if (existing) {
-      await updateProgramDay(getClient(), existing.id, { routineId });
+      await api(`/api/program-days/${existing.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ routineId }),
+      });
     } else {
-      await addProgramDay(getClient(), {
-        programId,
-        order: days.length + 1,
-        weekday,
-        routineId,
+      await api(`/api/programs/${programId}/days`, {
+        method: "POST",
+        body: JSON.stringify({ order: days.length + 1, weekday, routineId }),
       });
     }
+    queryClient.invalidateQueries({ queryKey: qk.program(programId) });
     setOpenWeekday(null);
   }
 
@@ -402,7 +496,7 @@ export default function ProgramEditorPage() {
     if (mode === "weekly") {
       if (openWeekday != null) void assignWeekday(openWeekday, routineId);
     } else {
-      assignRoutine(routineId);
+      void assignRoutine(routineId);
     }
   }
 
@@ -420,9 +514,13 @@ export default function ProgramEditorPage() {
     }
     await Promise.all(
       empties.map((d, i) =>
-        updateProgramDay(getClient(), d.id, { routineId: pool[i % pool.length] }),
+        api(`/api/program-days/${d.id}`, {
+          method: "PUT",
+          body: JSON.stringify({ routineId: pool[i % pool.length] }),
+        }),
       ),
     );
+    queryClient.invalidateQueries({ queryKey: qk.program(programId) });
   }
 
   // ── Add / remove routines in the program ─────────────────────────────────
@@ -453,19 +551,21 @@ export default function ProgramEditorPage() {
         toast.info("Every weekday is filled. Free one up first.");
         return false;
       }
-      await addProgramDay(getClient(), {
-        programId,
-        order: days.length + 1,
-        weekday: firstFreeWeekday,
-        routineId,
+      await api(`/api/programs/${programId}/days`, {
+        method: "POST",
+        body: JSON.stringify({ order: days.length + 1, weekday: firstFreeWeekday, routineId }),
       });
     } else {
       if (days.length >= 7) {
         toast.info("This program is full (7 days max). Remove a day first.");
         return false;
       }
-      await addProgramDay(getClient(), { programId, order: days.length + 1, routineId });
+      await api(`/api/programs/${programId}/days`, {
+        method: "POST",
+        body: JSON.stringify({ order: days.length + 1, routineId }),
+      });
     }
+    queryClient.invalidateQueries({ queryKey: qk.program(programId) });
     return true;
   }
 
@@ -483,11 +583,11 @@ export default function ProgramEditorPage() {
       );
       return;
     }
-    const r = await createRoutine(getClient(), {
-      ownerId: getCurrentUserId(),
-      name: "New Routine",
-      order: routines.length,
+    const r = await api<RoutineRow>("/api/routines", {
+      method: "POST",
+      body: JSON.stringify({ name: "New Routine", order: routines.length }),
     });
+    queryClient.invalidateQueries({ queryKey: qk.routines });
     await addRoutineToProgram(r.id);
     setAddStep(null);
     router.push(`/routines/${r.id}?programId=${programId}`);
@@ -502,7 +602,8 @@ export default function ProgramEditorPage() {
     });
     if (!ok) return;
     const refs = days.filter((d) => d.routineId === routineId);
-    await Promise.all(refs.map((d) => removeProgramDay(getClient(), d.id)));
+    await Promise.all(refs.map((d) => api(`/api/program-days/${d.id}`, { method: "DELETE" })));
+    queryClient.invalidateQueries({ queryKey: qk.program(programId) });
   }
 
   return (
@@ -512,7 +613,7 @@ export default function ProgramEditorPage() {
         <input
           value={draftName}
           onChange={(e) => setDraftName(e.target.value)}
-          onBlur={() => draftName.trim() && renameProgram(getClient(), programId, draftName.trim())}
+          onBlur={() => draftName.trim() && void renameProgram(draftName.trim())}
           aria-label="Program name"
           className="min-w-0 flex-1 bg-transparent border-none text-lg font-bold text-[var(--text)] focus:outline-none"
         />
@@ -523,7 +624,7 @@ export default function ProgramEditorPage() {
         ) : (
           <button
             type="button"
-            onClick={() => setProgramActive(getClient(), { programId, ownerId: getCurrentUserId() })}
+            onClick={() => void activateProgram(programId)}
             className="shrink-0 px-1 text-sm font-bold text-[var(--accent)]"
           >
             Set active
@@ -547,11 +648,7 @@ export default function ProgramEditorPage() {
             { value: "rotation", label: "Rotation" },
             { value: "weekly", label: "Fixed weekly" },
           ]}
-          onChange={(m) =>
-            setProgramSchedule(getClient(), programId, {
-              scheduleMode: m as "rotation" | "weekly",
-            })
-          }
+          onChange={(m) => void setScheduleMode(m as "rotation" | "weekly")}
           style={{ marginBottom: 8 }}
         />
         <p className="text-sm text-[var(--text-muted)] mb-5">
@@ -598,7 +695,7 @@ export default function ProgramEditorPage() {
                   routineName={d.routineId ? routineById.get(d.routineId)?.name : undefined}
                   dragging={draggingId === d.id}
                   onOpen={() => setOpenDayId(d.id)}
-                  onRemove={() => removeProgramDay(getClient(), d.id)}
+                  onRemove={() => void removeDay(d.id)}
                   onGripPointerDown={(e) => startDrag(e, d.id)}
                   onGripPointerMove={moveDrag}
                   onGripPointerUp={endDrag}
@@ -739,7 +836,8 @@ export default function ProgramEditorPage() {
               if (!ok) return;
               const wasActive = !!p?.active;
               const others = allPrograms.filter((x) => x.id !== programId);
-              await deleteProgram(getClient(), programId);
+              await api(`/api/programs/${programId}`, { method: "DELETE" });
+              queryClient.invalidateQueries({ queryKey: qk.programs });
 
               // Deleting the active program leaves no "today" — help the user pick
               // a replacement (or create one) instead of silently navigating away.
@@ -900,7 +998,7 @@ export default function ProgramEditorPage() {
         programs={postDeleteChoices ?? []}
         title="Activate another program"
         onSelect={async (id) => {
-          await setProgramActive(getClient(), { programId: id, ownerId: getCurrentUserId() });
+          await activateProgram(id);
           setPostDeleteChoices(null);
           router.push("/programs");
         }}

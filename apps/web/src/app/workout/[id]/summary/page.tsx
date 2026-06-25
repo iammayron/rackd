@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toPng } from "html-to-image";
+import { useQuery } from "@tanstack/react-query";
 import { sessionVolume } from "@rackd/core";
 import {
   Card,
@@ -13,20 +14,10 @@ import {
   SegmentedControl,
   type ShareCardTheme,
 } from "@rackd/ui";
-import { useQuery } from "@/lib/use-query";
+import { api } from "@/lib/api";
+import { qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
 
-interface SessionRow {
-  id: string;
-  name: string;
-  startedAt: number;
-  endedAt?: number;
-}
-interface SERow {
-  id: string;
-  exerciseId: string;
-  exercise?: { name?: string } | null;
-}
 interface SetRow {
   id: string;
   sessionExerciseId: string;
@@ -34,11 +25,25 @@ interface SetRow {
   reps: number;
   completed: boolean;
 }
+interface SERow {
+  id: string;
+  exerciseId: string;
+  exercise?: { name?: string } | null;
+  sets: SetRow[];
+}
+interface SessionTree {
+  id: string;
+  name: string;
+  startedAt: number;
+  endedAt?: number;
+  exercises: SERow[];
+}
 interface PrRow {
   id: string;
   exerciseId: string;
   type: string;
   value: number;
+  sessionId: string;
 }
 
 /** Format a workout duration as "52 min" / "1 h 04 min". */
@@ -64,17 +69,12 @@ export default function WorkoutSummaryPage() {
   const sessionId = params.id;
   const { unit, display } = useUnit();
 
-  const { results: sessions } = useQuery<SessionRow>(
-    (c) => c.query("sessions").Where("id", "=", sessionId),
-    [sessionId],
-  );
-  const session = sessions[0];
+  const { data: session } = useQuery({
+    queryKey: qk.session(sessionId),
+    queryFn: () => api<SessionTree>(`/api/sessions/${sessionId}`),
+  });
+  const ses = useMemo(() => session?.exercises ?? [], [session]);
 
-  const { results: ses } = useQuery<SERow>(
-    (c) => c.query("sessionExercises").Where("sessionId", "=", sessionId).Include("exercise"),
-    [sessionId],
-  );
-  const seIds = useMemo(() => ses.map((s) => s.id), [ses]);
   const nameByExercise = useMemo(
     () => Object.fromEntries(ses.map((s) => [s.exerciseId, s.exercise?.name ?? "Exercise"])),
     [ses],
@@ -84,13 +84,15 @@ export default function WorkoutSummaryPage() {
     [ses],
   );
 
-  const { results: sets } = useQuery<SetRow>(
-    (c) => c.query("setLogs").Where("sessionExerciseId", "in", seIds),
-    [seIds.join(",")],
-  );
-  const { results: prs } = useQuery<PrRow>(
-    (c) => c.query("personalRecords").Where("sessionId", "=", sessionId),
-    [sessionId],
+  const sets = useMemo(() => ses.flatMap((s) => s.sets ?? []), [ses]);
+
+  const { data: allPrs = [] } = useQuery({
+    queryKey: qk.personalRecords,
+    queryFn: () => api<PrRow[]>("/api/personal-records"),
+  });
+  const prs = useMemo(
+    () => allPrs.filter((pr) => pr.sessionId === sessionId),
+    [allPrs, sessionId],
   );
 
   const completed = sets.filter((s) => s.completed);

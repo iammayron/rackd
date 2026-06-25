@@ -2,27 +2,33 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { cloneSharedRoutine, type SharedRoutineRow } from "@rackd/db";
-import { getClient } from "@/lib/triplit";
-import { getCurrentUserId } from "@/lib/auth";
-import { useQuery } from "@/lib/use-query";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { qk } from "@/lib/query";
 import { BackButton } from "@/components/BackButton";
 
-interface SharedRow extends SharedRoutineRow {
+interface SharedRow {
+  id: string;
+  name: string;
+  authorName: string;
+  exerciseCount: number;
   createdAt: number;
 }
 
 export default function DiscoverPage() {
   const router = useRouter();
-  const { results: shared } = useQuery<SharedRow>((c) =>
-    c.query("sharedRoutines").Order("createdAt", "DESC"),
-  );
+  const { data: shared = [] } = useQuery({
+    queryKey: qk.sharedRoutines,
+    queryFn: () => api<SharedRow[]>("/api/shared-routines"),
+  });
   const [cloning, setCloning] = useState(false);
 
   async function clone(s: SharedRow) {
     if (cloning) return;
     setCloning(true);
-    const id = await cloneSharedRoutine(getClient(), { shared: s, ownerId: getCurrentUserId() });
+    const { id } = await api<{ id: string }>(`/api/shared-routines/${s.id}/clone`, {
+      method: "POST",
+    });
     router.push(`/routines/${id}?from=routines`);
   }
 

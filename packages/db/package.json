@@ -10,10 +10,20 @@
     "./schema": "./src/schema.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "seed": "tsx src/seed-pg.ts"
   },
   "dependencies": {
     "@rackd/core": "workspace:*",
-    "@triplit/client": "^1.0.0"
+    "drizzle-orm": "^0.45.2",
+    "pg": "^8.22.0",
+    "uuidv7": "^1.2.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.20.0",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.19.2"
   }
 }

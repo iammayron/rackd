@@ -2,9 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { seedExercises } from "@rackd/db";
 import { getSupabase } from "./supabase";
-import { getClient } from "./triplit";
 
 /**
  * Module-level cache of the current user id so the synchronous `getCurrentUserId()`
@@ -38,30 +36,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const sb = getSupabase();
 
-    async function apply(session: Session | null) {
+    // Just track the Supabase session: the API client reads the access token per
+    // request, and the exercise library is seeded once server-side (not per login).
+    function apply(session: Session | null) {
       currentUserId = session?.user?.id ?? "";
       setUser(session?.user ?? null);
-      const client = getClient();
-      if (session?.access_token) {
-        await client.startSession(session.access_token, true);
-        // seed the shared library now that we have a token (insert is allowed)
-        try {
-          await seedExercises(client);
-        } catch (e) {
-          console.error("[myfit] seed failed", e);
-        }
-      } else {
-        await client.endSession();
-      }
     }
 
-    sb.auth.getSession().then(async ({ data }) => {
-      await apply(data.session);
+    sb.auth.getSession().then(({ data }) => {
+      apply(data.session);
       setLoading(false);
     });
 
     const { data: sub } = sb.auth.onAuthStateChange((_event, session) => {
-      void apply(session);
+      apply(session);
     });
     return () => sub.subscription.unsubscribe();
   }, []);

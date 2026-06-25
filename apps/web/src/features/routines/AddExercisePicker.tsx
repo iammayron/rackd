@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@/lib/use-query";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { qk } from "@/lib/query";
 import { ExerciseThumb } from "@/components/ExerciseMedia";
 
 interface ExerciseRow {
@@ -18,9 +20,11 @@ interface ExerciseRow {
  * onPick(exerciseId) each time. Used by the routine editor and active workout.
  */
 export function AddExercisePicker({ onPick }: { onPick: (exerciseId: string) => void }) {
-  const { results: exercises } = useQuery<ExerciseRow>((c) =>
-    c.query("exercises").Order("name", "ASC"),
-  );
+  const { data: exercises = [] } = useQuery({
+    queryKey: qk.exercises,
+    queryFn: () => api<ExerciseRow[]>("/api/exercises"),
+    select: (rows) => [...rows].sort((a, b) => a.name.localeCompare(b.name)),
+  });
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [added, setAdded] = useState<string | null>(null);
