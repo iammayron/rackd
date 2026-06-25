@@ -113,6 +113,8 @@ export interface WorkoutSession {
   id: string;
   ownerId: string;
   routineId?: string;
+  /** Program this workout was started under; stamped at start, never rewritten. */
+  programId?: string;
   name: string;
   startedAt: number;
   endedAt?: number;

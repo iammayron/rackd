@@ -402,3 +402,20 @@ export function programDayKinds(args: {
   }
   return out;
 }
+
+/**
+ * Whether a finished session counts toward a program's day/week progress.
+ *
+ * Prefers the durable `programId` stamped on the session at start time — that
+ * survives a routine being forked or re-pointed by save-back, which routine-id
+ * matching does not. Falls back to matching the program's current day routines
+ * for legacy sessions logged before stamping existed (no `programId`).
+ */
+export function sessionCountsForProgram(
+  session: { programId?: string | null; routineId?: string | null },
+  programId: string | undefined,
+  programRoutineIds: ReadonlySet<string>,
+): boolean {
+  if (programId && session.programId) return session.programId === programId;
+  return Boolean(session.routineId && programRoutineIds.has(session.routineId));
+}

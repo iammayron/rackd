@@ -1,9 +1,14 @@
 "use client";
 
 import { Fragment, useMemo } from "react";
-import { programDayKinds, programWeekProgress } from "@rackd/core";
+import {
+  programDayKinds,
+  programWeekProgress,
+  sessionCountsForProgram,
+} from "@rackd/core";
 
 interface ProgramLike {
+  id?: string;
   scheduleMode?: "rotation" | "weekly";
   rotationCursor?: number;
   blockWeeks?: number;
@@ -18,6 +23,7 @@ interface ProgramDayLike {
 
 interface SessionLike {
   routineId?: string | null;
+  programId?: string | null;
   startedAt: number;
   endedAt?: number | null;
 }
@@ -58,15 +64,22 @@ export function ProgramProgress({
     [programDays],
   );
 
+  // Count a session toward this program by its durable programId stamp (set at
+  // start, survives routine forks/re-points), falling back to the routine match
+  // for legacy sessions. Pure logic lives in @rackd/core, unit-tested there.
+  const belongsToProgram = useMemo(
+    () => (s: SessionLike) =>
+      sessionCountsForProgram(s, program.id, programRoutineIds),
+    [program.id, programRoutineIds],
+  );
+
   // --- Week-block bar (blockWeeks set) -------------------------------------
   const week = useMemo(() => {
     if (blockWeeks <= 0) return null;
     const now = Date.now();
     // Anchor day 1: program activation, falling back to the first logged
     // workout, then today, so pre-existing programs still render sensibly.
-    const programSessions = finished.filter(
-      (s) => s.routineId && programRoutineIds.has(s.routineId),
-    );
+    const programSessions = finished.filter(belongsToProgram);
     const anchorMs =
       program.activatedAt ??
       (programSessions.length
@@ -111,16 +124,14 @@ export function ProgramProgress({
       blockWeeks,
     );
     return { ...progress, currentWeek };
-  }, [blockWeeks, finished, program, programDays, programRoutineIds]);
+  }, [blockWeeks, finished, program, programDays, belongsToProgram]);
 
   // --- Legacy rotation bar (no block length) -------------------------------
   const legacy = useMemo(() => {
     if (blockWeeks > 0) return null;
     const blockLen = programDays.length;
     if (blockLen === 0) return null;
-    const done = finished.filter(
-      (s) => s.routineId && programRoutineIds.has(s.routineId),
-    ).length;
+    const done = finished.filter(belongsToProgram).length;
     const doneInCycle = done % blockLen;
     return {
       blockLen,
@@ -128,7 +139,7 @@ export function ProgramProgress({
       doneInCycle,
       pct: Math.round((doneInCycle / blockLen) * 100),
     };
-  }, [blockWeeks, finished, programDays, programRoutineIds]);
+  }, [blockWeeks, finished, programDays, belongsToProgram]);
 
   if (week) {
     return (
