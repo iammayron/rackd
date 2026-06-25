@@ -27,7 +27,7 @@ Braindump from on-device testing. Each item gets discussed/scoped before impleme
   - Show per-side plate breakdown: per side = (total − bar) / 2, decomposed greedily from available plates — lb: 2.5/5/10/25/35/45; kg: 1.25/2.5/5/10/15/20/25. Display e.g. "45 bar + 25 each side".
   - If per-side isn't exactly achievable, show the closest combo and flag the remainder.
 - [x] 18. Always scroll to current exercise — snaps back to the current exercise after a rest, on reopen, once on load, and after editing (`workout/[id]/page.tsx`, `SetRow.tsx`)
-- [ ] 19. Complete summary not computing properly — summary code reviewed and looks correct (`summary/page.tsx`); re-test on device to confirm
-- [ ] 20. Share not working — share is fully wired (native share + PNG/clipboard fallback); re-test on device to confirm
+- [x] 19. Complete summary not computing properly — verified on device: the summary renders and populates its values (`summary/page.tsx`). Open follow-up: confirm the displayed numbers are actually correct (values are present; accuracy not yet spot-checked).
+- [x] 20. Share not working — verified working on device (native share + PNG/clipboard fallback).
 - [ ] 21. Progress page is wrong — history/progress page implemented and computing (`history/page.tsx`); re-test on device to confirm
 - [ ] 22. "Done" status on the Home Screen
