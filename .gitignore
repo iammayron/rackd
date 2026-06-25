@@ -25,3 +25,8 @@ supabase/.temp/
 .claude/*.local.json
 .claude/.test-status
 .chief/
+
+# Cursor: commit shared config (AGENTS.md, .cursor/rules, .cursor/commands,
+# .cursor/hooks.json + hooks). Keep personal/local + secrets out.
+.cursor/*.local.json
+.cursor/**/*.local.*

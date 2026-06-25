@@ -1,0 +1,29 @@
+---
+description: Pure domain logic + canonical types conventions for packages/core
+globs: packages/core/**/*.ts
+alwaysApply: false
+---
+
+# packages/core conventions
+
+`packages/core` is **pure domain logic + all domain types**. This is what React
+Native reuses later, so it has **ZERO platform / UI / DB dependencies** — no
+`pg`, no React, no Next, no browser/Node-only APIs. If you reach for one, the
+code belongs elsewhere.
+
+## Types are owned here
+- **All domain types live once** in `src/types.ts`. Everything else imports them; never redeclare a domain shape (DRY).
+- The DB schema (`packages/db/src/schema.ts`) mirrors these types — when a type changes, the schema must follow (see `/db-migrate`).
+
+## Calculations
+- 1RM, plates, volume, progression live in `src/calc.ts` — pure functions, no side effects.
+- **Add a colocated `*.test.ts` for every new pure function.** Follow `calc.test.ts`'s house style: table-driven cases, exact expected numbers, edge/boundary inputs (zero, negative, empty, rounding seams). These are the fast gate (`pnpm --filter @rackd/core test`).
+- Stored/asserted weight is canonical **kg** — assert in kg, never lb.
+
+## Timer
+- `src/timer.ts` is wall-clock: store an absolute `endAt`, recompute `remainingMs(state, now)`. **Always inject `now`** into functions and tests — never call `Date.now()` inside the logic or assert against real wall-clock time.
+
+## Discipline
+- **KISS** — no server/AI/abstraction until a real second caller exists. Rule of three before extracting.
+
+See `@AGENTS.md` for global rules and commands.

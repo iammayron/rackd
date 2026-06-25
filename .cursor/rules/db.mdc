@@ -1,0 +1,33 @@
+---
+description: Drizzle schema + repository function conventions for packages/db
+globs: packages/db/**/*.ts
+alwaysApply: false
+---
+
+# packages/db conventions
+
+`packages/db` is the **only place that touches Postgres** (single `pg` pool in
+`db.ts`). It owns the Drizzle schema and the repository functions; the UI never
+imports it as a value (it calls API routes that call these functions).
+
+## Repository functions
+- Functions like `startSession`, `logSet`, `finishSession` use the shared Drizzle `db` (no client argument) and are called from **API route handlers only**.
+- Signatures take `{ ownerId, … }`; **every read/write filters/sets by `ownerId`.** When mutating an existing owned row, scope the `where` by both `id` AND `ownerId` so one owner can't touch another's row.
+- Match the style of `createRoutine` / `renameRoutine`: small, single-purpose, returns the row. Keep mutations here, not in routes.
+
+## Schema ⇄ core types
+- `src/schema.ts` **mirrors the `@rackd/core` types** — same field names, nullability, units. Change the core type first, then the schema, or the layers drift.
+- Weight columns store canonical **kg**, never lb.
+- **Prescription vs session are separate trees.** `routines/routineExercises/routineSets` = the plan; `sessions/sessionExercises/setLogs` = what happened. Starting a workout deep-copies the plan into a session; logs land on the session tree. Never mutate routines to record performed sets.
+- Exercise media is **URL-only** (`thumbnailUrl`/`clipUrl`) — never store binaries.
+
+## Migrations
+- `pnpm --filter @rackd/db db:generate` writes SQL; review it before applying (watch for DROP COLUMN/TABLE, NOT NULL on populated tables, type narrowing, FK ON DELETE actions matching prescription/session + ownership intent). Then `pnpm --filter @rackd/db db:push` applies to Postgres via `DATABASE_URL`. See `/db-migrate`.
+- The exercise library is seeded once server-side with `pnpm --filter @rackd/db seed` (`src/seed-pg.ts`), not per login.
+
+## Tests
+- Repo tests run against a **real Postgres** (local Supabase / CI), truncate-per-test. Use `test/setup.ts` (truncates + re-seeds `SEED_EX`: `ex_bench`, `ex_squat`, `ex_row`) and `test/factories.ts` (`makeRoutine`, `OWNER_A`/`OWNER_B`) — never hand-roll fixtures.
+- Cover what a mock can't: ownership scoping (owner B blocked from owner A's rows), FK cascade / SET NULL on delete, prescription→session deep-copy not mutating the routine.
+- `packages/db`'s `test` script is `vitest run`; `pnpm test` (turbo) picks it up.
+
+See `@AGENTS.md` for global rules and commands.
