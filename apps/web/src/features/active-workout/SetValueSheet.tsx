@@ -107,14 +107,24 @@ export function SetValueSheet({
             <input
               ref={inputRef}
               inputMode={inputMode}
+              enterKeyHint="done"
               value={text}
               onChange={(e) => setText(e.target.value)}
               onFocus={(e) => e.currentTarget.select()}
+              onKeyDown={(e) => {
+                // Keyboard's Done/checkmark (or Enter) commits, like the button.
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitAndClose();
+                }
+              }}
               aria-label={title}
               className="min-w-0 w-full text-center bg-transparent text-[var(--text)] text-4xl font-bold tabular-nums py-3 focus:outline-none"
             />
             {suffix && (
-              <span className="shrink-0 text-lg text-[var(--text-muted)]">{suffix}</span>
+              <span className="shrink-0 text-lg text-[var(--text-muted)]">
+                {suffix}
+              </span>
             )}
           </div>
 
