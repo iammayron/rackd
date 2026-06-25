@@ -26,7 +26,7 @@ Braindump from on-device testing. Each item gets discussed/scoped before impleme
   - Default a barbell exercise's starting weight to the bar weight, with help text.
   - Show per-side plate breakdown: per side = (total − bar) / 2, decomposed greedily from available plates — lb: 2.5/5/10/25/35/45; kg: 1.25/2.5/5/10/15/20/25. Display e.g. "45 bar + 25 each side".
   - If per-side isn't exactly achievable, show the closest combo and flag the remainder.
-- [ ] 18. Always scroll to current exercise
+- [x] 18. Always scroll to current exercise — snaps back to the current exercise after a rest, on reopen, once on load, and after editing (`workout/[id]/page.tsx`, `SetRow.tsx`)
 - [ ] 19. Complete summary not computing properly — summary code reviewed and looks correct (`summary/page.tsx`); re-test on device to confirm
 - [ ] 20. Share not working — share is fully wired (native share + PNG/clipboard fallback); re-test on device to confirm
 - [ ] 21. Progress page is wrong — history/progress page implemented and computing (`history/page.tsx`); re-test on device to confirm
