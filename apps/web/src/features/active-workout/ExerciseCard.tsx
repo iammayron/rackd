@@ -9,7 +9,10 @@ import { api } from "@/lib/api";
 import { queryClient, qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
 import { useToast } from "@/components/toast/ToastProvider";
-import { ExerciseThumb, type ExerciseMediaData } from "@/components/ExerciseMedia";
+import {
+  ExerciseThumb,
+  type ExerciseMediaData,
+} from "@/components/ExerciseMedia";
 import { ReplaceExercisePicker } from "@/features/routines/ReplaceExercisePicker";
 import { SetRow, type SetRowData } from "./SetRow";
 import { PlatesPanel } from "./PlatesPanel";
@@ -22,7 +25,11 @@ interface PrevSet {
 }
 
 const cap = (s: string) =>
-  !s ? s : s.toLowerCase() === "fullbody" ? "Full body" : s.charAt(0).toUpperCase() + s.slice(1);
+  !s
+    ? s
+    : s.toLowerCase() === "fullbody"
+      ? "Full body"
+      : s.charAt(0).toUpperCase() + s.slice(1);
 
 interface SessionExerciseRow {
   id: string;
@@ -62,7 +69,9 @@ export function ExerciseCard({
   const [showMenu, setShowMenu] = useState(false);
   const [showReplace, setShowReplace] = useState(false);
   // Sets come down from the session tree the page loads; keep them ordered.
-  const sets = [...(sessionExercise.sets ?? [])].sort((a, b) => a.order - b.order);
+  const sets = [...(sessionExercise.sets ?? [])].sort(
+    (a, b) => a.order - b.order,
+  );
 
   // "prev" = this exercise's last completed performance in a finished session.
   const [prev, setPrev] = useState<PrevSet[] | null>(null);
@@ -83,7 +92,10 @@ export function ExerciseCard({
   }
 
   // Heaviest set last time → progressive-overload target for this session.
-  const prevTop = prev?.reduce((b, s) => (s.weight > b.weight ? s : b), prev[0]!);
+  const prevTop = prev?.reduce(
+    (b, s) => (s.weight > b.weight ? s : b),
+    prev[0]!,
+  );
   const suggestedWeight = prevTop
     ? nextWeight(prevTop.weight, prevTop.reps, prevTop.reps)
     : undefined;
@@ -99,29 +111,42 @@ export function ExerciseCard({
 
   /**
    * After a set is completed, offer to copy its weight/reps to any LATER sets
-   * (higher `order`) in this exercise that aren't done yet. Non-blocking toast
-   * with a "Copy" action; ignored = auto-dismiss, no change.
+   * (higher `order`) in this exercise that aren't done yet AND don't already
+   * match — no point prompting to copy onto identical values. Non-blocking
+   * toast with a "Copy" action; ignored = auto-dismiss, no change.
    */
   function onSetCompleted(set: SetRowData) {
-    const targets = sets.filter((s) => s.order > set.order && !s.completed);
+    const targets = sets.filter(
+      (s) =>
+        s.order > set.order &&
+        !s.completed &&
+        (s.weight !== set.weight || s.reps !== set.reps),
+    );
     if (targets.length === 0) return;
-    toast.info(`Copy ${display(set.weight)} ${unit} × ${set.reps} to remaining sets?`, {
-      action: {
-        label: "Copy",
-        onClick: async () => {
-          await Promise.all(
-            targets.map((t) =>
-              api(`/api/set-logs/${t.id}`, {
-                method: "PUT",
-                body: JSON.stringify({ weight: set.weight, reps: set.reps }),
-              }),
-            ),
-          );
-          queryClient.invalidateQueries({ queryKey: qk.session(sessionExercise.sessionId) });
-          toast.success(`Copied to ${targets.length} set${targets.length === 1 ? "" : "s"}`);
+    toast.info(
+      `Copy ${display(set.weight)} ${unit} × ${set.reps} to remaining sets?`,
+      {
+        action: {
+          label: "Copy",
+          onClick: async () => {
+            await Promise.all(
+              targets.map((t) =>
+                api(`/api/set-logs/${t.id}`, {
+                  method: "PUT",
+                  body: JSON.stringify({ weight: set.weight, reps: set.reps }),
+                }),
+              ),
+            );
+            queryClient.invalidateQueries({
+              queryKey: qk.session(sessionExercise.sessionId),
+            });
+            toast.success(
+              `Copied to ${targets.length} set${targets.length === 1 ? "" : "s"}`,
+            );
+          },
         },
       },
-    });
+    );
   }
 
   async function onAddSet() {
@@ -139,7 +164,9 @@ export function ExerciseCard({
         reps: last?.reps ?? prevTop?.reps ?? fallback?.reps ?? 0,
       }),
     });
-    queryClient.invalidateQueries({ queryKey: qk.session(sessionExercise.sessionId) });
+    queryClient.invalidateQueries({
+      queryKey: qk.session(sessionExercise.sessionId),
+    });
   }
 
   return (
@@ -162,7 +189,11 @@ export function ExerciseCard({
           </button>
         )}
         {sessionExercise.exercise && (
-          <ExerciseThumb ex={sessionExercise.exercise} size={40} onClick={goDetails} />
+          <ExerciseThumb
+            ex={sessionExercise.exercise}
+            size={40}
+            onClick={goDetails}
+          />
         )}
 
         <button
@@ -179,12 +210,16 @@ export function ExerciseCard({
             </span>
           </span>
           {subtitle && (
-            <span className="block text-sm text-[var(--text-muted)] truncate">{subtitle}</span>
+            <span className="block text-sm text-[var(--text-muted)] truncate">
+              {subtitle}
+            </span>
           )}
         </button>
 
         {inGroup && (
-          <Badge tone="accent">{startsRest ? "Superset" : "Superset · no rest"}</Badge>
+          <Badge tone="accent">
+            {startsRest ? "Superset" : "Superset · no rest"}
+          </Badge>
         )}
 
         <button
@@ -193,9 +228,28 @@ export function ExerciseCard({
           aria-label={`Rest ${mmss(sessionExercise.restSec * 1000)} — edit`}
           className="inline-flex shrink-0 items-center gap-1.5 min-h-9 px-3 rounded-full border border-[var(--border)] bg-[var(--surface)] text-sm font-semibold text-[var(--text)] tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
         >
-          <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" className="text-[var(--text-muted)]">
-            <circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" strokeWidth="2" />
-            <path d="M12 9v4l2.5 1.5M9 2h6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          <svg
+            viewBox="0 0 24 24"
+            width="15"
+            height="15"
+            aria-hidden="true"
+            className="text-[var(--text-muted)]"
+          >
+            <circle
+              cx="12"
+              cy="13"
+              r="8"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            />
+            <path
+              d="M12 9v4l2.5 1.5M9 2h6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
           </svg>
           {mmss(sessionExercise.restSec * 1000)}
         </button>
@@ -207,8 +261,12 @@ export function ExerciseCard({
           onViewDetails={goDetails}
           onSuperset={() => toast.info("Supersets are coming soon")}
           onRemove={async () => {
-            await api(`/api/session-exercises/${sessionExercise.id}`, { method: "DELETE" });
-            queryClient.invalidateQueries({ queryKey: qk.session(sessionExercise.sessionId) });
+            await api(`/api/session-exercises/${sessionExercise.id}`, {
+              method: "DELETE",
+            });
+            queryClient.invalidateQueries({
+              queryKey: qk.session(sessionExercise.sessionId),
+            });
           }}
         />
       </div>
@@ -220,7 +278,9 @@ export function ExerciseCard({
             method: "POST",
             body: JSON.stringify({ exerciseId: newId }),
           });
-          queryClient.invalidateQueries({ queryKey: qk.session(sessionExercise.sessionId) });
+          queryClient.invalidateQueries({
+            queryKey: qk.session(sessionExercise.sessionId),
+          });
         }}
         open={showReplace}
         onOpenChange={setShowReplace}
@@ -234,7 +294,9 @@ export function ExerciseCard({
             method: "PUT",
             body: JSON.stringify({ restSec: sec }),
           });
-          queryClient.invalidateQueries({ queryKey: qk.session(sessionExercise.sessionId) });
+          queryClient.invalidateQueries({
+            queryKey: qk.session(sessionExercise.sessionId),
+          });
         }}
         onClose={() => setShowRest(false)}
       />
@@ -282,7 +344,9 @@ export function ExerciseCard({
         + Add set
       </button>
 
-      <PlatesPanel topWeight={sets.reduce((m, s) => Math.max(m, s.weight), 0)} />
+      <PlatesPanel
+        topWeight={sets.reduce((m, s) => Math.max(m, s.weight), 0)}
+      />
     </section>
   );
 }
@@ -348,13 +412,28 @@ export function HeaderMenu({
             aria-label="Exercise options"
             className="absolute right-0 top-full mt-1 z-50 min-w-[220px] py-1 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-lg)] overflow-hidden"
           >
-            <button type="button" role="menuitem" onClick={() => run(onReplace)} className={item}>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => run(onReplace)}
+              className={item}
+            >
               Replace exercise
             </button>
-            <button type="button" role="menuitem" onClick={() => run(onViewDetails)} className={item}>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => run(onViewDetails)}
+              className={item}
+            >
               View details
             </button>
-            <button type="button" role="menuitem" onClick={() => run(onSuperset)} className={item}>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => run(onSuperset)}
+              className={item}
+            >
               {/* TODO: #16 superset — stubbed until grouping logic lands */}
               Make superset with next
             </button>
