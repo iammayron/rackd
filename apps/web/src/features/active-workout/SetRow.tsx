@@ -76,6 +76,23 @@ export function SetRow({
     }
   }, [editing]);
 
+  // Off-screen input focused synchronously inside the open tap (below). Mobile
+  // browsers only raise the soft keyboard for a focus() that happens within a
+  // user gesture; the sheet's real input mounts a tick later, too late to
+  // qualify. Warming the keyboard here lets SetValueSheet hand focus to the
+  // real field without the keyboard ever closing.
+  const warmupRef = useRef<HTMLInputElement>(null);
+
+  /** Open a value editor, keeping the mobile keyboard up across the sheet mount. */
+  function openEditor(field: "weight" | "reps") {
+    const warm = warmupRef.current;
+    if (warm) {
+      warm.inputMode = field === "weight" ? "decimal" : "numeric";
+      warm.focus({ preventScroll: true });
+    }
+    setEditing(field);
+  }
+
   // While our own write is in flight we don't overwrite local state from the
   // query — otherwise the echo (our write coming back through the subscription)
   // could clobber the value we just committed (write→subscribe loop).
@@ -169,7 +186,7 @@ export function SetRow({
 
       <button
         type="button"
-        onClick={() => setEditing("weight")}
+        onClick={() => openEditor("weight")}
         aria-label={`Set ${data.order} weight${weight ? ` ${weight} ${unit}` : ""}, tap to edit`}
         aria-haspopup="dialog"
         className={CELL}
@@ -183,7 +200,7 @@ export function SetRow({
 
       <button
         type="button"
-        onClick={() => setEditing("reps")}
+        onClick={() => openEditor("reps")}
         aria-label={`Set ${data.order} reps${reps ? ` ${reps}` : ""}, tap to edit`}
         aria-haspopup="dialog"
         className={CELL}
@@ -211,6 +228,17 @@ export function SetRow({
       >
         {rpe != null ? rpe : "RPE"}
       </button>
+
+      {/* Hidden keyboard primer — see openEditor. Off-screen + non-interactive,
+          focused only programmatically to keep the soft keyboard up on mobile. */}
+      <input
+        ref={warmupRef}
+        tabIndex={-1}
+        aria-hidden="true"
+        inputMode="decimal"
+        className="pointer-events-none fixed top-0 left-0 h-px w-px opacity-0"
+        style={{ fontSize: 16 }}
+      />
 
       <SetValueSheet
         open={editing === "weight"}

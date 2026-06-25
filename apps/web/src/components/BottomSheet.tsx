@@ -34,17 +34,51 @@ export function BottomSheet({
   const panelRef = useRef<HTMLDivElement>(null);
   const [dragY, setDragY] = useState(0);
   const dragStart = useRef<number | null>(null);
+  // Height the on-screen keyboard overlaps into the layout viewport, so the
+  // sheet can sit above it instead of being hidden behind it (see effect below).
+  const [kbInset, setKbInset] = useState(0);
 
   // Accessible dialog: focus the sheet on open, close on Escape.
   useEffect(() => {
     if (!open) return;
-    panelRef.current?.focus();
+    // Pull focus into the dialog (a11y) only as a deferred fallback: if the
+    // content already focused something (e.g. an input), leave it — stealing
+    // focus to the panel here would blur the field and dismiss the mobile
+    // keyboard. Escape still works via the window listener regardless.
+    const id = requestAnimationFrame(() => {
+      const panel = panelRef.current;
+      if (panel && !panel.contains(document.activeElement)) {
+        panel.focus({ preventScroll: true });
+      }
+    });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      cancelAnimationFrame(id);
+      window.removeEventListener("keydown", onKey);
+    };
   }, [open, onClose]);
+
+  // Lift the sheet above the on-screen keyboard. A position:fixed sheet stays
+  // pinned to the layout viewport, so the keyboard covers it; the VisualViewport
+  // API reports how much the keyboard shrank the visible area, which we apply as
+  // a bottom offset on the panel.
+  useEffect(() => {
+    if (!open) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setKbInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      setKbInset(0);
+    };
+  }, [open]);
 
   // Reset drag offset whenever the sheet (re)opens.
   useEffect(() => {
@@ -86,8 +120,11 @@ export function BottomSheet({
         aria-label={title}
         className="rk-squircle-corners relative w-[min(440px,100%)] max-h-[88vh] flex flex-col overflow-hidden bg-[var(--bg)] rounded-t-[22px] shadow-[var(--shadow-lg)] outline-none rk-sheet-up"
         style={{
+          marginBottom: kbInset || undefined,
           transform: dragY ? `translateY(${dragY}px)` : undefined,
-          transition: dragging ? "none" : "transform var(--dur) var(--ease-out)",
+          transition: dragging
+            ? "none"
+            : "transform var(--dur) var(--ease-out), margin-bottom var(--dur) var(--ease-out)",
         }}
       >
         <div

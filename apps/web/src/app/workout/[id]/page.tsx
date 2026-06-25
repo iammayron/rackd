@@ -290,9 +290,11 @@ export default function WorkoutPage() {
     const sb = saveBack;
     if (!sb) return;
     if (target === "here" && sb.programDayId) {
+      // Fork keeps the original name (no "(copy)") — it's this program's private
+      // copy of the routine, not a user-visible duplicate.
       const { id: copyId } = await api<{ id: string }>(
         `/api/routines/${sb.routineId}/duplicate`,
-        { method: "POST" },
+        { method: "POST", body: JSON.stringify({ name: sb.routineName }) },
       );
       if (copyId) {
         await api(`/api/program-days/${sb.programDayId}`, {
