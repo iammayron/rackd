@@ -25,7 +25,7 @@ interface SessionLike {
 const DAY_MS = 86_400_000;
 
 /** Local-midnight day index for an epoch ms — consecutive days differ by 1. */
-function dayIndex(ms: number): number {
+export function dayIndex(ms: number): number {
   return Math.floor(new Date(ms).setHours(0, 0, 0, 0) / DAY_MS);
 }
 
