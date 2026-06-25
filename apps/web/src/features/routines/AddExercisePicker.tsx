@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query";
 import { ExerciseThumb } from "@/components/ExerciseMedia";
+import { BottomSheet } from "@/components/BottomSheet";
 
 interface ExerciseRow {
   id: string;
@@ -14,12 +15,21 @@ interface ExerciseRow {
   thumbnailUrl?: string;
 }
 
+const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
 /**
- * "+ Add exercise" trigger that opens a full-screen modal with search.
- * Stays open after a pick (multi-add) and flashes the chosen row; calls
- * onPick(exerciseId) each time. Used by the routine editor and active workout.
+ * "+ Add exercise" trigger that opens a bottom sheet with search. Multi-add:
+ * stays open after a pick and flashes the chosen row, calling onPick(exerciseId)
+ * each time. Used by the routine editor and active workout. (Sibling of
+ * {@link ReplaceExercisePicker}, which is single-pick.) Renders inside the
+ * shared {@link BottomSheet} so it sits above the keyboard and clears the
+ * status-bar safe area instead of taking over the whole screen.
  */
-export function AddExercisePicker({ onPick }: { onPick: (exerciseId: string) => void }) {
+export function AddExercisePicker({
+  onPick,
+}: {
+  onPick: (exerciseId: string) => void;
+}) {
   const { data: exercises = [] } = useQuery({
     queryKey: qk.exercises,
     queryFn: () => api<ExerciseRow[]>("/api/exercises"),
@@ -37,6 +47,11 @@ export function AddExercisePicker({ onPick }: { onPick: (exerciseId: string) => 
     );
   }, [exercises, search]);
 
+  function close() {
+    setOpen(false);
+    setSearch("");
+  }
+
   function pick(id: string) {
     onPick(id);
     setAdded(id);
@@ -53,49 +68,82 @@ export function AddExercisePicker({ onPick }: { onPick: (exerciseId: string) => 
         + Add exercise
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]">
-          <header className="flex items-center gap-2 p-4 border-b border-[var(--border)]">
-            <input
-              autoFocus
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search exercises…"
-              className="flex-1 min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-            />
+      <BottomSheet open={open} onClose={close}>
+        {/* Sticky header (title + close + search) so the list scrolls under it. */}
+        <div className="sticky top-0 z-10 -mx-4 px-4 pb-3 bg-[var(--bg)]">
+          <div className="flex items-center gap-3">
+            <h2 className="flex-1 text-[17px] font-extrabold">Add exercise</h2>
             <button
               type="button"
-              onClick={() => {
-                setOpen(false);
-                setSearch("");
-              }}
-              className="min-h-11 px-4 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-lg font-semibold"
+              onClick={close}
+              aria-label="Done"
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-[var(--surface-2)] text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             >
-              Done
+              ✕
             </button>
-          </header>
+          </div>
 
-          <ul className="list-none p-4 m-0 flex-1 overflow-y-auto">
-            {filtered.map((ex) => (
-              <li key={ex.id}>
-                <button
-                  type="button"
-                  onClick={() => pick(ex.id)}
-                  className={`w-full text-left flex items-center gap-3 min-h-12 py-2 px-3 mb-2 rounded-lg border border-[var(--border)] ${
-                    added === ex.id ? "bg-[var(--success)] text-[#06231a]" : "bg-[var(--surface)] text-[var(--text)]"
-                  }`}
-                >
-                  <ExerciseThumb ex={ex} size={40} />
-                  <span className="font-semibold">{ex.name}</span>
-                  <span className="ms-auto text-sm text-[var(--text-muted)]">
-                    {added === ex.id ? "added ✓" : `${ex.primaryMuscle} · ${ex.equipment}`}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <label className="sr-only" htmlFor="add-search">
+            Search the library
+          </label>
+          <input
+            id="add-search"
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search exercises…"
+            className="mt-3 w-full min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+          />
         </div>
-      )}
+
+        {filtered.length === 0 ? (
+          <p className="text-sm text-[var(--text-muted)] py-4">
+            {search.trim()
+              ? `Nothing in the library matches “${search.trim()}”.`
+              : "No exercises in the library yet."}
+          </p>
+        ) : (
+          <ul className="list-none p-0 m-0 flex flex-col gap-2">
+            {filtered.map((ex) => {
+              const on = added === ex.id;
+              const subtitle = ex.equipment
+                ? `${cap(ex.primaryMuscle)} · ${cap(ex.equipment)}`
+                : cap(ex.primaryMuscle);
+              return (
+                <li key={ex.id}>
+                  <button
+                    type="button"
+                    onClick={() => pick(ex.id)}
+                    aria-label={`Add ${ex.name}`}
+                    className={`w-full text-left flex items-center gap-3 p-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-[var(--accent)] ${
+                      on
+                        ? "bg-[var(--success)] text-[#06231a] border-[var(--success)]"
+                        : "bg-[var(--surface)] text-[var(--text)] border-[var(--border)]"
+                    }`}
+                  >
+                    <ExerciseThumb ex={ex} size={44} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-bold truncate">
+                        {ex.name}
+                      </span>
+                      <span
+                        className={`block text-sm truncate ${on ? "text-[#06231a]" : "text-[var(--text-muted)]"}`}
+                      >
+                        {subtitle}
+                      </span>
+                    </span>
+                    <span
+                      className={`ms-2 shrink-0 text-sm font-semibold ${on ? "text-[#06231a]" : "text-[var(--accent)]"}`}
+                    >
+                      {on ? "Added ✓" : "Add"}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </BottomSheet>
     </>
   );
 }

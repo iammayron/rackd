@@ -172,6 +172,8 @@ export function ExerciseCard({
   return (
     <section
       data-sex={sessionExercise.id}
+      // scroll-margin so auto-scroll (#18) lands the card below the sticky header
+      style={{ scrollMarginTop: "calc(var(--safe-top) + 72px)" }}
       className={`bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 ${
         startsRest ? "mb-4" : "mb-1"
       } ${dragging ? "opacity-60 ring-2 ring-[var(--accent)]" : ""}`}
