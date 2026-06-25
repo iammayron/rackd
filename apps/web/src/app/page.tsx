@@ -55,6 +55,14 @@ interface ProgramDayRow {
   weekday?: number;
 }
 
+interface SessionRow {
+  id: string;
+  name: string;
+  routineId?: string | null;
+  startedAt: number;
+  endedAt?: number | null;
+}
+
 const EYEBROW =
   "text-[var(--text-muted)] text-xs font-semibold uppercase tracking-[0.06em]";
 
@@ -83,6 +91,13 @@ export default function Home() {
     queryKey: qk.activeSession,
     queryFn: () =>
       api<{ id: string; name: string } | null>("/api/sessions/active"),
+  });
+
+  // Finished sessions (newest first) — used to flip the hero into a "done"
+  // state once today's scheduled workout has already been completed.
+  const { data: finished = [] } = useQuery({
+    queryKey: qk.sessions,
+    queryFn: () => api<SessionRow[]>("/api/sessions"),
   });
 
   // The active program (if any) drives "today"; otherwise fall back to a
@@ -138,6 +153,18 @@ export default function Home() {
     : fallbackToday?.name;
   const nextName = routineName(nextSlot?.routineId);
   const isRest = !heroRoutineId;
+
+  // Today's scheduled routine already finished today → celebrate instead of
+  // offering to start it again. Match the routine and the calendar day.
+  const completedToday = useMemo(() => {
+    if (!heroRoutineId) return undefined;
+    const dayStart = new Date();
+    dayStart.setHours(0, 0, 0, 0);
+    const since = dayStart.getTime();
+    return finished.find(
+      (s) => s.routineId === heroRoutineId && (s.endedAt ?? 0) >= since,
+    );
+  }, [finished, heroRoutineId]);
   const canSkip =
     !!activeProgram &&
     (activeProgram.scheduleMode ?? "rotation") === "rotation" &&
@@ -342,6 +369,43 @@ export default function Home() {
             >
               Create program
             </Button>
+          </Card>
+        ) : completedToday ? (
+          <Card variant="accent" style={{ marginBottom: 24 }}>
+            <div className="text-xs font-bold uppercase tracking-[0.06em] opacity-85 whitespace-nowrap">
+              Today · done
+            </div>
+            <div className="mt-2 flex items-baseline gap-2 text-3xl font-extrabold leading-[1.05]">
+              Crushed it
+              <span aria-hidden="true">💪</span>
+            </div>
+            <div className="mt-1.5 text-sm font-semibold text-white/85">
+              {heroName} complete
+              {nextName ? ` · Next up: ${nextName}` : ""}
+            </div>
+            <Button
+              variant="secondary"
+              size="lg"
+              fullWidth
+              onClick={() =>
+                router.push(`/workout/${completedToday.id}/summary`)
+              }
+              style={{
+                marginTop: 18,
+                background: "#fff",
+                color: "var(--accent)",
+                border: "none",
+              }}
+            >
+              See your summary ›
+            </Button>
+            <button
+              type="button"
+              onClick={() => setQuickOpen((v) => !v)}
+              className="block w-full mt-2.5 py-1.5 bg-transparent border-none cursor-pointer text-sm font-bold text-white/90 text-center"
+            >
+              Train again ›
+            </button>
           </Card>
         ) : !isRest ? (
           <Card variant="accent" style={{ marginBottom: 24 }}>
