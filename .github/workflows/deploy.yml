@@ -15,19 +15,25 @@ jobs:
       - uses: actions/checkout@v4
 
       # Apply schema changes to prod BEFORE deploying, so the schema the new
-      # code expects exists before it serves traffic. We use drizzle-kit
-      # `migrate` (non-interactive) — NOT `push`. `push` renders interactive
-      # confirmation prompts; in CI's no-TTY shell the prompt reads `undefined`
-      # and the command crashes (prints "undefined", exits 1). `migrate` only
-      # applies committed SQL migrations, deterministically.
+      # code expects exists before it serves traffic.
       #
-      # BASELINE.sql runs first and is idempotent: it seeds drizzle's journal
-      # so 0000_init + 0001 (originally applied via `push`, which records nothing
-      # in the journal) are treated as already-applied, and back-fills
-      # activated_at if missing. Without it, migrate would re-run 0000_init's
-      # CREATE TABLE against the existing prod tables and fail. Safe to re-run
-      # every deploy. Needs the DATABASE_URL repo secret (SESSION pooler URL,
-      # port 5432). A failed run fails the job and blocks the deploy.
+      # We run drizzle-orm's migrator directly (`pnpm db:deploy` →
+      # scripts/migrate.mjs), NOT a drizzle-kit CLI command:
+      #   - `push` is interactive — in CI's no-TTY shell its prompt crashes
+      #     (prints "undefined", exits 1).
+      #   - `migrate` (CLI) builds its connection with sslmode=require, which pg
+      #     now upgrades to verify-full; Supabase's cert chain isn't in Node's
+      #     default CA bundle, so the handshake fails and the CLI also swallows
+      #     it as "undefined". migrate.mjs owns the pool with relaxed TLS
+      #     (mirroring db.ts) and only applies committed SQL migrations.
+      #
+      # BASELINE.sql runs first and is idempotent: it seeds drizzle's journal so
+      # 0000_init + 0001 (originally applied via `push`, which records nothing in
+      # the journal) are treated as already-applied, and back-fills activated_at
+      # if missing. Without it, migrate would re-run 0000_init's CREATE TABLE
+      # against the existing prod tables and fail. Safe to re-run every deploy.
+      # Needs the DATABASE_URL repo secret (SESSION pooler URL, port 5432). A
+      # failed run fails the job and blocks the deploy.
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -38,7 +44,7 @@ jobs:
       - name: Apply DB schema
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/drizzle/BASELINE.sql
-          pnpm --filter @rackd/db exec drizzle-kit migrate
+          pnpm --filter @rackd/db run db:deploy
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
