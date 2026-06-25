@@ -49,7 +49,10 @@ async function ownerOf(table: any, id: string): Promise<string> {
 }
 
 /** Insert one row (id auto-filled) and return it. */
-async function insertRow(table: any, values: Record<string, unknown>): Promise<any> {
+async function insertRow(
+  table: any,
+  values: Record<string, unknown>,
+): Promise<any> {
   const rows = await db
     .insert(table)
     .values({ id: newId(), ...values })
@@ -83,33 +86,56 @@ export async function addSessionExercise(args: {
   order: number;
   restSec?: number;
 }) {
+  const ownerId = await ownerOf(t.sessions, args.sessionId);
+  // An exercise added mid-workout inherits the lifter's default rest, not a
+  // hardcoded 2:00 — match what a fresh routine exercise gets.
+  const restSec =
+    args.restSec ?? (await getProfile(ownerId)).defaultRestSec ?? 120;
   return insertRow(t.sessionExercises, {
-    ownerId: await ownerOf(t.sessions, args.sessionId),
+    ownerId,
     sessionId: args.sessionId,
     exerciseId: args.exerciseId,
     order: args.order,
-    restSec: args.restSec ?? 120,
+    restSec,
   });
 }
 
 export async function setSessionExerciseOrder(id: string, order: number) {
-  await db.update(t.sessionExercises).set({ order }).where(eq(t.sessionExercises.id, id));
+  await db
+    .update(t.sessionExercises)
+    .set({ order })
+    .where(eq(t.sessionExercises.id, id));
 }
 
 /** Patch mutable fields of a live session exercise (currently its rest time). */
-export async function updateSessionExercise(id: string, patch: { restSec?: number }) {
+export async function updateSessionExercise(
+  id: string,
+  patch: { restSec?: number },
+) {
   if (patch.restSec === undefined) return;
-  await db.update(t.sessionExercises).set({ restSec: patch.restSec }).where(eq(t.sessionExercises.id, id));
+  await db
+    .update(t.sessionExercises)
+    .set({ restSec: patch.restSec })
+    .where(eq(t.sessionExercises.id, id));
 }
 
 export async function setRoutineExerciseOrder(id: string, order: number) {
-  await db.update(t.routineExercises).set({ order }).where(eq(t.routineExercises.id, id));
+  await db
+    .update(t.routineExercises)
+    .set({ order })
+    .where(eq(t.routineExercises.id, id));
 }
 
 /** Patch mutable fields of a routine exercise (currently its rest time). */
-export async function updateRoutineExercise(id: string, patch: { restSec?: number }) {
+export async function updateRoutineExercise(
+  id: string,
+  patch: { restSec?: number },
+) {
   if (patch.restSec === undefined) return;
-  await db.update(t.routineExercises).set({ restSec: patch.restSec }).where(eq(t.routineExercises.id, id));
+  await db
+    .update(t.routineExercises)
+    .set({ restSec: patch.restSec })
+    .where(eq(t.routineExercises.id, id));
 }
 
 /**
@@ -120,7 +146,10 @@ export async function updateRoutineExercise(id: string, patch: { restSec?: numbe
 export async function reorderSessionExercises(orderedIds: string[]) {
   await Promise.all(
     orderedIds.map((id, i) =>
-      db.update(t.sessionExercises).set({ order: i + 1 }).where(eq(t.sessionExercises.id, id)),
+      db
+        .update(t.sessionExercises)
+        .set({ order: i + 1 })
+        .where(eq(t.sessionExercises.id, id)),
     ),
   );
 }
@@ -129,12 +158,18 @@ export async function reorderSessionExercises(orderedIds: string[]) {
 export async function reorderRoutineExercises(orderedIds: string[]) {
   await Promise.all(
     orderedIds.map((id, i) =>
-      db.update(t.routineExercises).set({ order: i + 1 }).where(eq(t.routineExercises.id, id)),
+      db
+        .update(t.routineExercises)
+        .set({ order: i + 1 })
+        .where(eq(t.routineExercises.id, id)),
     ),
   );
 }
 
-export async function setRoutineExerciseSuperset(id: string, group: number | undefined) {
+export async function setRoutineExerciseSuperset(
+  id: string,
+  group: number | undefined,
+) {
   await db
     .update(t.routineExercises)
     .set({ supersetGroup: group ?? null })
@@ -145,7 +180,10 @@ export async function setRoutineExerciseSuperset(id: string, group: number | und
  * Swap which library exercise a routine slot points at, keeping its order,
  * superset link, rest and prescribed sets.
  */
-export async function replaceRoutineExercise(id: string, newExerciseId: string) {
+export async function replaceRoutineExercise(
+  id: string,
+  newExerciseId: string,
+) {
   await db
     .update(t.routineExercises)
     .set({ exerciseId: newExerciseId })
@@ -153,7 +191,10 @@ export async function replaceRoutineExercise(id: string, newExerciseId: string) 
 }
 
 /** Swap which library exercise a live session slot points at, keeping order/rest. */
-export async function replaceSessionExercise(id: string, newExerciseId: string) {
+export async function replaceSessionExercise(
+  id: string,
+  newExerciseId: string,
+) {
   await db
     .update(t.sessionExercises)
     .set({ exerciseId: newExerciseId })
@@ -162,7 +203,9 @@ export async function replaceSessionExercise(id: string, newExerciseId: string) 
 
 /** Remove an exercise from a live session, including its logged sets (FK cascade). */
 export async function removeSessionExercise(sessionExerciseId: string) {
-  await db.delete(t.sessionExercises).where(eq(t.sessionExercises.id, sessionExerciseId));
+  await db
+    .delete(t.sessionExercises)
+    .where(eq(t.sessionExercises.id, sessionExerciseId));
 }
 
 /** Add an empty (uncompleted) set row to a session exercise. */
@@ -224,8 +267,15 @@ export async function logSet(args: {
 }
 
 export async function finishSession(sessionId: string, now: number) {
-  await db.update(t.sessions).set({ endedAt: now }).where(eq(t.sessions.id, sessionId));
-  const [session] = await db.select().from(t.sessions).where(eq(t.sessions.id, sessionId)).limit(1);
+  await db
+    .update(t.sessions)
+    .set({ endedAt: now })
+    .where(eq(t.sessions.id, sessionId));
+  const [session] = await db
+    .select()
+    .from(t.sessions)
+    .where(eq(t.sessions.id, sessionId))
+    .limit(1);
   if (session) {
     // Carry an in-workout rest edit back to the routine for the next run.
     await syncRestToRoutine(sessionId);
@@ -241,7 +291,11 @@ export async function finishSession(sessionId: string, now: number) {
  * Pairs session exercises to routine slots by exerciseId, using order for dupes.
  */
 async function syncRestToRoutine(sessionId: string) {
-  const [session] = await db.select().from(t.sessions).where(eq(t.sessions.id, sessionId)).limit(1);
+  const [session] = await db
+    .select()
+    .from(t.sessions)
+    .where(eq(t.sessions.id, sessionId))
+    .limit(1);
   if (!session?.routineId) return;
 
   const routineExs = await db
@@ -262,16 +316,22 @@ async function syncRestToRoutine(sessionId: string) {
     list.push(re);
     slotsByExId.set(re.exerciseId, list);
   }
-  for (const list of slotsByExId.values()) list.sort((a, b) => a.order - b.order);
+  for (const list of slotsByExId.values())
+    list.sort((a, b) => a.order - b.order);
 
   const claimed = new Set<string>();
   const orderedSes = [...sessionExs].sort((a, b) => a.order - b.order);
   for (const se of orderedSes) {
-    const slot = slotsByExId.get(se.exerciseId)?.find((re) => !claimed.has(re.id));
+    const slot = slotsByExId
+      .get(se.exerciseId)
+      ?.find((re) => !claimed.has(re.id));
     if (!slot) continue;
     claimed.add(slot.id);
     if (slot.restSec !== se.restSec) {
-      await db.update(t.routineExercises).set({ restSec: se.restSec }).where(eq(t.routineExercises.id, slot.id));
+      await db
+        .update(t.routineExercises)
+        .set({ restSec: se.restSec })
+        .where(eq(t.routineExercises.id, slot.id));
     }
   }
 }
@@ -301,7 +361,12 @@ export async function detectAndRecordPRs(args: {
     const sets = await db
       .select()
       .from(t.setLogs)
-      .where(and(eq(t.setLogs.sessionExerciseId, se.id), eq(t.setLogs.completed, true)));
+      .where(
+        and(
+          eq(t.setLogs.sessionExerciseId, se.id),
+          eq(t.setLogs.completed, true),
+        ),
+      );
     if (sets.length === 0) continue;
 
     let best1rmSet = sets[0]!;
@@ -320,7 +385,12 @@ export async function detectAndRecordPRs(args: {
     const [prior1rm] = await db
       .select()
       .from(t.personalRecords)
-      .where(and(eq(t.personalRecords.exerciseId, se.exerciseId), eq(t.personalRecords.type, "1rm")))
+      .where(
+        and(
+          eq(t.personalRecords.exerciseId, se.exerciseId),
+          eq(t.personalRecords.type, "1rm"),
+        ),
+      )
       .orderBy(desc(t.personalRecords.value))
       .limit(1);
     if (best1rm > 0 && (!prior1rm || best1rm > prior1rm.value)) {
@@ -332,17 +402,28 @@ export async function detectAndRecordPRs(args: {
         sessionId: args.sessionId,
         achievedAt: args.now,
       });
-      await db.update(t.setLogs).set({ isPr: true }).where(eq(t.setLogs.id, best1rmSet.id));
+      await db
+        .update(t.setLogs)
+        .set({ isPr: true })
+        .where(eq(t.setLogs.id, best1rmSet.id));
       found.push({ exerciseId: se.exerciseId, type: "1rm", value: best1rm });
     }
 
     const [priorW] = await db
       .select()
       .from(t.personalRecords)
-      .where(and(eq(t.personalRecords.exerciseId, se.exerciseId), eq(t.personalRecords.type, "weight")))
+      .where(
+        and(
+          eq(t.personalRecords.exerciseId, se.exerciseId),
+          eq(t.personalRecords.type, "weight"),
+        ),
+      )
       .orderBy(desc(t.personalRecords.value))
       .limit(1);
-    if (topWeightSet.weight > 0 && (!priorW || topWeightSet.weight > priorW.value)) {
+    if (
+      topWeightSet.weight > 0 &&
+      (!priorW || topWeightSet.weight > priorW.value)
+    ) {
       await insertRow(t.personalRecords, {
         ownerId: args.ownerId,
         exerciseId: se.exerciseId,
@@ -351,8 +432,15 @@ export async function detectAndRecordPRs(args: {
         sessionId: args.sessionId,
         achievedAt: args.now,
       });
-      await db.update(t.setLogs).set({ isPr: true }).where(eq(t.setLogs.id, topWeightSet.id));
-      found.push({ exerciseId: se.exerciseId, type: "weight", value: topWeightSet.weight });
+      await db
+        .update(t.setLogs)
+        .set({ isPr: true })
+        .where(eq(t.setLogs.id, topWeightSet.id));
+      found.push({
+        exerciseId: se.exerciseId,
+        type: "weight",
+        value: topWeightSet.weight,
+      });
     }
   }
   return found;
@@ -391,7 +479,11 @@ export async function addBodyWeightLog(args: {
 }
 
 /** Body-weight entries within [from, to] epoch ms (inclusive), oldest→newest. */
-export async function bodyWeightLogsInRange(args: { ownerId: string; from: number; to: number }) {
+export async function bodyWeightLogsInRange(args: {
+  ownerId: string;
+  from: number;
+  to: number;
+}) {
   return db
     .select()
     .from(t.bodyWeightLogs)
@@ -451,20 +543,31 @@ export async function updateProfile(ownerId: string, patch: ProfilePatch) {
   if (patch.displayName !== undefined) set.displayName = patch.displayName;
   if (patch.photoUrl !== undefined) set.photoUrl = patch.photoUrl;
   if (patch.heightCm !== undefined) set.heightCm = patch.heightCm;
-  if (patch.currentWeightKg !== undefined) set.currentWeightKg = patch.currentWeightKg;
+  if (patch.currentWeightKg !== undefined)
+    set.currentWeightKg = patch.currentWeightKg;
   if (patch.goalWeightKg !== undefined) set.goalWeightKg = patch.goalWeightKg;
   if (patch.trainingGoal !== undefined) set.trainingGoal = patch.trainingGoal;
-  if (patch.unitPreference !== undefined) set.unitPreference = patch.unitPreference;
-  if (patch.defaultRestSec !== undefined) set.defaultRestSec = patch.defaultRestSec;
+  if (patch.unitPreference !== undefined)
+    set.unitPreference = patch.unitPreference;
+  if (patch.defaultRestSec !== undefined)
+    set.defaultRestSec = patch.defaultRestSec;
   if (patch.defaultSets !== undefined) set.defaultSets = patch.defaultSets;
   if (patch.defaultReps !== undefined) set.defaultReps = patch.defaultReps;
   if (Object.keys(set).length === 0) return profile;
-  const [row] = await db.update(t.userProfile).set(set).where(eq(t.userProfile.id, profile.id)).returning();
+  const [row] = await db
+    .update(t.userProfile)
+    .set(set)
+    .where(eq(t.userProfile.id, profile.id))
+    .returning();
   return row;
 }
 
 /** Log a body-weight entry and mirror it onto the profile's currentWeightKg. */
-export async function logBodyWeight(args: { ownerId: string; weightKg: number; loggedAt: number }) {
+export async function logBodyWeight(args: {
+  ownerId: string;
+  weightKg: number;
+  loggedAt: number;
+}) {
   const log = await addBodyWeightLog(args);
   await updateProfile(args.ownerId, { currentWeightKg: args.weightKg });
   return log;
@@ -479,7 +582,9 @@ export interface ExerciseStatPoint {
 }
 
 /** Per-session stats for one exercise across finished sessions, oldest→newest. */
-export async function exerciseStats(exerciseId: string): Promise<ExerciseStatPoint[]> {
+export async function exerciseStats(
+  exerciseId: string,
+): Promise<ExerciseStatPoint[]> {
   const ses = await db
     .select()
     .from(t.sessionExercises)
@@ -496,7 +601,12 @@ export async function exerciseStats(exerciseId: string): Promise<ExerciseStatPoi
     const sets = await db
       .select()
       .from(t.setLogs)
-      .where(and(eq(t.setLogs.sessionExerciseId, se.id), eq(t.setLogs.completed, true)));
+      .where(
+        and(
+          eq(t.setLogs.sessionExerciseId, se.id),
+          eq(t.setLogs.completed, true),
+        ),
+      );
     if (sets.length === 0) continue;
     let best1rm = 0;
     let volume = 0;
@@ -542,13 +652,21 @@ export async function renameRoutine(id: string, name: string) {
 /** Set (or clear) a routine's free-text focus/split tag (Push, Pull, Legs…). */
 export async function setRoutineCategory(id: string, category?: string) {
   const value = category?.trim() || null;
-  await db.update(t.routines).set({ category: value }).where(eq(t.routines.id, id));
+  await db
+    .update(t.routines)
+    .set({ category: value })
+    .where(eq(t.routines.id, id));
 }
 
 /** Set the weekdays a routine is scheduled for (0=Sun … 6=Sat). */
 export async function setRoutineSchedule(id: string, days: number[]) {
-  const clean = [...new Set(days)].filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
-  await db.update(t.routines).set({ scheduledDays: clean }).where(eq(t.routines.id, id));
+  const clean = [...new Set(days)].filter(
+    (d) => Number.isInteger(d) && d >= 0 && d <= 6,
+  );
+  await db
+    .update(t.routines)
+    .set({ scheduledDays: clean })
+    .where(eq(t.routines.id, id));
 }
 
 /**
@@ -595,7 +713,11 @@ export async function addRoutineExerciseWithDefaults(args: {
     restSec,
   });
   for (let i = 0; i < sets; i++) {
-    await addRoutineSet({ routineExerciseId: re.id, order: i + 1, targetReps: reps });
+    await addRoutineSet({
+      routineExerciseId: re.id,
+      order: i + 1,
+      targetReps: reps,
+    });
   }
   return re;
 }
@@ -643,7 +765,11 @@ export async function startSessionFromRoutine(args: {
   ownerId: string;
   now: number;
 }) {
-  const [routine] = await db.select().from(t.routines).where(eq(t.routines.id, args.routineId)).limit(1);
+  const [routine] = await db
+    .select()
+    .from(t.routines)
+    .where(eq(t.routines.id, args.routineId))
+    .limit(1);
   const session = await insertRow(t.sessions, {
     ownerId: args.ownerId,
     routineId: args.routineId,
@@ -696,12 +822,19 @@ export async function duplicateRoutine(args: {
   /** Explicit name for the copy; when omitted, escalates a "(copy)" suffix. */
   name?: string;
 }): Promise<string | null> {
-  const [src] = await db.select().from(t.routines).where(eq(t.routines.id, args.routineId)).limit(1);
+  const [src] = await db
+    .select()
+    .from(t.routines)
+    .where(eq(t.routines.id, args.routineId))
+    .limit(1);
   if (!src) return null;
 
   let name = args.name?.trim();
   if (!name) {
-    const existing = await db.select().from(t.routines).where(eq(t.routines.ownerId, args.ownerId));
+    const existing = await db
+      .select()
+      .from(t.routines)
+      .where(eq(t.routines.ownerId, args.ownerId));
     const names = new Set(existing.map((r) => r.name));
     name = `${src.name} (copy)`;
     for (let n = 2; names.has(name); n++) name = `${src.name} (copy ${n})`;
@@ -827,15 +960,21 @@ export async function applySessionToRoutine(args: {
       })),
     };
     oldPlan.push(entry);
-    if (!oldSetsByExerciseId.has(re.exerciseId)) oldSetsByExerciseId.set(re.exerciseId, entry.sets);
+    if (!oldSetsByExerciseId.has(re.exerciseId))
+      oldSetsByExerciseId.set(re.exerciseId, entry.sets);
   }
 
   let plan: PlanEntry[];
   if (args.mode === "everything") {
     plan = performed;
   } else if (args.mode === "numbers") {
-    const performedByExId = new Map(performed.map((p) => [p.exerciseId, p.sets]));
-    plan = oldPlan.map((o) => ({ ...o, sets: performedByExId.get(o.exerciseId) ?? o.sets }));
+    const performedByExId = new Map(
+      performed.map((p) => [p.exerciseId, p.sets]),
+    );
+    plan = oldPlan.map((o) => ({
+      ...o,
+      sets: performedByExId.get(o.exerciseId) ?? o.sets,
+    }));
   } else {
     plan = performed.map((p) => ({
       exerciseId: p.exerciseId,
@@ -847,7 +986,9 @@ export async function applySessionToRoutine(args: {
 
   const ownerId = await ownerOf(t.routines, args.routineId);
   // Replace the routine tree (routineSets cascade with their exercise).
-  await db.delete(t.routineExercises).where(eq(t.routineExercises.routineId, args.routineId));
+  await db
+    .delete(t.routineExercises)
+    .where(eq(t.routineExercises.routineId, args.routineId));
   let order = 1;
   for (const entry of plan) {
     const re = await insertRow(t.routineExercises, {
@@ -883,10 +1024,20 @@ export interface SaveBackContext {
 }
 
 /** Gather everything the finish flow needs to offer save-back. */
-export async function getSaveBackContext(sessionId: string): Promise<SaveBackContext | null> {
-  const [session] = await db.select().from(t.sessions).where(eq(t.sessions.id, sessionId)).limit(1);
+export async function getSaveBackContext(
+  sessionId: string,
+): Promise<SaveBackContext | null> {
+  const [session] = await db
+    .select()
+    .from(t.sessions)
+    .where(eq(t.sessions.id, sessionId))
+    .limit(1);
   if (!session?.routineId) return null;
-  const [routine] = await db.select().from(t.routines).where(eq(t.routines.id, session.routineId)).limit(1);
+  const [routine] = await db
+    .select()
+    .from(t.routines)
+    .where(eq(t.routines.id, session.routineId))
+    .limit(1);
   if (!routine) return null;
 
   const presEx = await db
@@ -903,7 +1054,10 @@ export async function getSaveBackContext(sessionId: string): Promise<SaveBackCon
       .orderBy(asc(t.routineSets.order));
     prescription.push({
       exerciseId: re.exerciseId,
-      sets: sets.map((s) => ({ weight: s.targetWeight ?? 0, reps: s.targetReps ?? 0 })),
+      sets: sets.map((s) => ({
+        weight: s.targetWeight ?? 0,
+        reps: s.targetReps ?? 0,
+      })),
     });
   }
 
@@ -929,12 +1083,19 @@ export async function getSaveBackContext(sessionId: string): Promise<SaveBackCon
   const actives = await db
     .select()
     .from(t.programs)
-    .where(and(eq(t.programs.ownerId, session.ownerId), eq(t.programs.active, true)));
+    .where(
+      and(eq(t.programs.ownerId, session.ownerId), eq(t.programs.active, true)),
+    );
   for (const pr of actives) {
     const [day] = await db
       .select()
       .from(t.programDays)
-      .where(and(eq(t.programDays.programId, pr.id), eq(t.programDays.routineId, session.routineId)))
+      .where(
+        and(
+          eq(t.programDays.programId, pr.id),
+          eq(t.programDays.routineId, session.routineId),
+        ),
+      )
       .limit(1);
     if (day) {
       program = { programDayId: day.id, programName: pr.name };
@@ -942,7 +1103,13 @@ export async function getSaveBackContext(sessionId: string): Promise<SaveBackCon
     }
   }
 
-  return { routineId: session.routineId, routineName: routine.name, prescription, performed, program };
+  return {
+    routineId: session.routineId,
+    routineName: routine.name,
+    prescription,
+    performed,
+    program,
+  };
 }
 
 /* ---------------------------------------------------------------------------
@@ -962,9 +1129,15 @@ export async function createProgram(args: {
     blockWeeks: args.blockWeeks,
   });
   // First/only program becomes active by default so Home always drives "today".
-  const all = await db.select().from(t.programs).where(eq(t.programs.ownerId, args.ownerId));
+  const all = await db
+    .select()
+    .from(t.programs)
+    .where(eq(t.programs.ownerId, args.ownerId));
   if (all.length === 1) {
-    await db.update(t.programs).set({ active: true }).where(eq(t.programs.id, created.id));
+    await db
+      .update(t.programs)
+      .set({ active: true })
+      .where(eq(t.programs.id, created.id));
     created.active = true;
   }
   return created;
@@ -975,12 +1148,21 @@ export async function renameProgram(id: string, name: string) {
 }
 
 /** Mark one program active (clears the flag on the owner's others). */
-export async function setProgramActive(args: { programId: string; ownerId: string }) {
-  const all = await db.select().from(t.programs).where(eq(t.programs.ownerId, args.ownerId));
+export async function setProgramActive(args: {
+  programId: string;
+  ownerId: string;
+}) {
+  const all = await db
+    .select()
+    .from(t.programs)
+    .where(eq(t.programs.ownerId, args.ownerId));
   for (const p of all) {
     const shouldBe = p.id === args.programId;
     if (!!p.active !== shouldBe) {
-      await db.update(t.programs).set({ active: shouldBe }).where(eq(t.programs.id, p.id));
+      await db
+        .update(t.programs)
+        .set({ active: shouldBe })
+        .where(eq(t.programs.id, p.id));
     }
   }
 }
@@ -988,12 +1170,18 @@ export async function setProgramActive(args: { programId: string; ownerId: strin
 /** Patch a program's schedule mode, rotation cursor, and/or block length. */
 export async function setProgramSchedule(
   id: string,
-  patch: { scheduleMode?: "rotation" | "weekly"; rotationCursor?: number; blockWeeks?: number },
+  patch: {
+    scheduleMode?: "rotation" | "weekly";
+    rotationCursor?: number;
+    blockWeeks?: number;
+  },
 ) {
   const set: Record<string, unknown> = {};
   if (patch.scheduleMode !== undefined) set.scheduleMode = patch.scheduleMode;
-  if (patch.rotationCursor !== undefined) set.rotationCursor = patch.rotationCursor;
-  if ("blockWeeks" in patch) set.blockWeeks = patch.blockWeeks ? patch.blockWeeks : null;
+  if (patch.rotationCursor !== undefined)
+    set.rotationCursor = patch.rotationCursor;
+  if ("blockWeeks" in patch)
+    set.blockWeeks = patch.blockWeeks ? patch.blockWeeks : null;
   if (Object.keys(set).length === 0) return;
   await db.update(t.programs).set(set).where(eq(t.programs.id, id));
 }
@@ -1040,7 +1228,10 @@ export async function removeProgramDay(id: string) {
 export async function reorderProgramDays(orderedIds: string[]) {
   await Promise.all(
     orderedIds.map((id, i) =>
-      db.update(t.programDays).set({ order: i + 1 }).where(eq(t.programDays.id, id)),
+      db
+        .update(t.programDays)
+        .set({ order: i + 1 })
+        .where(eq(t.programDays.id, id)),
     ),
   );
 }
@@ -1062,7 +1253,11 @@ export async function publishRoutine(args: {
   authorName: string;
   now: number;
 }) {
-  const [routine] = await db.select().from(t.routines).where(eq(t.routines.id, args.routineId)).limit(1);
+  const [routine] = await db
+    .select()
+    .from(t.routines)
+    .where(eq(t.routines.id, args.routineId))
+    .limit(1);
   if (!routine) return null;
 
   const exs = await db
@@ -1086,7 +1281,10 @@ export async function publishRoutine(args: {
     snapshot.push({
       exerciseId: ex.exerciseId,
       name: ex.name ?? "Exercise",
-      sets: sets.map((s) => ({ reps: s.targetReps ?? 0, weight: s.targetWeight ?? 0 })),
+      sets: sets.map((s) => ({
+        reps: s.targetReps ?? 0,
+        weight: s.targetWeight ?? 0,
+      })),
     });
   }
 
@@ -1113,11 +1311,20 @@ export async function cloneSharedRoutine(args: {
   shared: SharedRoutineRow;
   ownerId: string;
 }): Promise<string> {
-  const snapshot = JSON.parse(args.shared.exercisesJson) as SharedSnapshotExercise[];
-  const routine = await createRoutine({ ownerId: args.ownerId, name: args.shared.name });
+  const snapshot = JSON.parse(
+    args.shared.exercisesJson,
+  ) as SharedSnapshotExercise[];
+  const routine = await createRoutine({
+    ownerId: args.ownerId,
+    name: args.shared.name,
+  });
   for (let i = 0; i < snapshot.length; i++) {
     const ex = snapshot[i]!;
-    const re = await addRoutineExercise({ routineId: routine.id, exerciseId: ex.exerciseId, order: i + 1 });
+    const re = await addRoutineExercise({
+      routineId: routine.id,
+      exerciseId: ex.exerciseId,
+      order: i + 1,
+    });
     for (let s = 0; s < ex.sets.length; s++) {
       const set = ex.sets[s]!;
       await addRoutineSet({
@@ -1157,7 +1364,12 @@ export async function lastPerformance(args: {
 
   const candidates = seRows
     .map((se) => ({ se, session: startedById.get(se.sessionId) }))
-    .filter((c) => c.session && c.session.id !== args.excludeSessionId && c.session.endedAt != null)
+    .filter(
+      (c) =>
+        c.session &&
+        c.session.id !== args.excludeSessionId &&
+        c.session.endedAt != null,
+    )
     .sort((a, b) => (b.session!.startedAt ?? 0) - (a.session!.startedAt ?? 0));
 
   const best = candidates[0];
@@ -1166,7 +1378,12 @@ export async function lastPerformance(args: {
   const sets = await db
     .select()
     .from(t.setLogs)
-    .where(and(eq(t.setLogs.sessionExerciseId, best.se.id), eq(t.setLogs.completed, true)))
+    .where(
+      and(
+        eq(t.setLogs.sessionExerciseId, best.se.id),
+        eq(t.setLogs.completed, true),
+      ),
+    )
     .orderBy(asc(t.setLogs.order));
   if (sets.length === 0) return null;
   return sets.map((s) => ({ order: s.order, weight: s.weight, reps: s.reps }));
@@ -1221,7 +1438,10 @@ export async function savePushSubscription(args: {
 
 /** All push subscriptions (devices) for a user. */
 export async function getPushSubscriptions(ownerId: string) {
-  return db.select().from(t.pushSubscriptions).where(eq(t.pushSubscriptions.ownerId, ownerId));
+  return db
+    .select()
+    .from(t.pushSubscriptions)
+    .where(eq(t.pushSubscriptions.ownerId, ownerId));
 }
 
 /** Remove a stored subscription (e.g. the push service reported it expired). */
@@ -1254,7 +1474,12 @@ export async function reschedulePush(id: string, fireAt: number) {
   await db
     .update(t.scheduledPushes)
     .set({ fireAt })
-    .where(and(eq(t.scheduledPushes.id, id), eq(t.scheduledPushes.status, "pending")));
+    .where(
+      and(
+        eq(t.scheduledPushes.id, id),
+        eq(t.scheduledPushes.status, "pending"),
+      ),
+    );
 }
 
 /** Cancel a scheduled push (rest skipped, or fired locally in the foreground). */
@@ -1277,15 +1502,23 @@ export async function getPendingPushes(): Promise<PendingPushRow[]> {
   const rows = await db
     .select()
     .from(t.scheduledPushes)
-    .leftJoin(t.pushSubscriptions, eq(t.scheduledPushes.subscriptionId, t.pushSubscriptions.id))
+    .leftJoin(
+      t.pushSubscriptions,
+      eq(t.scheduledPushes.subscriptionId, t.pushSubscriptions.id),
+    )
     .where(eq(t.scheduledPushes.status, "pending"));
   return rows.map((r) => ({
     ...(r.scheduled_pushes as unknown as ScheduledPush),
-    subscription: (r.push_subscriptions as unknown as PushSubscriptionRecord | null) ?? null,
+    subscription:
+      (r.push_subscriptions as unknown as PushSubscriptionRecord | null) ??
+      null,
   }));
 }
 
 /** Mark a scheduled push delivered so the sender never sends it twice. */
 export async function markPushSent(id: string) {
-  await db.update(t.scheduledPushes).set({ status: "sent" }).where(eq(t.scheduledPushes.id, id));
+  await db
+    .update(t.scheduledPushes)
+    .set({ status: "sent" })
+    .where(eq(t.scheduledPushes.id, id));
 }
