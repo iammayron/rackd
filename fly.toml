@@ -1,9 +1,9 @@
-# MyFit web — Fly.io configuration
+# Rackd web — Fly.io configuration (the push worker is a separate app; see fly.push.toml)
 # Deploy: fly deploy --remote-only
 # Docs:   https://fly.io/docs/reference/configuration/
 
 app = "rackd"
-primary_region = "iad" # US East (Virginia) — change to match your Neon region
+primary_region = "iad" # US East (Virginia) — match your Supabase region
 
 [build]
   dockerfile = "apps/web/Dockerfile"

@@ -1,0 +1,22 @@
+# Rackd push sender — separate Fly app from the web app (own image).
+# One-time setup:
+#   fly apps create rackd-push
+#   fly secrets set DATABASE_URL=… VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY=… VAPID_SUBJECT=… -a rackd-push
+# Deploy:
+#   fly deploy --remote-only -c fly.push.toml
+app = "rackd-push"
+primary_region = "iad"
+
+[build]
+  dockerfile = "apps/push/Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  # Poll cadence (ms). Postgres-backed; 1s is fine for rest-timer accuracy.
+  POLL_MS = "1000"
+
+# Background worker: no inbound HTTP, so no [http_service]. The image CMD
+# (`pnpm start` → tsx worker.ts) runs continuously; one machine, no auto-stop.
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
