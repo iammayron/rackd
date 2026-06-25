@@ -26,7 +26,7 @@ import {
  */
 
 /** How long the green "Rest over" state lingers before auto-dismissing. */
-const FIRED_AUTOCLOSE_MS = 5000;
+const FIRED_AUTOCLOSE_MS = 2000;
 
 interface TimerStore {
   state: TimerState;
