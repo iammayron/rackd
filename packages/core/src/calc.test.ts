@@ -13,7 +13,10 @@ import {
   programNextSlot,
   advanceRotation,
   diffSessionVsRoutine,
+  programWeekProgress,
+  programDayKinds,
 } from "./calc";
+import type { ProgramDayKind } from "./calc";
 import { toKg, fromKg, formatWeight } from "./units";
 import { startTimer, pauseTimer, resumeTimer, remainingMs, addTime } from "./timer";
 import type { SetLog } from "./types";
@@ -386,5 +389,197 @@ describe("diffSessionVsRoutine", () => {
     const p = [{ exerciseId: "a", sets: [{ reps: 8 }] }];
     const q = [{ exerciseId: "a", sets: [{ weight: 0, reps: 8 }] }];
     expect(diffSessionVsRoutine(p, q).numbersChanged).toBe(false);
+  });
+});
+
+describe("programWeekProgress", () => {
+  const fill = (n: number, k: ProgramDayKind): ProgramDayKind[] =>
+    Array.from({ length: n }, () => k);
+
+  it("ignites a week only when all 7 notches fill (done + rest)", () => {
+    // Week 1: 4 workouts done + 3 rest = full → fire. Week 2: all future.
+    const week1: ProgramDayKind[] = [
+      "done", "rest", "done", "rest", "done", "rest", "done",
+    ];
+    const r = programWeekProgress(2, [...week1, ...fill(7, "future")]);
+    expect(r.totalDays).toBe(14);
+    expect(r.filledDays).toBe(7);
+    expect(r.weekFill).toEqual([1, 0]);
+    expect(r.weekDone).toEqual([true, false]);
+    expect(r.completedWeeks).toBe(1);
+  });
+
+  it("holds the fire when a workout is missed (gap stays empty)", () => {
+    const week1: ProgramDayKind[] = [
+      "done", "rest", "missed", "rest", "done", "rest", "done",
+    ];
+    const r = programWeekProgress(1, week1);
+    expect(r.filledDays).toBe(6);
+    expect(r.weekDone).toEqual([false]);
+    expect(r.weekFill[0]).toBeCloseTo(6 / 7, 5);
+    expect(r.completedWeeks).toBe(0);
+  });
+
+  it("counts pending/missed/future as empty", () => {
+    const r = programWeekProgress(1, [
+      "done", "pending", "future", "future", "future", "future", "future",
+    ]);
+    expect(r.filledDays).toBe(1);
+    expect(r.weekFill[0]).toBeCloseTo(1 / 7, 5);
+  });
+
+  it("pads short dayKinds arrays as future", () => {
+    const r = programWeekProgress(3, ["done", "rest"]);
+    expect(r.totalDays).toBe(21);
+    expect(r.filledDays).toBe(2);
+    expect(r.weekDone).toEqual([false, false, false]);
+  });
+
+  it("returns an empty block for zero/negative weeks", () => {
+    const r = programWeekProgress(0, []);
+    expect(r).toEqual({
+      blockWeeks: 0,
+      totalDays: 0,
+      filledDays: 0,
+      weekFill: [],
+      weekDone: [],
+      completedWeeks: 0,
+    });
+  });
+
+  it("ignites every week of a fully-completed block", () => {
+    const r = programWeekProgress(4, fill(28, "rest"));
+    expect(r.completedWeeks).toBe(4);
+    expect(r.weekDone).toEqual([true, true, true, true]);
+    expect(r.filledDays).toBe(28);
+  });
+
+  it("tracks a partially-filled second week without bleeding into week 1", () => {
+    // Week 1 full (7), week 2 has 3 filled — guards the `w * 7 + d` indexing.
+    const dayKinds: ProgramDayKind[] = [
+      ...fill(7, "rest"),
+      "done", "rest", "done", "missed", "pending", "future", "future",
+    ];
+    const r = programWeekProgress(2, dayKinds);
+    expect(r.filledDays).toBe(10);
+    expect(r.weekFill[0]).toBe(1);
+    expect(r.weekFill[1]).toBeCloseTo(3 / 7, 5);
+    expect(r.weekDone).toEqual([true, false]);
+    expect(r.completedWeeks).toBe(1);
+  });
+
+  it("caps at totalDays and ignores dayKinds beyond the block", () => {
+    const r = programWeekProgress(1, fill(20, "done")); // far more than 7
+    expect(r.totalDays).toBe(7);
+    expect(r.filledDays).toBe(7);
+    expect(r.weekFill).toEqual([1]);
+  });
+
+  it("floors a fractional blockWeeks", () => {
+    const r = programWeekProgress(2.9, fill(14, "rest"));
+    expect(r.blockWeeks).toBe(2);
+    expect(r.totalDays).toBe(14);
+    expect(r.completedWeeks).toBe(2);
+  });
+
+  it("returns an empty block for negative weeks", () => {
+    const r = programWeekProgress(-3, fill(10, "done"));
+    expect(r.totalDays).toBe(0);
+    expect(r.weekFill).toEqual([]);
+    expect(r.completedWeeks).toBe(0);
+  });
+});
+
+describe("programDayKinds", () => {
+  it("classifies a weekly schedule (done/rest/future) by weekday", () => {
+    // Anchor Mon; workouts Mon/Wed/Fri. Today is day 3 (Thu); Mon & Wed done.
+    const kinds = programDayKinds({
+      blockWeeks: 1,
+      anchorWeekday: 1, // Mon
+      todayOffset: 3,
+      completedOffsets: [0, 2],
+      schedule: { mode: "weekly", workoutWeekdays: [1, 3, 5] },
+    });
+    expect(kinds).toEqual([
+      "done", "rest", "done", "rest", "future", "future", "future",
+    ]);
+  });
+
+  it("marks a past uncompleted workout as missed and today's as pending", () => {
+    // Anchor Mon; workouts Mon/Wed/Fri. Today is Fri (day 4); only Mon done.
+    const kinds = programDayKinds({
+      blockWeeks: 1,
+      anchorWeekday: 1,
+      todayOffset: 4,
+      completedOffsets: [0],
+      schedule: { mode: "weekly", workoutWeekdays: [1, 3, 5] },
+    });
+    expect(kinds).toEqual([
+      "done", "rest", "missed", "rest", "pending", "future", "future",
+    ]);
+  });
+
+  it("wraps weekday math when the anchor is late in the week", () => {
+    // Anchor Sat; only Sun is a workout day → day 1 (Sun) is the workout.
+    const kinds = programDayKinds({
+      blockWeeks: 1,
+      anchorWeekday: 6, // Sat
+      todayOffset: 6,
+      completedOffsets: [1],
+      schedule: { mode: "weekly", workoutWeekdays: [0] },
+    });
+    expect(kinds).toEqual([
+      "rest", "done", "rest", "rest", "rest", "rest", "rest",
+    ]);
+  });
+
+  it("counts a workout completed on a rest day as done", () => {
+    // Only Mon is a workout day; a session was logged on day 1 (a rest day).
+    const kinds = programDayKinds({
+      blockWeeks: 1,
+      anchorWeekday: 1,
+      todayOffset: 1,
+      completedOffsets: [1],
+      schedule: { mode: "weekly", workoutWeekdays: [1] },
+    });
+    expect(kinds[0]).toBe("missed"); // Mon workout not done
+    expect(kinds[1]).toBe("done"); // logged on the rest day → done
+  });
+
+  it("classifies a rotation schedule, wrapping the cycle by calendar day", () => {
+    // 3-day cycle: workout, workout, rest. All elapsed (today past the week).
+    const kinds = programDayKinds({
+      blockWeeks: 1,
+      anchorWeekday: 0, // irrelevant for rotation
+      todayOffset: 8,
+      completedOffsets: [0, 1, 3, 4, 6],
+      schedule: { mode: "rotation", restByOrder: [false, false, true] },
+    });
+    expect(kinds).toEqual([
+      "done", "done", "rest", "done", "done", "rest", "done",
+    ]);
+  });
+
+  it("treats an empty rotation as all rest", () => {
+    const kinds = programDayKinds({
+      blockWeeks: 1,
+      anchorWeekday: 2,
+      todayOffset: 6,
+      completedOffsets: [],
+      schedule: { mode: "rotation", restByOrder: [] },
+    });
+    expect(kinds).toEqual(Array<ProgramDayKind>(7).fill("rest"));
+  });
+
+  it("returns an empty array for a zero-week block", () => {
+    expect(
+      programDayKinds({
+        blockWeeks: 0,
+        anchorWeekday: 0,
+        todayOffset: 0,
+        completedOffsets: [],
+        schedule: { mode: "weekly", workoutWeekdays: [] },
+      }),
+    ).toEqual([]);
   });
 });

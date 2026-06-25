@@ -1179,11 +1179,13 @@ export async function createProgram(args: {
     .from(t.programs)
     .where(eq(t.programs.ownerId, args.ownerId));
   if (all.length === 1) {
+    const now = Date.now();
     await db
       .update(t.programs)
-      .set({ active: true })
+      .set({ active: true, activatedAt: now })
       .where(eq(t.programs.id, created.id));
     created.active = true;
+    created.activatedAt = now;
   }
   return created;
 }
@@ -1192,11 +1194,18 @@ export async function renameProgram(id: string, name: string) {
   await db.update(t.programs).set({ name }).where(eq(t.programs.id, id));
 }
 
-/** Mark one program active (clears the flag on the owner's others). */
+/**
+ * Mark one program active (clears the flag on the owner's others). Stamps
+ * `activatedAt` on the program transitioning into active so the dashboard's
+ * week-block bar anchors to "now"; re-activating the already-active program is
+ * a no-op and leaves its anchor untouched.
+ */
 export async function setProgramActive(args: {
   programId: string;
   ownerId: string;
+  now?: number;
 }) {
+  const now = args.now ?? Date.now();
   const all = await db
     .select()
     .from(t.programs)
@@ -1206,7 +1215,7 @@ export async function setProgramActive(args: {
     if (!!p.active !== shouldBe) {
       await db
         .update(t.programs)
-        .set({ active: shouldBe })
+        .set(shouldBe ? { active: true, activatedAt: now } : { active: false })
         .where(eq(t.programs.id, p.id));
     }
   }

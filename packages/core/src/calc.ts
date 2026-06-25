@@ -282,3 +282,123 @@ export function weekStartIndex(todayIndex: number, todayWeekday: number): number
   const daysSinceMonday = (todayWeekday + 6) % 7; // Mon→0, Tue→1 … Sun→6
   return todayIndex - daysSinceMonday;
 }
+
+/**
+ * The state of one calendar day within an active program's block, classified
+ * by the caller from the schedule + completed sessions (Date handling stays
+ * out of core, same split as `currentStreak`/`programTodaySlot`):
+ *  - "done":    a workout day whose session was completed → fills the bar.
+ *  - "rest":    a scheduled rest day → fills the bar as it arrives.
+ *  - "missed":  a past workout day with no completed session → stays empty.
+ *  - "pending": today's workout, not yet done → empty until completed.
+ *  - "future":  a day that hasn't arrived yet → empty.
+ */
+export type ProgramDayKind = "done" | "rest" | "missed" | "pending" | "future";
+
+export interface WeekProgress {
+  /** Block length in weeks (= number of segments / dots+1). */
+  blockWeeks: number;
+  /** Total day-notches in the block (`blockWeeks * 7`). */
+  totalDays: number;
+  /** Filled notches across the whole block (`done` + `rest`), 0..totalDays. */
+  filledDays: number;
+  /** Fill fraction 0..1 for each week segment, length `blockWeeks`. */
+  weekFill: number[];
+  /** Whether each week's 7 notches are all filled (→ 🔥), length `blockWeeks`. */
+  weekDone: boolean[];
+  /** Count of fully-filled weeks. */
+  completedWeeks: number;
+}
+
+/**
+ * Roll a block's per-day states up into week segments for the dashboard's
+ * progress bar. A day fills the bar when it's `done` or `rest`; a week ignites
+ * (🔥) only when all 7 of its notches are filled — so a missed workout leaves a
+ * gap and holds the fire. Pure: the caller builds `dayKinds` (length
+ * `blockWeeks * 7`; short arrays are padded as `future`).
+ */
+export function programWeekProgress(
+  blockWeeks: number,
+  dayKinds: readonly ProgramDayKind[],
+): WeekProgress {
+  const weeks = Math.max(0, Math.floor(blockWeeks));
+  const totalDays = weeks * 7;
+  const weekFill: number[] = [];
+  const weekDone: boolean[] = [];
+  let filledDays = 0;
+  for (let w = 0; w < weeks; w++) {
+    let filledInWeek = 0;
+    for (let d = 0; d < 7; d++) {
+      const k = dayKinds[w * 7 + d] ?? "future";
+      if (k === "done" || k === "rest") filledInWeek++;
+    }
+    filledDays += filledInWeek;
+    weekFill.push(filledInWeek / 7);
+    weekDone.push(filledInWeek === 7);
+  }
+  return {
+    blockWeeks: weeks,
+    totalDays,
+    filledDays,
+    weekFill,
+    weekDone,
+    completedWeeks: weekDone.filter(Boolean).length,
+  };
+}
+
+/**
+ * A program's schedule reduced to "is day N a rest day?", per mode:
+ *  - "weekly": `workoutWeekdays` lists the weekdays (0=Sun … 6=Sat) that have a
+ *    routine; every other weekday is rest.
+ *  - "rotation": `restByOrder[k]` is true when the k-th ordered day is a rest
+ *    slot. The rotation is assumed to advance one slot per calendar day from the
+ *    anchor (cursor 0 on day 0); an empty rotation is all-rest.
+ */
+export type ProgramSchedule =
+  | { mode: "weekly"; workoutWeekdays: readonly number[] }
+  | { mode: "rotation"; restByOrder: readonly boolean[] };
+
+/**
+ * Classify each calendar day of a program block into a `ProgramDayKind` for the
+ * dashboard bar — the input to `programWeekProgress`. Pure: the caller converts
+ * timestamps to day offsets (same Date-in-the-caller split as `currentStreak` /
+ * `programTodaySlot`) and passes:
+ *  - `anchorWeekday`: weekday of day-offset 0 (the activation day).
+ *  - `todayOffset`: today's offset from the anchor in days (0-based; may exceed
+ *    the block when overrun — days past today are `future`, days before are
+ *    judged done/rest/missed).
+ *  - `completedOffsets`: day offsets carrying a completed program workout.
+ * Precedence per day: future → done → rest → (missed if past / pending if today).
+ * A completed workout logged on a rest day still counts as `done`.
+ */
+export function programDayKinds(args: {
+  blockWeeks: number;
+  anchorWeekday: number;
+  todayOffset: number;
+  completedOffsets: readonly number[];
+  schedule: ProgramSchedule;
+}): ProgramDayKind[] {
+  const { blockWeeks, anchorWeekday, todayOffset, completedOffsets, schedule } =
+    args;
+  const totalDays = Math.max(0, Math.floor(blockWeeks)) * 7;
+  const done = new Set(completedOffsets);
+  const isRest = (i: number): boolean => {
+    if (schedule.mode === "weekly") {
+      const wd = (((anchorWeekday + i) % 7) + 7) % 7;
+      return !schedule.workoutWeekdays.includes(wd);
+    }
+    const len = schedule.restByOrder.length;
+    if (len === 0) return true;
+    return schedule.restByOrder[((i % len) + len) % len]!;
+  };
+
+  const out: ProgramDayKind[] = [];
+  for (let i = 0; i < totalDays; i++) {
+    if (i > todayOffset) out.push("future");
+    else if (done.has(i)) out.push("done");
+    else if (isRest(i)) out.push("rest");
+    else if (i < todayOffset) out.push("missed");
+    else out.push("pending");
+  }
+  return out;
+}

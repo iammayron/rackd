@@ -10,6 +10,11 @@ const persistedActive = async (id: string) => {
   return row!.active;
 };
 
+const persistedActivatedAt = async (id: string) => {
+  const [row] = await db.select().from(t.programs).where(eq(t.programs.id, id));
+  return row!.activatedAt;
+};
+
 describe("programs — auto-activate + single-active", () => {
   it("auto-activates the FIRST program for an owner", async () => {
     const first = await createProgram({ ownerId: OWNER_A, name: "P1" });
@@ -63,5 +68,51 @@ describe("programs — auto-activate + single-active", () => {
     const p1 = await createProgram({ ownerId: OWNER_A, name: "P1" });
     await setProgramActive({ programId: p1.id, ownerId: OWNER_A });
     expect(await persistedActive(p1.id)).toBe(true);
+  });
+});
+
+describe("programs — activatedAt anchors the week-block bar", () => {
+  it("stamps activatedAt when the first program auto-activates", async () => {
+    const before = Date.now();
+    const first = await createProgram({ ownerId: OWNER_A, name: "P1" });
+    const stamped = await persistedActivatedAt(first.id);
+    expect(stamped).not.toBeNull();
+    expect(stamped!).toBeGreaterThanOrEqual(before);
+    expect(stamped!).toBeLessThanOrEqual(Date.now());
+    // Returned object mirrors the persisted stamp.
+    expect(first.activatedAt).toBe(stamped);
+  });
+
+  it("leaves activatedAt null for a non-auto-activated program", async () => {
+    await createProgram({ ownerId: OWNER_A, name: "P1" });
+    const second = await createProgram({ ownerId: OWNER_A, name: "P2" });
+    expect(await persistedActivatedAt(second.id)).toBeNull();
+  });
+
+  it("stamps activatedAt on the program turned active", async () => {
+    await createProgram({ ownerId: OWNER_A, name: "P1" }); // auto-active
+    const p2 = await createProgram({ ownerId: OWNER_A, name: "P2" });
+    expect(await persistedActivatedAt(p2.id)).toBeNull();
+
+    const at = 1_700_000_000_000;
+    await setProgramActive({ programId: p2.id, ownerId: OWNER_A, now: at });
+
+    expect(await persistedActive(p2.id)).toBe(true);
+    expect(await persistedActivatedAt(p2.id)).toBe(at);
+  });
+
+  it("does NOT re-stamp activatedAt when re-activating an already-active program", async () => {
+    const p1 = await createProgram({ ownerId: OWNER_A, name: "P1" }); // auto-active
+    const original = await persistedActivatedAt(p1.id);
+    expect(original).not.toBeNull();
+
+    // Re-activating the live program is a no-op — the week-1 anchor must hold.
+    await setProgramActive({
+      programId: p1.id,
+      ownerId: OWNER_A,
+      now: original! + 999_999,
+    });
+
+    expect(await persistedActivatedAt(p1.id)).toBe(original);
   });
 });
