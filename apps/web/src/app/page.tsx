@@ -381,7 +381,6 @@ export default function Home() {
             </div>
             <div className="mt-1.5 text-sm font-semibold text-white/85">
               {heroName} complete
-              {nextName ? ` · Next up: ${nextName}` : ""}
             </div>
             <Button
               variant="secondary"
@@ -399,13 +398,24 @@ export default function Home() {
             >
               See your summary ›
             </Button>
-            <button
-              type="button"
-              onClick={() => setQuickOpen((v) => !v)}
-              className="block w-full mt-2.5 py-1.5 bg-transparent border-none cursor-pointer text-sm font-bold text-white/90 text-center"
-            >
-              Train again ›
-            </button>
+            {nextSlot?.routineId && nextName ? (
+              <button
+                type="button"
+                onClick={() => startRoutine(nextSlot.routineId)}
+                disabled={starting}
+                className="block w-full mt-2.5 py-1.5 bg-transparent border-none cursor-pointer text-sm font-bold text-white/90 text-center disabled:opacity-60"
+              >
+                {starting ? "Starting…" : `Train ${nextName} ›`}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setQuickOpen((v) => !v)}
+                className="block w-full mt-2.5 py-1.5 bg-transparent border-none cursor-pointer text-sm font-bold text-white/90 text-center"
+              >
+                Start quick workout ›
+              </button>
+            )}
           </Card>
         ) : !isRest ? (
           <Card variant="accent" style={{ marginBottom: 24 }}>
