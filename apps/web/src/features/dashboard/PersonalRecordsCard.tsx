@@ -38,18 +38,24 @@ export function PersonalRecordsCard() {
     [prs, exercises],
   );
 
-  if (top.length === 0) return null;
-
   return (
     <section className="mb-8 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-5">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">
           Personal records
         </h2>
-        <Link href="/prs" className="text-sm font-semibold text-[var(--accent)] no-underline">
-          View all
-        </Link>
+        {top.length > 0 && (
+          <Link href="/prs" className="text-sm font-semibold text-[var(--accent)] no-underline">
+            View all
+          </Link>
+        )}
       </div>
+
+      {top.length === 0 && (
+        <p className="text-[var(--text-muted)]">
+          No personal records yet — your first one’s coming.
+        </p>
+      )}
 
       <ul className="list-none p-0 m-0 flex flex-col">
         {top.map((p) => (

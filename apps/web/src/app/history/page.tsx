@@ -22,7 +22,7 @@ export default function HistoryPage() {
         <WeightProgressCard />
         <VolumeTrendCard />
         <PersonalRecordsCard />
-        <RecentSessionsCard />
+        <RecentSessionsCard showViewAll={false} />
       </main>
       <Nav />
     </div>

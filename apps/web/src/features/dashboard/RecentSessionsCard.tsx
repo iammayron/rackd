@@ -39,7 +39,7 @@ function fmtDate(ms: number): string {
  * many PRs it set and its training volume. The arrow opens the share sheet for
  * that workout; "View all" leads to the Progress page.
  */
-export function RecentSessionsCard() {
+export function RecentSessionsCard({ showViewAll = true }: { showViewAll?: boolean } = {}) {
   const { unit, display } = useUnit();
   const [shareId, setShareId] = useState<string | null>(null);
 
@@ -76,7 +76,7 @@ export function RecentSessionsCard() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">
           Recent sessions
         </h2>
-        {sessions.length > 0 && (
+        {showViewAll && sessions.length > 0 && (
           <Link
             href="/history"
             className="text-sm font-semibold text-[var(--accent)] no-underline"
