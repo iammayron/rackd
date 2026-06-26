@@ -100,6 +100,16 @@ export function ExerciseDetail({
   const instructionSteps = steps(ex.instructions);
   const cues = ex.formCues ?? [];
 
+  // Volume over the last 6 sessions, left-padded so a sparse history reads as a
+  // trend (one bar + a flat baseline) instead of a single full-width block —
+  // matching the Progress page's volume chart.
+  const VOL_WINDOW = 6;
+  const recentVolume = points.slice(-VOL_WINDOW).map((p) => display(p.volume));
+  const volumeSeries = [
+    ...Array(Math.max(0, VOL_WINDOW - recentVolume.length)).fill(0),
+    ...recentVolume,
+  ];
+
   return (
     <div className="flex flex-col gap-4">
       {/* Hero media — real clip/thumbnail when present, else a tinted placeholder. */}
@@ -148,8 +158,8 @@ export function ExerciseDetail({
             <LineChart data={points.map((p) => display(p.best1rm))} unit={unit} />
           </Card>
           <Card variant="feature">
-            <div className={EYEBROW}>Volume per session</div>
-            <BarChart data={points.map((p) => display(p.volume))} unit={unit} />
+            <div className={EYEBROW}>Volume · last {VOL_WINDOW} sessions</div>
+            <BarChart data={volumeSeries} unit={unit} />
           </Card>
         </>
       )}

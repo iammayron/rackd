@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { isAuthConfigured } from "@/lib/supabase";
+import { Logo } from "@/components/Logo";
 
 export function LoginScreen() {
   const { signIn, signUp } = useAuth();
@@ -37,10 +38,13 @@ export function LoginScreen() {
 
   return (
     <main className="min-h-[100dvh] flex flex-col justify-center p-6">
-      <h1 className="text-3xl font-bold mb-1">Rackd</h1>
-      <p className="text-[var(--text-muted)] mb-6">
-        {mode === "in" ? "Sign in to your workouts." : "Create your account."}
-      </p>
+      <div className="mb-6 flex flex-col items-center text-center">
+        <Logo size={72} />
+        <h1 className="mt-4 text-3xl font-bold">Rackd</h1>
+        <p className="mt-1 text-[var(--text-muted)]">
+          {mode === "in" ? "Sign in to your workouts." : "Create your account."}
+        </p>
+      </div>
 
       {!configured && (
         <div className="mb-4 p-3 rounded-[var(--radius-sm)] bg-[var(--surface-2)] border border-[var(--warning)] text-sm text-[var(--warning)]">

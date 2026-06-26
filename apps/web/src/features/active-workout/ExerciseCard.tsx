@@ -305,7 +305,22 @@ export function ExerciseCard({
 
       {prevTop && suggestedWeight !== undefined && noneCompleted && (
         <div className="flex items-center gap-2 bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-sm)] py-2 px-3 mb-3 text-sm">
-          <span>📈 Try</span>
+          <span className="inline-flex items-center gap-1.5">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4 text-[var(--accent)]"
+              aria-hidden="true"
+            >
+              <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+              <path d="m7 13 3-3 3 3 5-5" />
+            </svg>
+            Try
+          </span>
           <strong className="text-[var(--accent)]">
             {display(suggestedWeight)} {unit} × {prevTop.reps}
           </strong>
