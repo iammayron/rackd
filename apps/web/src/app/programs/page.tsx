@@ -420,7 +420,10 @@ export default function ProgramsPage() {
 
       {browsing && (
         <div className="fixed inset-0 z-50 flex flex-col bg-[var(--bg)]">
-          <header className="flex items-center gap-2 p-4 border-b border-[var(--border)]">
+          <header
+            className="flex items-center gap-2 px-4 pb-4 border-b border-[var(--border)]"
+            style={{ paddingTop: "calc(1rem + var(--safe-top))" }}
+          >
             <h2 className="flex-1 text-lg font-bold">Templates</h2>
             <Button variant="secondary" size="sm" onClick={() => setBrowsing(false)}>
               Close
