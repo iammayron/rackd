@@ -27,6 +27,7 @@ export const PUT = withUser(async (ownerId, req, ctx) => {
     "equipment",
     "category",
     "instructions",
+    "formCues",
     "thumbnailUrl",
     "clipUrl",
     "clipUrlWebm",

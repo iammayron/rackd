@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { db } from "./db";
 import { exercises } from "./schema";
 import { SEED_EXERCISES } from "./seed";
@@ -19,13 +20,19 @@ export async function seedExercises(): Promise<number> {
     equipment: ex.equipment,
     category: ex.category,
     instructions: ex.instructions,
+    formCues: ex.formCues ?? [],
     mediaSource: "library",
     isCustom: false,
   }));
+  // Insert new rows; for ids already present, backfill the form cues only (added
+  // after the original seed) without disturbing user edits to other columns.
   const inserted = await db
     .insert(exercises)
     .values(rows)
-    .onConflictDoNothing({ target: exercises.id })
+    .onConflictDoUpdate({
+      target: exercises.id,
+      set: { formCues: sql`excluded.form_cues` },
+    })
     .returning({ id: exercises.id });
   return inserted.length;
 }

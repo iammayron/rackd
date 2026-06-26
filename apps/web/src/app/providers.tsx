@@ -8,11 +8,17 @@ import { flushQueue } from "@/lib/offline-queue";
 import { hydrateUnit, useSyncUnitFromProfile } from "@/lib/units-store";
 import { LoginScreen } from "@/components/LoginScreen";
 import { ToastProvider } from "@/components/toast/ToastProvider";
+import { ExerciseDetailSheet } from "@/features/exercise/ExerciseDetailSheet";
 
 /** Signed-in shell: seeds runtime state that depends on an authed session. */
 function AppShell({ children }: { children: React.ReactNode }) {
   useSyncUnitFromProfile();
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <ExerciseDetailSheet />
+    </>
+  );
 }
 
 /** Auth gate: spinner while resolving, login when signed out, app when signed in. */

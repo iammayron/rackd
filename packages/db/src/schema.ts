@@ -33,6 +33,8 @@ export const exercises = pgTable("exercises", {
   equipment: text("equipment").notNull(),
   category: text("category").notNull(),
   instructions: text("instructions").notNull().default(""),
+  /** Short coaching cues shown as a checklist on the exercise detail. */
+  formCues: text("form_cues").array().notNull().default([]),
   thumbnailUrl: text("thumbnail_url"),
   clipUrl: text("clip_url"),
   clipUrlWebm: text("clip_url_webm"),

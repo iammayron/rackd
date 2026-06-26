@@ -64,5 +64,6 @@ export const qk = {
   program: (id: string) => ["programs", id] as const,
   sharedRoutines: ["shared-routines"] as const,
   weeklyVolume: ["stats", "weekly-volume"] as const,
+  sessionVolumes: ["stats", "session-volumes"] as const,
   pushSubscriptions: ["push-subscriptions"] as const,
 };

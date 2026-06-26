@@ -11,24 +11,26 @@ export interface SeedExercise {
   equipment: string;
   category: string;
   instructions: string;
+  /** Short coaching cues shown as a checklist on the exercise detail. */
+  formCues?: string[];
 }
 
 export const SEED_EXERCISES: SeedExercise[] = [
-  { id: "ex_bench_press", name: "Barbell Bench Press", primaryMuscle: "chest", secondaryMuscles: ["triceps", "shoulders"], equipment: "barbell", category: "barbell", instructions: "Lower the bar to mid-chest, drive up to lockout." },
+  { id: "ex_bench_press", name: "Barbell Bench Press", primaryMuscle: "chest", secondaryMuscles: ["triceps", "shoulders"], equipment: "barbell", category: "barbell", instructions: "Lower the bar to mid-chest, drive up to lockout.", formCues: ["Shoulder blades pinned back and down", "Bar touches mid-chest, no bounce", "Drive feet into the floor"] },
   { id: "ex_incline_db_press", name: "Incline Dumbbell Press", primaryMuscle: "chest", secondaryMuscles: ["shoulders", "triceps"], equipment: "dumbbell", category: "dumbbell", instructions: "Press dumbbells up on a 30° incline." },
   { id: "ex_pushup", name: "Push-Up", primaryMuscle: "chest", secondaryMuscles: ["triceps", "abs"], equipment: "bodyweight", category: "bodyweight", instructions: "Lower chest to floor, push back up, body in a straight line." },
-  { id: "ex_squat", name: "Barbell Back Squat", primaryMuscle: "quads", secondaryMuscles: ["glutes", "hamstrings"], equipment: "barbell", category: "barbell", instructions: "Descend to parallel, drive up through mid-foot." },
+  { id: "ex_squat", name: "Barbell Back Squat", primaryMuscle: "quads", secondaryMuscles: ["glutes", "hamstrings"], equipment: "barbell", category: "barbell", instructions: "Descend to parallel, drive up through mid-foot.", formCues: ["Brace your core before unracking", "Knees track over the toes", "Hit depth, drive through mid-foot"] },
   { id: "ex_front_squat", name: "Front Squat", primaryMuscle: "quads", secondaryMuscles: ["glutes", "abs"], equipment: "barbell", category: "barbell", instructions: "Bar on front delts, elbows high, squat upright." },
   { id: "ex_leg_press", name: "Leg Press", primaryMuscle: "quads", secondaryMuscles: ["glutes", "hamstrings"], equipment: "machine", category: "machine", instructions: "Press the sled away, don't lock knees hard." },
-  { id: "ex_deadlift", name: "Conventional Deadlift", primaryMuscle: "back", secondaryMuscles: ["hamstrings", "glutes", "traps"], equipment: "barbell", category: "barbell", instructions: "Hinge, flat back, drive the floor away." },
-  { id: "ex_rdl", name: "Romanian Deadlift", primaryMuscle: "hamstrings", secondaryMuscles: ["glutes", "back"], equipment: "barbell", category: "barbell", instructions: "Push hips back, slight knee bend, feel the stretch." },
+  { id: "ex_deadlift", name: "Conventional Deadlift", primaryMuscle: "back", secondaryMuscles: ["hamstrings", "glutes", "traps"], equipment: "barbell", category: "barbell", instructions: "Hinge, flat back, drive the floor away.", formCues: ["Flat back — no rounding", "Bar stays close to the shins", "Lock out with glutes, not the lower back"] },
+  { id: "ex_rdl", name: "Romanian Deadlift", primaryMuscle: "hamstrings", secondaryMuscles: ["glutes", "back"], equipment: "barbell", category: "barbell", instructions: "Push hips back, slight knee bend, feel the stretch.", formCues: ["Push the hips back, not down", "Soft knees, shins vertical", "Stop at a deep hamstring stretch"] },
   { id: "ex_pullup", name: "Pull-Up", primaryMuscle: "back", secondaryMuscles: ["biceps"], equipment: "bodyweight", category: "bodyweight", instructions: "Pull chin over the bar, control the descent." },
-  { id: "ex_lat_pulldown", name: "Lat Pulldown", primaryMuscle: "back", secondaryMuscles: ["biceps"], equipment: "cable", category: "machine", instructions: "Pull the bar to upper chest, drive elbows down." },
-  { id: "ex_bb_row", name: "Barbell Row", primaryMuscle: "back", secondaryMuscles: ["biceps", "traps"], equipment: "barbell", category: "barbell", instructions: "Hinge ~45°, row to lower ribs." },
+  { id: "ex_lat_pulldown", name: "Lat Pulldown", primaryMuscle: "back", secondaryMuscles: ["biceps"], equipment: "cable", category: "machine", instructions: "Pull the bar to upper chest, drive elbows down.", formCues: ["Drive the elbows down, not back", "Pull to the upper chest", "Control the bar back up"] },
+  { id: "ex_bb_row", name: "Barbell Row", primaryMuscle: "back", secondaryMuscles: ["biceps", "traps"], equipment: "barbell", category: "barbell", instructions: "Hinge ~45°, row to lower ribs.", formCues: ["Hinge to ~45°, flat back", "Row to the lower ribs", "Squeeze the shoulder blades"] },
   { id: "ex_seated_row", name: "Seated Cable Row", primaryMuscle: "back", secondaryMuscles: ["biceps"], equipment: "cable", category: "machine", instructions: "Row to the navel, squeeze shoulder blades." },
-  { id: "ex_ohp", name: "Overhead Press", primaryMuscle: "shoulders", secondaryMuscles: ["triceps"], equipment: "barbell", category: "barbell", instructions: "Press the bar overhead, ribs down, glutes tight." },
+  { id: "ex_ohp", name: "Overhead Press", primaryMuscle: "shoulders", secondaryMuscles: ["triceps"], equipment: "barbell", category: "barbell", instructions: "Press the bar overhead, ribs down, glutes tight.", formCues: ["Squeeze glutes — no leaning back", "Shrug at the top", "Full lockout overhead"] },
   { id: "ex_db_shoulder_press", name: "Dumbbell Shoulder Press", primaryMuscle: "shoulders", secondaryMuscles: ["triceps"], equipment: "dumbbell", category: "dumbbell", instructions: "Press dumbbells overhead from shoulder height." },
-  { id: "ex_lateral_raise", name: "Lateral Raise", primaryMuscle: "shoulders", secondaryMuscles: [], equipment: "dumbbell", category: "dumbbell", instructions: "Raise arms to shoulder height, lead with elbows." },
+  { id: "ex_lateral_raise", name: "Lateral Raise", primaryMuscle: "shoulders", secondaryMuscles: [], equipment: "dumbbell", category: "dumbbell", instructions: "Raise arms to shoulder height, lead with elbows.", formCues: ["Lead with the elbows", "Stop at shoulder height", "No swinging — slow and controlled"] },
   { id: "ex_face_pull", name: "Face Pull", primaryMuscle: "shoulders", secondaryMuscles: ["traps"], equipment: "cable", category: "machine", instructions: "Pull rope to the face, externally rotate." },
   { id: "ex_bb_curl", name: "Barbell Curl", primaryMuscle: "biceps", secondaryMuscles: ["forearms"], equipment: "barbell", category: "barbell", instructions: "Curl without swinging, control the negative." },
   { id: "ex_db_curl", name: "Dumbbell Curl", primaryMuscle: "biceps", secondaryMuscles: ["forearms"], equipment: "dumbbell", category: "dumbbell", instructions: "Curl one or both, supinate at the top." },
@@ -38,7 +40,7 @@ export const SEED_EXERCISES: SeedExercise[] = [
   { id: "ex_leg_curl", name: "Lying Leg Curl", primaryMuscle: "hamstrings", secondaryMuscles: ["calves"], equipment: "machine", category: "machine", instructions: "Curl heels to glutes, control back." },
   { id: "ex_leg_ext", name: "Leg Extension", primaryMuscle: "quads", secondaryMuscles: [], equipment: "machine", category: "machine", instructions: "Extend knees fully, pause at top." },
   { id: "ex_calf_raise", name: "Standing Calf Raise", primaryMuscle: "calves", secondaryMuscles: [], equipment: "machine", category: "machine", instructions: "Full stretch at bottom, full contraction at top." },
-  { id: "ex_hip_thrust", name: "Hip Thrust", primaryMuscle: "glutes", secondaryMuscles: ["hamstrings"], equipment: "barbell", category: "barbell", instructions: "Drive hips up, squeeze glutes, ribs down." },
+  { id: "ex_hip_thrust", name: "Hip Thrust", primaryMuscle: "glutes", secondaryMuscles: ["hamstrings"], equipment: "barbell", category: "barbell", instructions: "Drive hips up, squeeze glutes, ribs down.", formCues: ["Tuck the chin, ribs down", "Drive through the heels", "Squeeze glutes hard at the top"] },
   { id: "ex_plank", name: "Plank", primaryMuscle: "abs", secondaryMuscles: [], equipment: "bodyweight", category: "bodyweight", instructions: "Hold a straight line, brace the core." },
   { id: "ex_hanging_leg_raise", name: "Hanging Leg Raise", primaryMuscle: "abs", secondaryMuscles: ["forearms"], equipment: "bodyweight", category: "bodyweight", instructions: "Raise legs to hip height, no swinging." },
   { id: "ex_cable_crunch", name: "Cable Crunch", primaryMuscle: "abs", secondaryMuscles: [], equipment: "cable", category: "machine", instructions: "Crunch the ribs toward the pelvis." },

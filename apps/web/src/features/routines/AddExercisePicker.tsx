@@ -63,7 +63,7 @@ export function AddExercisePicker({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="min-h-[52px] w-full rounded-[var(--radius-lg)] bg-[var(--accent)] text-white border-none text-lg font-bold hover:bg-[var(--accent-press)]"
+        className="min-h-[52px] w-full rounded-[var(--radius-lg)] bg-[var(--surface-2)] text-[var(--accent)] border border-dashed border-[var(--border)] text-lg font-semibold"
       >
         + Add exercise
       </button>
