@@ -36,11 +36,11 @@ export function VolumeTrendCard() {
     return weeklyVolume.slice(-WEEKS).map((w) => display(w.volume));
   }, [weeklyVolume, display]);
 
-  if (weeks.length < 2) return null;
-
-  const first = weeks[0]!;
-  const last = weeks[weeks.length - 1]!;
-  const deltaPct = first > 0 ? Math.round(((last - first) / first) * 100) : 0;
+  // Always render the card so the feature is discoverable; with a single week we
+  // show the bar but no delta (needs two weeks), and with none a placeholder.
+  const first = weeks[0];
+  const last = weeks[weeks.length - 1];
+  const deltaPct = first && last && first > 0 ? Math.round(((last - first) / first) * 100) : 0;
   const up = deltaPct >= 0;
 
   return (
@@ -49,19 +49,32 @@ export function VolumeTrendCard() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">
           Volume
         </h2>
-        <span className="text-sm font-semibold text-[var(--text-muted)]">last {weeks.length} weeks</span>
+        {weeks.length > 0 && (
+          <span className="text-sm font-semibold text-[var(--text-muted)]">
+            {weeks.length === 1 ? "this week" : `last ${weeks.length} weeks`}
+          </span>
+        )}
       </div>
 
-      <BarChart data={weeks} unit={unit} />
-
-      <div className="mt-3 flex items-center justify-between text-sm">
-        <span className="text-[var(--text-muted)] tabular-nums">{tonnage(first)}</span>
-        <span className="font-bold text-[var(--accent)] tabular-nums">
-          {up ? "+" : ""}
-          {deltaPct}% {up ? "↑" : "↓"}
-        </span>
-        <span className="text-[var(--text-muted)] tabular-nums">{tonnage(last)}</span>
-      </div>
+      {weeks.length === 0 ? (
+        <p className="text-[var(--text-muted)]">
+          No volume yet — finish a workout to start your trend.
+        </p>
+      ) : (
+        <>
+          <BarChart data={weeks} unit={unit} />
+          {weeks.length >= 2 && (
+            <div className="mt-3 flex items-center justify-between text-sm">
+              <span className="text-[var(--text-muted)] tabular-nums">{tonnage(first!)}</span>
+              <span className="font-bold text-[var(--accent)] tabular-nums">
+                {up ? "+" : ""}
+                {deltaPct}% {up ? "↑" : "↓"}
+              </span>
+              <span className="text-[var(--text-muted)] tabular-nums">{tonnage(last!)}</span>
+            </div>
+          )}
+        </>
+      )}
     </section>
   );
 }

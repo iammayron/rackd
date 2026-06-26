@@ -25,13 +25,13 @@ function dayIndex(ms: number): number {
 
 function Stat({ label, value, suffix, caption }: { label: string; value: string; suffix?: string; caption: string }) {
   return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{label}</p>
-      <p className="mt-1 text-3xl font-extrabold leading-none text-[var(--accent)] tabular-nums">
-        {value}
-        {suffix && <span className="ml-1 text-base font-bold">{suffix}</span>}
+    <div className="min-w-0">
+      <p className="truncate text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{label}</p>
+      <p className="mt-1 flex items-baseline gap-0.5 text-[1.6rem] font-extrabold leading-none text-[var(--accent)] tabular-nums">
+        <span className="truncate">{value}</span>
+        {suffix && <span className="shrink-0 text-sm font-bold">{suffix}</span>}
       </p>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">{caption}</p>
+      <p className="mt-1 truncate text-sm text-[var(--text-muted)]">{caption}</p>
     </div>
   );
 }
