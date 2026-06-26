@@ -53,11 +53,11 @@ export function AdvancedSelect({
     placeholder,
     toggleTag: '<button type="button" aria-expanded="false"></button>',
     toggleClasses:
-      "hs-select-disabled:pointer-events-none hs-select-disabled:opacity-50 relative py-3 ps-4 pe-9 flex gap-x-2 text-nowrap w-full cursor-pointer bg-[var(--surface)] border border-[var(--border)] rounded-lg text-start text-base text-[var(--text)] focus:outline-hidden focus:ring-2 focus:ring-[var(--accent)]",
+      "hs-select-disabled:pointer-events-none hs-select-disabled:opacity-50 relative py-3 ps-4 pe-9 flex gap-x-2 text-nowrap w-full cursor-pointer bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-sm)] text-start text-base text-[var(--text)] focus:outline-hidden focus:ring-2 focus:ring-[var(--accent)]",
     dropdownClasses:
-      "mt-2 z-50 w-full max-h-72 p-1 space-y-0.5 bg-[var(--surface)] border border-[var(--border)] rounded-lg overflow-hidden overflow-y-auto",
+      "mt-2 z-50 w-full max-h-72 p-1 space-y-0.5 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-sm)] overflow-hidden overflow-y-auto",
     optionClasses:
-      "py-2 px-4 w-full text-base text-[var(--text)] cursor-pointer hover:bg-[var(--surface-2)] rounded-lg focus:outline-hidden focus:bg-[var(--surface-2)]",
+      "py-2 px-4 w-full text-base text-[var(--text)] cursor-pointer hover:bg-[var(--surface-2)] rounded-[var(--radius-sm)] focus:outline-hidden focus:bg-[var(--surface-2)]",
     optionTemplate:
       '<div class="flex justify-between items-center w-full"><span data-title></span><span class="hidden hs-selected:block"><svg class="shrink-0 size-4 text-[var(--accent)]" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span></div>',
   };

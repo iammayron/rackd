@@ -74,7 +74,7 @@ export function ExerciseMediaModal({ ex, onClose }: { ex: ExerciseMediaData; onC
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60" onClick={onClose}>
       <div
-        className="w-full max-w-sm bg-[var(--surface)] border border-[var(--border)] rounded-t-2xl sm:rounded-2xl p-5"
+        className="w-full max-w-sm bg-[var(--surface)] border border-[var(--border)] rounded-t-[var(--radius-lg)] sm:rounded-[var(--radius-lg)] p-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center mb-3">
@@ -84,7 +84,7 @@ export function ExerciseMediaModal({ ex, onClose }: { ex: ExerciseMediaData; onC
           </button>
         </div>
 
-        <div className="rounded-xl overflow-hidden mb-3 aspect-video bg-[var(--surface-2)] flex items-center justify-center">
+        <div className="rounded-[var(--radius)] overflow-hidden mb-3 aspect-video bg-[var(--surface-2)] flex items-center justify-center">
           {ex.clipUrl ? (
             <video
               className="w-full h-full object-cover"
@@ -99,7 +99,7 @@ export function ExerciseMediaModal({ ex, onClose }: { ex: ExerciseMediaData; onC
             </video>
           ) : (
             <div
-              className="w-20 h-20 rounded-xl flex items-center justify-center text-3xl font-bold text-white"
+              className="w-20 h-20 rounded-[var(--radius)] flex items-center justify-center text-3xl font-bold text-white"
               style={{ background: colorFor(ex.primaryMuscle) }}
             >
               {ex.name.charAt(0).toUpperCase()}

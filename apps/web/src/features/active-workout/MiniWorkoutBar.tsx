@@ -52,7 +52,7 @@ export function MiniWorkoutBar() {
       // Accent fill (matches the "Today's workout" card + Start buttons) so the
       // active workout reads as the loudest thing on screen, not a faint bar.
       // Sit clear above the bottom nav (~78px tall incl. its safe-area pad).
-      className="fixed left-1/2 -translate-x-1/2 z-30 bottom-[calc(88px+var(--safe-bottom))] w-[min(440px,calc(100%-24px))] flex items-center gap-3 px-4 py-3 rounded-2xl no-underline text-white bg-[var(--accent)] shadow-[var(--shadow-lg)]"
+      className="fixed left-1/2 -translate-x-1/2 z-30 bottom-[calc(88px+var(--safe-bottom))] w-[min(440px,calc(100%-24px))] flex items-center gap-3 px-4 py-3 rounded-[var(--radius-lg)] no-underline text-white bg-[var(--accent)] shadow-[var(--shadow-lg)]"
     >
       <span
         aria-hidden="true"

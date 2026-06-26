@@ -15,6 +15,7 @@
     "db:push": "drizzle-kit push",
     "db:deploy": "node scripts/migrate.mjs",
     "seed": "tsx src/seed-pg.ts",
+    "db:seed-demo": "tsx src/seed-demo.ts",
     "test": "vitest run"
   },
   "dependencies": {

@@ -53,7 +53,7 @@ export function RestTimerBar() {
       aria-label="Rest timer"
     >
       <div aria-hidden="true" className="absolute inset-0 bg-black/50 rk-backdrop-in" />
-      <div className="relative flex flex-col items-center gap-3 px-5 pt-5 pb-[calc(20px+env(safe-area-inset-bottom))] border-t border-[var(--border)] bg-[var(--surface)] rounded-t-[22px] shadow-[var(--shadow-lg)] rk-sheet-up">
+      <div className="relative flex flex-col items-center gap-3 px-5 pt-5 pb-[calc(20px+env(safe-area-inset-bottom))] border-t border-[var(--border)] bg-[var(--surface)] rounded-t-[var(--radius-lg)] shadow-[var(--shadow-lg)] rk-sheet-up">
         <RestTimerRing
           remaining={Math.ceil(remaining / 1000)}
           total={total}

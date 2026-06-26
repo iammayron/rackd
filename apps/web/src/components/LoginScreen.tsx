@@ -33,7 +33,7 @@ export function LoginScreen() {
   }
 
   const input =
-    "w-full min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]";
+    "w-full min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-[var(--radius-sm)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]";
 
   return (
     <main className="min-h-[100dvh] flex flex-col justify-center p-6">
@@ -43,7 +43,7 @@ export function LoginScreen() {
       </p>
 
       {!configured && (
-        <div className="mb-4 p-3 rounded-lg bg-[var(--surface-2)] border border-[var(--warning)] text-sm text-[var(--warning)]">
+        <div className="mb-4 p-3 rounded-[var(--radius-sm)] bg-[var(--surface-2)] border border-[var(--warning)] text-sm text-[var(--warning)]">
           Auth not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.
         </div>
       )}
@@ -75,7 +75,7 @@ export function LoginScreen() {
         <button
           type="submit"
           disabled={busy || !configured}
-          className="min-h-12 rounded-lg bg-[var(--accent)] text-white font-bold disabled:opacity-60"
+          className="min-h-12 rounded-[var(--radius-sm)] bg-[var(--accent)] text-white font-bold disabled:opacity-60"
         >
           {busy ? "…" : mode === "in" ? "Sign in" : "Sign up"}
         </button>

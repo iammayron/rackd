@@ -85,7 +85,7 @@ export function ReplaceExercisePicker({
           type="button"
           onClick={() => pick(ex.id)}
           aria-label={`Replace with ${ex.name}`}
-          className="w-full text-left flex items-center gap-3 p-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+          className="w-full text-left flex items-center gap-3 p-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
         >
           <ExerciseThumb ex={ex} size={44} />
           <span className="min-w-0 flex-1">
@@ -116,7 +116,7 @@ export function ReplaceExercisePicker({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="min-h-9 px-3 rounded-lg bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] text-sm font-semibold"
+          className="min-h-9 px-3 rounded-[var(--radius-sm)] bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] text-sm font-semibold"
         >
           ⇄ Replace
         </button>
@@ -153,7 +153,7 @@ export function ReplaceExercisePicker({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search the library…"
-            className="mt-3 w-full min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            className="mt-3 w-full min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-[var(--radius)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           />
         </div>
 

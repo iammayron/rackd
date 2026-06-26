@@ -20,7 +20,7 @@ export interface SetRowData {
 
 /** Weight/reps display cell — a tap target that opens the slide-up editor. */
 const CELL =
-  "w-16 shrink-0 inline-flex items-center justify-center gap-0.5 min-h-11 text-center bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-md text-lg px-1 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]";
+  "w-16 shrink-0 inline-flex items-center justify-center gap-0.5 min-h-11 text-center bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-[var(--radius-sm)] text-lg px-1 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]";
 
 /**
  * One set row: weight, reps, complete toggle. Completing a set starts the
@@ -216,7 +216,7 @@ export function SetRow({
         onClick={() => setRpeOpen(true)}
         aria-label={`Set ${data.order} effort (RPE)`}
         aria-haspopup="dialog"
-        className={`w-12 shrink-0 inline-flex items-center justify-center min-h-11 rounded-md border font-bold focus:outline-none focus:ring-2 focus:ring-[var(--accent)] ${
+        className={`w-12 shrink-0 inline-flex items-center justify-center min-h-11 rounded-[var(--radius-sm)] border font-bold focus:outline-none focus:ring-2 focus:ring-[var(--accent)] ${
           rpe != null
             ? "text-[var(--text-on-accent)] border-transparent text-lg"
             : "bg-[var(--surface-2)] text-[var(--text-muted)] border-[var(--border)] text-xs"
@@ -278,7 +278,7 @@ export function SetRow({
             ? `est 1RM ${Math.round(estimate1RM(Number(weight), Number(reps)))} ${unit}`
             : undefined
         }
-        className={`ms-auto shrink-0 inline-flex items-center justify-center min-h-11 min-w-11 rounded-lg border border-[var(--border)] text-lg font-bold ${
+        className={`ms-auto shrink-0 inline-flex items-center justify-center min-h-11 min-w-11 rounded-[var(--radius-sm)] border border-[var(--border)] text-lg font-bold ${
           data.completed
             ? "bg-[var(--success)] text-[#06231a]"
             : "bg-[var(--surface-2)] text-[var(--text)]"

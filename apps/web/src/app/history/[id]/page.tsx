@@ -39,7 +39,7 @@ function ExerciseSummary({ se }: { se: SessionExerciseRow }) {
   const best = done.reduce((m, s) => Math.max(m, estimate1RM(s.weight, s.reps)), 0);
 
   return (
-    <section className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 mb-3">
+    <section className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-lg)] p-4 mb-3">
       <h2 className="text-lg font-bold mb-2">{se.exercise?.name ?? "Exercise"}</h2>
       {done.map((s) => (
         <div key={s.id} className="flex gap-3 text-[var(--text-muted)] py-0.5">

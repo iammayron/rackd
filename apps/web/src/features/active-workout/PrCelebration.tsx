@@ -25,7 +25,7 @@ export function PrCelebration({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60">
-      <div className="flex max-h-[85dvh] w-full max-w-sm flex-col bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-6 text-center">
+      <div className="flex max-h-[85dvh] w-full max-w-sm flex-col bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-lg)] p-6 text-center">
         <div className="shrink-0">
           <div className="text-5xl mb-2">🏆</div>
           <h2 className="text-xl font-bold mb-1">
@@ -40,7 +40,7 @@ export function PrCelebration({
           {prs.map((pr, i) => (
             <li
               key={i}
-              className="flex items-center gap-2 bg-[var(--surface-2)] border border-[var(--border)] rounded-lg py-2 px-3 text-start"
+              className="flex items-center gap-2 bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-sm)] py-2 px-3 text-start"
             >
               <span className="flex-1 font-semibold">
                 {nameById[pr.exerciseId] ?? "Exercise"}
@@ -58,7 +58,7 @@ export function PrCelebration({
         <button
           type="button"
           onClick={onClose}
-          className="min-h-11 w-full shrink-0 rounded-lg bg-[var(--accent)] text-white font-bold hover:bg-[var(--accent-press)]"
+          className="min-h-11 w-full shrink-0 rounded-[var(--radius-sm)] bg-[var(--accent)] text-white font-bold hover:bg-[var(--accent-press)]"
         >
           Let&apos;s go 💪
         </button>

@@ -27,7 +27,7 @@ export function BackButton({
       type="button"
       onClick={href ? () => router.replace(href) : onClick}
       aria-label={ariaLabel}
-      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] text-[var(--text)] transition-colors hover:bg-[var(--surface)]${
+      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius)] text-[var(--text)] transition-colors hover:bg-[var(--surface)]${
         className ? ` ${className}` : ""
       }`}
     >

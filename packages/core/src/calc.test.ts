@@ -16,6 +16,7 @@ import {
   programWeekProgress,
   programDayKinds,
   sessionCountsForProgram,
+  estimateSessionMinutes,
 } from "./calc";
 import type { ProgramDayKind } from "./calc";
 import { toKg, fromKg, formatWeight } from "./units";
@@ -32,6 +33,55 @@ describe("estimate1RM", () => {
   it("guards invalid input", () => {
     expect(estimate1RM(0, 5)).toBe(0);
     expect(estimate1RM(100, 0)).toBe(0);
+  });
+});
+
+describe("estimateSessionMinutes", () => {
+  it("returns 0 for an empty routine", () => {
+    expect(estimateSessionMinutes([])).toBe(0);
+  });
+
+  it("sums work + rest across exercises and rounds to nearest 5", () => {
+    // bench: 3*(40+90)=390, squat: 4*(40+180)=880, row: 3*(40+120)=480
+    // total 1750s = 29.166min -> round(29.166/5)*5 = 30
+    expect(
+      estimateSessionMinutes([
+        { setCount: 3, restSec: 90 },
+        { setCount: 4, restSec: 180 },
+        { setCount: 3 },
+      ]),
+    ).toBe(30);
+  });
+
+  it("falls back to the 120s default rest when restSec is omitted", () => {
+    // both are 3*(40+120)=480s -> 8min -> 10
+    expect(estimateSessionMinutes([{ setCount: 3 }])).toBe(
+      estimateSessionMinutes([{ setCount: 3, restSec: 120 }]),
+    );
+    expect(estimateSessionMinutes([{ setCount: 3 }])).toBe(10);
+  });
+
+  it("respects an explicit restSec over the default", () => {
+    // 5*(40+200)=1200s = exactly 20min
+    expect(estimateSessionMinutes([{ setCount: 5, restSec: 200 }])).toBe(20);
+  });
+
+  it("never drops below the roundTo floor for a non-empty routine", () => {
+    // 1*(40+0)=40s -> round(0.66/5)*5=0, floored to 5
+    expect(estimateSessionMinutes([{ setCount: 1, restSec: 0 }])).toBe(5);
+  });
+
+  it("always yields a multiple of the rounding step", () => {
+    for (const sets of [1, 2, 3, 5, 7, 11]) {
+      expect(estimateSessionMinutes([{ setCount: sets }]) % 5).toBe(0);
+    }
+  });
+
+  it("honors a custom roundTo argument", () => {
+    // 5*(40+120)=800s = 13.333min; roundTo 10 -> round(1.333)*10 = 10
+    expect(estimateSessionMinutes([{ setCount: 5 }], 10)).toBe(10);
+    // same input at the default step of 5 -> round(2.666)*5 = 15
+    expect(estimateSessionMinutes([{ setCount: 5 }])).toBe(15);
   });
 });
 
