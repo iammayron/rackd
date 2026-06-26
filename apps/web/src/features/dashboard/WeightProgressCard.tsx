@@ -27,10 +27,16 @@ function Sparkline({ values }: { values: number[] }) {
   const PAD = 4;
   const path = useMemo(() => {
     if (values.length === 0) return "";
+    // A single log can't show a trend — draw a flat line across the midline so
+    // the chart still appears (it fills in as more weigh-ins are logged).
+    if (values.length === 1) {
+      const y = (H / 2).toFixed(1);
+      return `M${PAD},${y} L${(W - PAD).toFixed(1)},${y}`;
+    }
     const min = Math.min(...values);
     const max = Math.max(...values);
     const span = max - min || 1;
-    const stepX = values.length > 1 ? (W - PAD * 2) / (values.length - 1) : 0;
+    const stepX = (W - PAD * 2) / (values.length - 1);
     return values
       .map((v, i) => {
         const x = PAD + i * stepX;
@@ -40,7 +46,7 @@ function Sparkline({ values }: { values: number[] }) {
       .join(" ");
   }, [values]);
 
-  if (values.length < 2) return null;
+  if (values.length === 0) return null;
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}

@@ -51,7 +51,9 @@ export function BarChart({ data, unit = "" }: { data: number[]; unit?: string })
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="bar chart">
       {data.map((v, i) => {
-        const h = (v / max) * (H - PAD * 2);
+        // Floor the height so empty/zero weeks read as a thin baseline rather
+        // than vanishing — keeps a sparse series legible as a trend.
+        const h = Math.max((v / max) * (H - PAD * 2), 1.5);
         return (
           <rect
             key={i}

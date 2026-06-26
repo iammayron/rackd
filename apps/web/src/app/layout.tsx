@@ -50,11 +50,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={hanken.variable}>
+    // suppressHydrationWarning: the NO_FOUC script sets `data-theme` on <html>
+    // before hydration (anti-flash), and browser extensions (Grammarly, …) inject
+    // attributes on <body>. Both legitimately diverge from the SSR markup.
+    <html lang="en" className={hanken.variable} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: NO_FOUC }} />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <div className="app-shell">
           <div className="rk-status-scrim" aria-hidden="true" />
           <Providers>

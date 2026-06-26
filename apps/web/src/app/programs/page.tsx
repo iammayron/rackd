@@ -288,11 +288,11 @@ export default function ProgramsPage() {
                       style={
                         p.active
                           ? {
-                              borderRadius: "56px",
+                              borderRadius: "var(--radius-lg)",
                               borderColor: "var(--accent)",
                               boxShadow: "0 0 0 1px var(--accent)",
                             }
-                          : { borderRadius: "56px" }
+                          : { borderRadius: "var(--radius-lg)" }
                       }
                     >
                       <Link
