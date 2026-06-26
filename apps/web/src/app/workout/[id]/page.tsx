@@ -399,14 +399,14 @@ export default function WorkoutPage() {
         <button
           type="button"
           onClick={discard}
-          className="ms-auto inline-flex items-center min-h-10 px-3 rounded-lg border border-[var(--danger)] bg-transparent text-[var(--danger)] font-semibold"
+          className="ms-auto inline-flex items-center min-h-10 px-3 rounded-[var(--radius-sm)] border border-[var(--danger)] bg-transparent text-[var(--danger)] font-semibold"
         >
           Discard
         </button>
         <button
           type="button"
           onClick={finish}
-          className="inline-flex items-center min-h-10 px-4 rounded-lg bg-[var(--success)] text-[#06231a] font-bold"
+          className="inline-flex items-center min-h-10 px-4 rounded-[var(--radius-sm)] bg-[var(--success)] text-[#06231a] font-bold"
         >
           Finish
         </button>

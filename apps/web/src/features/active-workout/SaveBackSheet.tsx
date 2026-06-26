@@ -70,7 +70,7 @@ export function SaveBackSheet({
       <div
         role="dialog"
         aria-label="Save changes"
-        className="relative w-[min(440px,100%)] max-h-[92vh] flex flex-col overflow-hidden bg-[var(--bg)] rounded-t-[22px] shadow-[var(--shadow-lg)]"
+        className="relative w-[min(440px,100%)] max-h-[92vh] flex flex-col overflow-hidden bg-[var(--bg)] rounded-t-[var(--radius-lg)] shadow-[var(--shadow-lg)]"
       >
         <div className="pt-2.5 pb-1 flex justify-center shrink-0">
           <span className="w-[38px] h-[5px] rounded-full bg-[var(--border)]" />

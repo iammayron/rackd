@@ -33,7 +33,7 @@ export function WeekdayPicker({
             onClick={() => toggle(day)}
             aria-pressed={on}
             aria-label={DAY_NAMES[day]}
-            className={`flex-1 min-h-10 rounded-lg border text-sm font-bold ${
+            className={`flex-1 min-h-10 rounded-[var(--radius-sm)] border text-sm font-bold ${
               on
                 ? "bg-[var(--accent)] text-white border-[var(--accent)]"
                 : "bg-[var(--surface)] text-[var(--text-muted)] border-[var(--border)]"

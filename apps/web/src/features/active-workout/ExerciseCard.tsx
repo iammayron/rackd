@@ -174,7 +174,7 @@ export function ExerciseCard({
       data-sex={sessionExercise.id}
       // scroll-margin so auto-scroll (#18) lands the card below the sticky header
       style={{ scrollMarginTop: "calc(var(--safe-top) + 72px)" }}
-      className={`bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 ${
+      className={`bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-lg)] p-4 ${
         startsRest ? "mb-4" : "mb-1"
       } ${dragging ? "opacity-60 ring-2 ring-[var(--accent)]" : ""}`}
     >
@@ -304,7 +304,7 @@ export function ExerciseCard({
       />
 
       {prevTop && suggestedWeight !== undefined && noneCompleted && (
-        <div className="flex items-center gap-2 bg-[var(--surface-2)] border border-[var(--border)] rounded-lg py-2 px-3 mb-3 text-sm">
+        <div className="flex items-center gap-2 bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-sm)] py-2 px-3 mb-3 text-sm">
           <span>📈 Try</span>
           <strong className="text-[var(--accent)]">
             {display(suggestedWeight)} {unit} × {prevTop.reps}
@@ -341,7 +341,7 @@ export function ExerciseCard({
       <button
         type="button"
         onClick={onAddSet}
-        className="mt-2 min-h-11 w-full rounded-lg bg-[var(--surface-2)] text-[var(--accent)] border border-dashed border-[var(--border)] text-base font-semibold"
+        className="mt-2 min-h-11 w-full rounded-[var(--radius-sm)] bg-[var(--surface-2)] text-[var(--accent)] border border-dashed border-[var(--border)] text-base font-semibold"
       >
         + Add set
       </button>

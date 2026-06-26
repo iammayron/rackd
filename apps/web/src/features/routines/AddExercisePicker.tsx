@@ -63,7 +63,7 @@ export function AddExercisePicker({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="min-h-[52px] w-full rounded-2xl bg-[var(--accent)] text-white border-none text-lg font-bold hover:bg-[var(--accent-press)]"
+        className="min-h-[52px] w-full rounded-[var(--radius-lg)] bg-[var(--accent)] text-white border-none text-lg font-bold hover:bg-[var(--accent-press)]"
       >
         + Add exercise
       </button>
@@ -92,7 +92,7 @@ export function AddExercisePicker({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search exercises…"
-            className="mt-3 w-full min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            className="mt-3 w-full min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-[var(--radius)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
           />
         </div>
 
@@ -115,7 +115,7 @@ export function AddExercisePicker({
                     type="button"
                     onClick={() => pick(ex.id)}
                     aria-label={`Add ${ex.name}`}
-                    className={`w-full text-left flex items-center gap-3 p-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-[var(--accent)] ${
+                    className={`w-full text-left flex items-center gap-3 p-3 rounded-[var(--radius)] border focus:outline-none focus:ring-2 focus:ring-[var(--accent)] ${
                       on
                         ? "bg-[var(--success)] text-[#06231a] border-[var(--success)]"
                         : "bg-[var(--surface)] text-[var(--text)] border-[var(--border)]"

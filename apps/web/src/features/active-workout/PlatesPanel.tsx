@@ -70,7 +70,7 @@ export function PlatesPanel({ topWeight }: { topWeight: number }) {
       </button>
 
       {open && (
-        <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-lg p-3">
+        <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-sm)] p-3">
           {top <= 0 ? (
             <p className="text-sm text-[var(--text-muted)]">Enter a working weight to see plates.</p>
           ) : (

@@ -27,7 +27,7 @@ export function Nav() {
           <Link
             key={it.href}
             href={it.href}
-            className={`flex-1 min-h-14 flex items-center justify-center rounded-[14px] text-center text-[13px] no-underline transition-colors ${
+            className={`flex-1 min-h-14 flex items-center justify-center rounded-[var(--radius)] text-center text-[13px] no-underline transition-colors ${
               active
                 ? "bg-[var(--accent-wash)] text-[var(--accent)] font-bold"
                 : "text-[var(--text-muted)] font-medium"

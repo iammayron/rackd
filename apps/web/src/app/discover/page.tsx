@@ -48,7 +48,7 @@ export default function DiscoverPage() {
         {shared.map((s) => (
           <section
             key={s.id}
-            className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 mb-3"
+            className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-lg)] p-4 mb-3"
           >
             <h2 className="text-lg font-bold">{s.name}</h2>
             <p className="text-sm text-[var(--text-muted)] mb-3">
@@ -58,7 +58,7 @@ export default function DiscoverPage() {
               type="button"
               onClick={() => clone(s)}
               disabled={cloning}
-              className="min-h-11 w-full rounded-lg bg-[var(--accent)] text-white font-bold disabled:opacity-60"
+              className="min-h-11 w-full rounded-[var(--radius-sm)] bg-[var(--accent)] text-white font-bold disabled:opacity-60"
             >
               {cloning ? "Adding…" : "Clone to my routines"}
             </button>

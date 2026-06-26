@@ -128,7 +128,7 @@ export function RoutineExerciseEditor({
   return (
     <section
       data-rex={routineExercise.id}
-      className={`bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-4 ${
+      className={`bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-lg)] p-4 ${
         inGroup ? "mb-1" : "mb-4"
       } ${dragging ? "opacity-60 ring-2 ring-[var(--accent)]" : ""}`}
     >
@@ -238,7 +238,7 @@ export function RoutineExerciseEditor({
       <button
         type="button"
         onClick={onAddSet}
-        className="mt-2 min-h-11 w-full rounded-lg bg-[var(--surface-2)] text-[var(--accent)] border border-dashed border-[var(--border)] text-base font-semibold"
+        className="mt-2 min-h-11 w-full rounded-[var(--radius-sm)] bg-[var(--surface-2)] text-[var(--accent)] border border-dashed border-[var(--border)] text-base font-semibold"
       >
         + Add set
       </button>
@@ -250,7 +250,7 @@ export function RoutineExerciseEditor({
 
 /** Weight/reps display cell — a tap target that opens the slide-up editor. */
 const CELL =
-  "w-16 shrink-0 inline-flex items-center justify-center gap-0.5 min-h-11 text-center bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-md text-lg px-1 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]";
+  "w-16 shrink-0 inline-flex items-center justify-center gap-0.5 min-h-11 text-center bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-[var(--radius-sm)] text-lg px-1 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]";
 
 /**
  * One routine set row: target weight + reps as tap-to-edit cells (same

@@ -97,7 +97,7 @@ export function WeightProgressCard() {
   const hasData = currentKg !== undefined || logs.length > 0;
 
   return (
-    <section className="mb-8 rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6">
+    <section className="mb-8 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-6">
       <div className="flex items-start justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
           Weight progress

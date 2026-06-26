@@ -118,7 +118,7 @@ export function BottomSheet({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="rk-squircle-corners relative w-[min(440px,100%)] max-h-[88vh] flex flex-col overflow-hidden bg-[var(--bg)] rounded-t-[22px] shadow-[var(--shadow-lg)] outline-none rk-sheet-up"
+        className="rk-squircle-corners relative w-[min(440px,100%)] max-h-[88vh] flex flex-col overflow-hidden bg-[var(--bg)] rounded-t-[var(--radius-lg)] shadow-[var(--shadow-lg)] outline-none rk-sheet-up"
         style={{
           marginBottom: kbInset || undefined,
           transform: dragY ? `translateY(${dragY}px)` : undefined,

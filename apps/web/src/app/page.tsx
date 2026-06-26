@@ -9,6 +9,7 @@ import {
   programTodaySlot,
   programNextSlot,
   advanceRotation,
+  estimateSessionMinutes,
 } from "@rackd/core";
 import { Card, Button, Badge, Avatar, Input, SelectableRow } from "@rackd/ui";
 import { api } from "@/lib/api";
@@ -16,8 +17,8 @@ import { queryClient, qk } from "@/lib/query";
 import { Nav } from "@/components/Nav";
 import { ActivateProgramSheet } from "@/components/ActivateProgramSheet";
 import { WeightProgressCard } from "@/features/dashboard/WeightProgressCard";
-import { WeeklyVolumeCard } from "@/features/dashboard/WeeklyVolumeCard";
-import { HistoryStreakCard } from "@/features/dashboard/HistoryStreakCard";
+import { ThisWeekCard } from "@/features/dashboard/ThisWeekCard";
+import { RecentSessionsCard } from "@/features/dashboard/RecentSessionsCard";
 import { ProgramProgress } from "@/features/dashboard/ProgramProgress";
 
 interface ExerciseRow {
@@ -65,6 +66,10 @@ interface SessionRow {
   programId?: string | null;
   startedAt: number;
   endedAt?: number | null;
+}
+
+interface RoutineDetailRow {
+  exercises: { restSec?: number; sets?: unknown[] }[];
 }
 
 const EYEBROW =
@@ -170,6 +175,24 @@ export default function Home() {
     : fallbackToday?.name;
   const nextName = routineName(nextSlot?.routineId);
   const isRest = !heroRoutineId;
+
+  // Hero subtitle ("N exercises · ~M min"): fetch the hero routine's tree and
+  // estimate its run time from set counts + configured rests (pure core fn).
+  const { data: heroDetail } = useQuery({
+    queryKey: qk.routine(heroRoutineId ?? ""),
+    queryFn: () => api<RoutineDetailRow>(`/api/routines/${heroRoutineId}`),
+    enabled: Boolean(heroRoutineId),
+  });
+  const heroEstimate = useMemo(() => {
+    const ex = heroDetail?.exercises ?? [];
+    if (ex.length === 0) return null;
+    return {
+      count: ex.length,
+      minutes: estimateSessionMinutes(
+        ex.map((e) => ({ setCount: e.sets?.length ?? 0, restSec: e.restSec })),
+      ),
+    };
+  }, [heroDetail]);
 
   // A program workout finished today → celebrate. Finishing advances the
   // rotation cursor server-side, so `slot` already points at the *next* workout;
@@ -469,6 +492,12 @@ export default function Home() {
             <div className="mt-2 text-3xl font-extrabold leading-[1.05]">
               {heroName}
             </div>
+            {heroEstimate && (
+              <div className="mt-1.5 text-sm font-semibold text-white/85 tabular-nums">
+                {heroEstimate.count} exercise{heroEstimate.count === 1 ? "" : "s"}{" "}
+                · ~{heroEstimate.minutes} min
+              </div>
+            )}
             <Button
               variant="secondary"
               size="lg"
@@ -546,9 +575,9 @@ export default function Home() {
           </Card>
         )}
 
+        <ThisWeekCard />
+        <RecentSessionsCard />
         <WeightProgressCard />
-        <WeeklyVolumeCard />
-        <HistoryStreakCard />
 
         {/* Quick ad-hoc workout — pick exercises to start a session with no routine */}
         {quickOpen && (

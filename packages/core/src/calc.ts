@@ -16,6 +16,36 @@ export function sessionVolume(sets: SetLog[]): number {
     .reduce((sum, s) => sum + s.weight * s.reps, 0);
 }
 
+/** One exercise's contribution to a duration estimate: working sets + their rest. */
+export interface DurationExercise {
+  /** Number of working sets. */
+  setCount: number;
+  /** Rest between sets in seconds (defaults to 120 when omitted). */
+  restSec?: number;
+}
+
+const WORK_SEC_PER_SET = 40; // time under tension + setup per working set
+const DEFAULT_REST_SEC = 120; // matches the routine schema default
+
+/**
+ * Rough wall-clock estimate (minutes) for running a routine: each working set
+ * costs a fixed working slice plus its configured rest. Rounded to the nearest
+ * `roundTo` so the dashboard shows a friendly "~45 min". Empty routines → 0.
+ * Pure — the caller maps routine exercises to `{ setCount, restSec }`.
+ */
+export function estimateSessionMinutes(
+  exercises: readonly DurationExercise[],
+  roundTo = 5,
+): number {
+  const seconds = exercises.reduce((sum, e) => {
+    const sets = Math.max(0, e.setCount);
+    const rest = e.restSec ?? DEFAULT_REST_SEC;
+    return sum + sets * (WORK_SEC_PER_SET + rest);
+  }, 0);
+  if (seconds <= 0) return 0;
+  return Math.max(roundTo, Math.round(seconds / 60 / roundTo) * roundTo);
+}
+
 export interface PlateResult {
   /** Plates for ONE side of the bar, heaviest first. */
   perSide: number[];
