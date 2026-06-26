@@ -130,7 +130,20 @@ export function RecentSessionsCard({ showViewAll = true }: { showViewAll?: boole
                   onClick={() => setShareId(s.id)}
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-[var(--border)] text-[var(--text-muted)] active:scale-95"
                 >
-                  ↗
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-[18px] w-[18px]"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 15V3" />
+                    <path d="m8 7 4-4 4 4" />
+                    <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
+                  </svg>
                 </button>
               </li>
             );

@@ -66,4 +66,15 @@ describe("buildShareCardData", () => {
     expect(cardData).toMatchObject({ name: "Workout", date: "", sets: 0, prCount: 0 });
     expect(cardData.topSet).toBeUndefined();
   });
+
+  it("includes the workout name, date and the app URL in the share text", () => {
+    const { shareText } = buildShareCardData(session, [], {
+      ...opts,
+      appUrl: "https://rackd.app",
+    });
+    expect(shareText).toContain("Pull Day");
+    expect(shareText).toContain("Jun 21"); // date from startedAt
+    expect(shareText).toContain("tracked with Rackd");
+    expect(shareText).toContain("https://rackd.app");
+  });
 });
