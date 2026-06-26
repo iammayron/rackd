@@ -47,6 +47,14 @@ export function fmtShareDate(ms: number): string {
   });
 }
 
+/** Weekday, date and time for the share message, e.g. "Sat, Jun 21 · 6:00 PM". */
+export function fmtShareDateTime(ms: number): string {
+  const d = new Date(ms);
+  const date = d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return `${date} · ${time}`;
+}
+
 /**
  * Build the shareable-card payload (and a plain-text summary) from a finished
  * session and its PRs. Pure — units are applied via the injected `display`
@@ -55,9 +63,9 @@ export function fmtShareDate(ms: number): string {
 export function buildShareCardData(
   session: ShareSessionTree | undefined,
   prs: SharePrRow[],
-  opts: { display: (kg: number) => number; unit: string },
+  opts: { display: (kg: number) => number; unit: string; appUrl?: string },
 ): { cardData: ShareCardData; shareText: string } {
-  const { display, unit } = opts;
+  const { display, unit, appUrl } = opts;
   const ses = session?.exercises ?? [];
   const nameByExercise = Object.fromEntries(
     ses.map((s) => [s.exerciseId, s.exercise?.name ?? "Exercise"]),
@@ -86,9 +94,10 @@ export function buildShareCardData(
     topSet,
   };
 
-  const shareText = `${cardData.name} — ${cardData.volume} ${unit} volume · ${cardData.sets} sets · ${cardData.duration}${
+  const when = session ? fmtShareDateTime(session.startedAt) : "";
+  const shareText = `${cardData.name}${when ? ` · ${when}` : ""} — ${cardData.volume} ${unit} volume · ${cardData.sets} sets · ${cardData.duration}${
     prs.length ? ` · ${prs.length} PR${prs.length === 1 ? "" : "s"} 💪` : ""
-  } — tracked with Rackd`;
+  } — tracked with Rackd${appUrl ? `\n${appUrl}` : ""}`;
 
   return { cardData, shareText };
 }
