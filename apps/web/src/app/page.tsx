@@ -16,7 +16,6 @@ import { api } from "@/lib/api";
 import { queryClient, qk } from "@/lib/query";
 import { Nav } from "@/components/Nav";
 import { ActivateProgramSheet } from "@/components/ActivateProgramSheet";
-import { WeightProgressCard } from "@/features/dashboard/WeightProgressCard";
 import { ThisWeekCard } from "@/features/dashboard/ThisWeekCard";
 import { RecentSessionsCard } from "@/features/dashboard/RecentSessionsCard";
 import { ProgramProgress } from "@/features/dashboard/ProgramProgress";
@@ -577,7 +576,6 @@ export default function Home() {
 
         <ThisWeekCard />
         <RecentSessionsCard />
-        <WeightProgressCard />
 
         {/* Quick ad-hoc workout — pick exercises to start a session with no routine */}
         {quickOpen && (

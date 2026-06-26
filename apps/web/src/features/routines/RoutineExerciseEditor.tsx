@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
-import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Badge, mmss } from "@rackd/ui";
 import { api } from "@/lib/api";
@@ -10,6 +9,7 @@ import { queryClient, qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
 import { ExerciseThumb, type ExerciseMediaData } from "@/components/ExerciseMedia";
 import { ReplaceExercisePicker } from "@/features/routines/ReplaceExercisePicker";
+import { useExerciseDetail } from "@/features/exercise/exercise-detail-store";
 import { HeaderMenu } from "@/features/active-workout/ExerciseCard";
 import { RestSheet } from "@/features/active-workout/RestSheet";
 import { PlatesPanel } from "@/features/active-workout/PlatesPanel";
@@ -67,7 +67,6 @@ export function RoutineExerciseEditor({
   dragging?: boolean;
   onDragHandleDown?: (e: PointerEvent) => void;
 }) {
-  const router = useRouter();
   const { unit, display } = useUnit();
   const [showRest, setShowRest] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -104,8 +103,9 @@ export function RoutineExerciseEditor({
   const subtitleRaw = ex?.primaryMuscle || ex?.equipment;
   const subtitle = subtitleRaw ? cap(subtitleRaw) : undefined;
 
+  const openExercise = useExerciseDetail((s) => s.open);
   function goDetails() {
-    router.push(`/exercise/${routineExercise.exerciseId}`);
+    openExercise(routineExercise.exerciseId);
   }
 
   const invalidate = () =>

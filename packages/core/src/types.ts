@@ -49,6 +49,8 @@ export interface Exercise {
   equipment: Equipment;
   category: ExerciseCategory;
   instructions: string;
+  /** Short coaching cues shown as a checklist on the exercise detail. */
+  formCues?: string[];
   /** Poster frame — loads first, tiny. */
   thumbnailUrl?: string;
   /** 3-5s muted MP4 loop — lazy-loaded, cached-on-view. URL only, never in sync DB blob. */

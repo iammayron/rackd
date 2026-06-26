@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { queryClient, qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
+import { useAuth } from "@/lib/auth";
+import { BottomSheet } from "@/components/BottomSheet";
 
 interface WeightLogRow {
   id: string;
@@ -51,8 +53,18 @@ function Sparkline({ values }: { values: number[] }) {
   );
 }
 
+/** A friendly first name for the sheet subtitle ("Today · Sam"), best-effort. */
+function firstName(meta: Record<string, unknown> | undefined, email: string | undefined): string {
+  const full = typeof meta?.full_name === "string" ? meta.full_name : undefined;
+  const name = full ?? (typeof meta?.name === "string" ? (meta.name as string) : undefined);
+  if (name) return name.trim().split(/\s+/)[0]!;
+  if (email) return email.split("@")[0]!;
+  return "";
+}
+
 export function WeightProgressCard() {
   const { unit, display, toKg, fmt } = useUnit();
+  const { user } = useAuth();
 
   const { data: logs = [] } = useQuery({
     queryKey: qk.bodyWeight,
@@ -67,27 +79,37 @@ export function WeightProgressCard() {
   const currentKg = profile?.currentWeightKg ?? latestLog?.weightKg;
   const goalKg = profile?.goalWeightKg;
 
-  const [value, setValue] = useState("");
-  const [saving, setSaving] = useState(false);
+  // The sheet edits in display units (kg or lb); convert to kg only on save.
   const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(0);
+  const [saving, setSaving] = useState(false);
 
   const remaining = useMemo(() => {
     if (currentKg === undefined || goalKg === undefined) return undefined;
     return display(Math.abs(currentKg - goalKg));
   }, [currentKg, goalKg, display]);
 
+  function openSheet() {
+    // Seed the stepper from the current weight (display units), else a sane start.
+    const seed = currentKg !== undefined ? display(currentKg) : unit === "lb" ? 165 : 75;
+    setValue(Math.round(seed * 10) / 10);
+    setOpen(true);
+  }
+
+  function bump(delta: number) {
+    setValue((v) => Math.max(0, Math.round((v + delta) * 10) / 10));
+  }
+
   async function save() {
-    const n = Number(value);
-    if (!Number.isFinite(n) || n <= 0 || saving) return;
+    if (!Number.isFinite(value) || value <= 0 || saving) return;
     setSaving(true);
     try {
       await api("/api/body-weight", {
         method: "POST",
-        body: JSON.stringify({ weightKg: toKg(n), loggedAt: Date.now() }),
+        body: JSON.stringify({ weightKg: toKg(value), loggedAt: Date.now() }),
       });
       queryClient.invalidateQueries({ queryKey: qk.bodyWeight });
       queryClient.invalidateQueries({ queryKey: qk.profile });
-      setValue("");
       setOpen(false);
     } finally {
       setSaving(false);
@@ -95,6 +117,7 @@ export function WeightProgressCard() {
   }
 
   const hasData = currentKg !== undefined || logs.length > 0;
+  const name = firstName(user?.user_metadata, user?.email ?? undefined);
 
   return (
     <section className="mb-8 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-6">
@@ -104,10 +127,10 @@ export function WeightProgressCard() {
         </p>
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={openSheet}
           className="text-sm font-semibold text-[var(--accent)]"
         >
-          {open ? "Cancel" : "Log weight"}
+          Log weight
         </button>
       </div>
 
@@ -140,25 +163,48 @@ export function WeightProgressCard() {
         </p>
       )}
 
-      {open && (
-        <div className="mt-4 flex gap-2">
-          <input
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            inputMode="decimal"
-            placeholder={`Weight (${unit})`}
-            className="min-h-11 flex-1 rounded-lg border border-[var(--border)] bg-[var(--bg)] px-4 text-base text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-          />
+      <BottomSheet
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Log weight"
+        subtitle={name ? `Today · ${name}` : "Today"}
+      >
+        <div className="px-1 pt-2">
+          <div className="flex items-center justify-center gap-6">
+            <button
+              type="button"
+              aria-label="Decrease"
+              onClick={() => bump(-0.1)}
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--surface-2)] text-2xl font-bold text-[var(--text)] active:scale-95"
+            >
+              −
+            </button>
+            <div className="min-w-[7.5rem] text-center">
+              <span className="text-5xl font-extrabold tabular-nums">
+                {value.toFixed(1)}
+              </span>
+              <span className="ml-1.5 text-xl font-bold text-[var(--text-muted)]">{unit}</span>
+            </div>
+            <button
+              type="button"
+              aria-label="Increase"
+              onClick={() => bump(0.1)}
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--surface-2)] text-2xl font-bold text-[var(--text)] active:scale-95"
+            >
+              +
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={save}
-            disabled={saving || value.trim() === ""}
-            className="min-h-11 rounded-lg bg-[var(--accent)] px-5 font-bold text-white disabled:opacity-60"
+            disabled={saving || value <= 0}
+            className="mt-7 min-h-[52px] w-full rounded-[var(--radius-lg)] bg-[var(--accent)] text-lg font-bold text-[var(--text-on-accent)] disabled:opacity-60"
           >
             {saving ? "Saving…" : "Save"}
           </button>
         </div>
-      )}
+      </BottomSheet>
     </section>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, Badge, Input } from "@rackd/ui";
 import { useQuery } from "@tanstack/react-query";
@@ -9,30 +8,8 @@ import { useUnit } from "@/lib/units-store";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query";
 import { BackButton } from "@/components/BackButton";
-
-interface PRRow {
-  id: string;
-  exerciseId: string;
-  type: string;
-  value: number;
-  achievedAt: number;
-}
-interface ExerciseRow {
-  id: string;
-  name: string;
-  primaryMuscle: string;
-}
-
-/** Best record per exercise, derived from all of the user's personalRecords. */
-interface BestPR {
-  exerciseId: string;
-  name: string;
-  muscle: string;
-  type: string;
-  value: number;
-  achievedAt: number;
-  fresh: boolean;
-}
+import { useExerciseDetail } from "@/features/exercise/exercise-detail-store";
+import { bestPrsByExercise, type PRRowLite, type ExerciseLite } from "@/features/prs/bestPrs";
 
 const cap = (s: string) => (s ? s[0]!.toUpperCase() + s.slice(1) : s);
 
@@ -40,57 +17,26 @@ function fmtDate(ms: number): string {
   return new Date(ms).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-/** Midnight on the Monday of the current week (local). */
-function startOfWeek(now: number): number {
-  const d = new Date(now);
-  d.setHours(0, 0, 0, 0);
-  const sinceMon = (d.getDay() + 6) % 7; // 0=Sun → 6, 1=Mon → 0
-  d.setDate(d.getDate() - sinceMon);
-  return d.getTime();
-}
-
 export default function PRsPage() {
   const router = useRouter();
   const { unit, display } = useUnit();
+  const openExercise = useExerciseDetail((s) => s.open);
   const [search, setSearch] = useState("");
 
   // Owner-scoped server-side; newest first (the API orders by achievedAt desc).
   const { data: prs = [] } = useQuery({
     queryKey: qk.personalRecords,
-    queryFn: () => api<PRRow[]>("/api/personal-records"),
+    queryFn: () => api<PRRowLite[]>("/api/personal-records"),
   });
   const { data: exercises = [] } = useQuery({
     queryKey: qk.exercises,
-    queryFn: () => api<ExerciseRow[]>("/api/exercises"),
+    queryFn: () => api<ExerciseLite[]>("/api/exercises"),
   });
 
-  const rows = useMemo<BestPR[]>(() => {
-    const exMap = new Map(exercises.map((e) => [e.id, e]));
-    const weekStart = startOfWeek(Date.now());
-    // One row per exercise: prefer the best estimated-1RM, else the top value.
-    const best = new Map<string, BestPR>();
-    for (const pr of prs) {
-      const ex = exMap.get(pr.exerciseId);
-      if (!ex) continue;
-      const cur = best.get(pr.exerciseId);
-      const prefer =
-        !cur ||
-        (pr.type === "1rm" && cur.type !== "1rm") ||
-        (pr.type === cur.type && pr.value > cur.value);
-      if (prefer) {
-        best.set(pr.exerciseId, {
-          exerciseId: pr.exerciseId,
-          name: ex.name,
-          muscle: ex.primaryMuscle,
-          type: pr.type,
-          value: pr.value,
-          achievedAt: pr.achievedAt,
-          fresh: pr.achievedAt >= weekStart,
-        });
-      }
-    }
-    return [...best.values()].sort((a, b) => b.achievedAt - a.achievedAt);
-  }, [prs, exercises]);
+  const rows = useMemo(
+    () => bestPrsByExercise(prs, exercises, Date.now()),
+    [prs, exercises],
+  );
 
   const list = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -133,10 +79,11 @@ export default function PRsPage() {
             {list.map((p) => {
               const is1rm = p.type === "1rm";
               return (
-                <Link
+                <button
                   key={p.exerciseId}
-                  href={`/exercise/${p.exerciseId}`}
-                  className="block no-underline text-[var(--text)]"
+                  type="button"
+                  onClick={() => openExercise(p.exerciseId)}
+                  className="block w-full text-left text-[var(--text)]"
                 >
                 <Card padding={16}>
                   <div className="flex items-center gap-3">
@@ -165,7 +112,7 @@ export default function PRsPage() {
                     </div>
                   </div>
                 </Card>
-                </Link>
+                </button>
               );
             })}
           </div>

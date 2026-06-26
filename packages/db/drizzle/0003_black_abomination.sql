@@ -1,0 +1,1 @@
+ALTER TABLE "exercises" ADD COLUMN "form_cues" text[] DEFAULT '{}' NOT NULL;

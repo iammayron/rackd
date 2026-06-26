@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import type { PointerEvent } from "react";
-import { useRouter } from "next/navigation";
 import { nextWeight } from "@rackd/core";
 import { Badge, mmss } from "@rackd/ui";
 import { api } from "@/lib/api";
@@ -14,6 +13,7 @@ import {
   type ExerciseMediaData,
 } from "@/components/ExerciseMedia";
 import { ReplaceExercisePicker } from "@/features/routines/ReplaceExercisePicker";
+import { useExerciseDetail } from "@/features/exercise/exercise-detail-store";
 import { SetRow, type SetRowData } from "./SetRow";
 import { PlatesPanel } from "./PlatesPanel";
 import { RestSheet } from "./RestSheet";
@@ -62,7 +62,6 @@ export function ExerciseCard({
   dragging?: boolean;
   onDragHandleDown?: (e: PointerEvent) => void;
 }) {
-  const router = useRouter();
   const toast = useToast();
   const { unit, display } = useUnit();
   const [showRest, setShowRest] = useState(false);
@@ -105,8 +104,9 @@ export function ExerciseCard({
   const subtitleRaw = ex?.primaryMuscle || ex?.equipment;
   const subtitle = subtitleRaw ? cap(subtitleRaw) : undefined;
 
+  const openExercise = useExerciseDetail((s) => s.open);
   function goDetails() {
-    router.push(`/exercise/${sessionExercise.exerciseId}`);
+    openExercise(sessionExercise.exerciseId);
   }
 
   /**
