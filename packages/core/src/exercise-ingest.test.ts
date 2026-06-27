@@ -156,6 +156,10 @@ describe("deriveMovementPattern", () => {
   it("classifies a hinge from 'romanian'", () => {
     expect(deriveMovementPattern("Romanian Deadlift")).toBe("hinge");
   });
+  it("classifies a plain deadlift and a swing as hinge", () => {
+    expect(deriveMovementPattern("Conventional Deadlift")).toBe("hinge");
+    expect(deriveMovementPattern("Kettlebell Swing")).toBe("hinge");
+  });
   it("classifies a press as push", () => {
     expect(deriveMovementPattern("Bench Press")).toBe("push");
   });
@@ -170,6 +174,9 @@ describe("deriveMovementPattern", () => {
   });
   it("classifies a farmer's walk as carry", () => {
     expect(deriveMovementPattern("Farmer's Walk")).toBe("carry");
+  });
+  it("prefers lunge over squat for a name carrying both keywords", () => {
+    expect(deriveMovementPattern("Walking Lunge to Squat")).toBe("lunge");
   });
   it("classifies a face pull as pull (beats the press keyword)", () => {
     expect(deriveMovementPattern("Face Pull")).toBe("pull");
@@ -219,6 +226,30 @@ describe("normalizeFreeExercise", () => {
     expect(exercise.secondaryMuscles).toContain("biceps");
     expect(exercise.secondaryMuscles).not.toContain("back");
     expect(unmappedMuscles).toEqual([]);
+  });
+
+  it("wires every derived + passthrough field onto the result", () => {
+    const { exercise } = normalizeFreeExercise(makeRec());
+    expect(exercise.force).toBe("pull");
+    expect(exercise.level).toBe("intermediate");
+    expect(exercise.mechanic).toBe("compound");
+    expect(exercise.movementPattern).toBe("pull"); // "Barbell Row" → pull
+    expect(exercise.bodyPart).toBe("upper"); // back → upper
+    expect(exercise.isUnilateral).toBe(false);
+    expect(exercise.category).toBe("barbell");
+    expect(exercise.muscles).toEqual([
+      { muscleId: "lats", role: "primary", activation: 1 },
+      { muscleId: "biceps", role: "secondary", activation: 0.5 },
+    ]);
+  });
+
+  it("normalizes invalid force/level/mechanic to undefined (no raw leak)", () => {
+    const { exercise } = normalizeFreeExercise(
+      makeRec({ force: "explode", level: "wizard", mechanic: "weird" }),
+    );
+    expect(exercise.force).toBeUndefined();
+    expect(exercise.level).toBeUndefined();
+    expect(exercise.mechanic).toBeUndefined();
   });
 
   it("derives id and slug from slugify(rec.id), not the name", () => {
