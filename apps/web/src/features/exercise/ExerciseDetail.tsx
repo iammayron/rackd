@@ -14,6 +14,7 @@ import { api } from "@/lib/api";
 import { qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
 import { LineChart, BarChart } from "@/components/Chart";
+import { ExerciseDemo } from "./ExerciseDemo";
 
 interface ExerciseMediaView {
   kind: string;
@@ -139,7 +140,7 @@ export function ExerciseDetail({
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Hero media — real clip/thumbnail when present, else a tinted placeholder. */}
+      {/* Hero media — autoplaying clip or the demo image; tap to view fullscreen. */}
       <div
         className="relative -mx-4 -mt-2 h-[180px] flex items-center justify-center overflow-hidden"
         style={{ background: exerciseGradient(ex.primaryMuscle) }}
@@ -152,11 +153,19 @@ export function ExerciseDetail({
             loop
             autoPlay
             playsInline
-            className="absolute inset-0 h-full w-full object-cover"
+            onClick={(e) => e.currentTarget.requestFullscreen?.()}
+            className="absolute inset-0 h-full w-full object-cover cursor-pointer"
           />
+        ) : frames.length > 1 ? (
+          <ExerciseDemo frames={frames} alt={ex.name} />
         ) : heroImage ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={heroImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <img
+            src={heroImage}
+            alt={ex.name}
+            onClick={(e) => e.currentTarget.requestFullscreen?.()}
+            className="absolute inset-0 h-full w-full object-cover cursor-pointer"
+          />
         ) : (
           <span
             aria-hidden="true"
@@ -172,23 +181,6 @@ export function ExerciseDetail({
         <Badge tone="accent">{cap(ex.primaryMuscle)}</Badge>
         <Badge tone="neutral">{cap(ex.equipment)}</Badge>
       </div>
-
-      {frames.length > 1 && (
-        <Card>
-          <div className={EYEBROW}>Demonstration</div>
-          <div className="flex gap-2 overflow-x-auto">
-            {frames.map((url, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={i}
-                src={url}
-                alt={`${ex.name} — step ${i + 1}`}
-                className="h-28 w-auto flex-shrink-0 rounded-[var(--radius)] border border-[var(--border)] object-cover"
-              />
-            ))}
-          </div>
-        </Card>
-      )}
 
       {instructionSteps.length > 0 && (
         <Card>
