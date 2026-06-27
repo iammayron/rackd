@@ -190,28 +190,6 @@ export function ExerciseDetail({
         </Card>
       )}
 
-      <Card>
-        <div className={EYEBROW}>Muscles worked</div>
-        <MuscleVisualizer
-          primary={ex.primaryMuscle}
-          secondary={secondary}
-          muscles={ex.muscles}
-        />
-      </Card>
-
-      {points.length > 0 && (
-        <>
-          <Card variant="feature">
-            <div className={EYEBROW}>Est 1RM over time</div>
-            <LineChart data={points.map((p) => display(p.best1rm))} unit={unit} />
-          </Card>
-          <Card variant="feature">
-            <div className={EYEBROW}>Volume · last {VOL_WINDOW} sessions</div>
-            <BarChart data={volumeSeries} unit={unit} />
-          </Card>
-        </>
-      )}
-
       {instructionSteps.length > 0 && (
         <Card>
           <div className={EYEBROW}>How to perform</div>
@@ -247,6 +225,15 @@ export function ExerciseDetail({
         </Card>
       )}
 
+      <Card>
+        <div className={EYEBROW}>Muscles worked</div>
+        <MuscleVisualizer
+          primary={ex.primaryMuscle}
+          secondary={secondary}
+          muscles={ex.muscles}
+        />
+      </Card>
+
       {similar.length > 0 && (
         <Card>
           <div className={EYEBROW}>Similar exercises</div>
@@ -268,6 +255,19 @@ export function ExerciseDetail({
             ))}
           </ul>
         </Card>
+      )}
+
+      {points.length > 0 && (
+        <>
+          <Card variant="feature">
+            <div className={EYEBROW}>Est 1RM over time</div>
+            <LineChart data={points.map((p) => display(p.best1rm))} unit={unit} />
+          </Card>
+          <Card variant="feature">
+            <div className={EYEBROW}>Volume · last {VOL_WINDOW} sessions</div>
+            <BarChart data={volumeSeries} unit={unit} />
+          </Card>
+        </>
       )}
     </div>
   );
