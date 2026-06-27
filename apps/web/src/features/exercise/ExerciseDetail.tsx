@@ -2,12 +2,26 @@
 
 import { useMemo } from "react";
 import { suggestReplacements } from "@rackd/core";
-import { Card, Badge, MuscleVisualizer, exerciseGradient } from "@rackd/ui";
+import {
+  Card,
+  Badge,
+  MuscleVisualizer,
+  exerciseGradient,
+  type MuscleInvolvementView,
+} from "@rackd/ui";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
 import { LineChart, BarChart } from "@/components/Chart";
+
+interface ExerciseMediaView {
+  kind: string;
+  url: string;
+  width?: number | null;
+  height?: number | null;
+  order: number;
+}
 
 interface ExerciseRow {
   id: string;
@@ -24,6 +38,10 @@ interface ExerciseRow {
   // Exercise-data-platform fields (present on seeded library rows).
   movementPattern?: string;
   mechanic?: string;
+  /** Fine-grained muscle involvement + activation (from getExerciseDetail). */
+  muscles?: MuscleInvolvementView[];
+  /** Ordered media (the [id] detail route joins this). */
+  media?: ExerciseMediaView[];
 }
 
 /** Per-session stat point for one exercise (mirrors the /stats route). */
@@ -97,6 +115,9 @@ export function ExerciseDetail({
   }
 
   const secondary = [...(ex.secondaryMuscles ?? [])];
+  // Demonstration frames (free-exercise-db ships start/end photos per exercise).
+  const frames = (ex.media ?? []).filter((m) => m.kind === "image").map((m) => m.url);
+  const heroImage = frames[0] ?? ex.thumbnailUrl;
   const initials = ex.name
     .split(" ")
     .map((w) => w[0])
@@ -133,9 +154,9 @@ export function ExerciseDetail({
             playsInline
             className="absolute inset-0 h-full w-full object-cover"
           />
-        ) : ex.thumbnailUrl ? (
+        ) : heroImage ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={ex.thumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <img src={heroImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
         ) : (
           <span
             aria-hidden="true"
@@ -152,22 +173,21 @@ export function ExerciseDetail({
         <Badge tone="neutral">{cap(ex.equipment)}</Badge>
       </div>
 
-      <Card>
-        <div className={EYEBROW}>Muscles worked</div>
-        <MuscleVisualizer primary={ex.primaryMuscle} secondary={secondary} />
-      </Card>
-
-      {points.length > 0 && (
-        <>
-          <Card variant="feature">
-            <div className={EYEBROW}>Est 1RM over time</div>
-            <LineChart data={points.map((p) => display(p.best1rm))} unit={unit} />
-          </Card>
-          <Card variant="feature">
-            <div className={EYEBROW}>Volume · last {VOL_WINDOW} sessions</div>
-            <BarChart data={volumeSeries} unit={unit} />
-          </Card>
-        </>
+      {frames.length > 1 && (
+        <Card>
+          <div className={EYEBROW}>Demonstration</div>
+          <div className="flex gap-2 overflow-x-auto">
+            {frames.map((url, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={url}
+                alt={`${ex.name} — step ${i + 1}`}
+                className="h-28 w-auto flex-shrink-0 rounded-[var(--radius)] border border-[var(--border)] object-cover"
+              />
+            ))}
+          </div>
+        </Card>
       )}
 
       {instructionSteps.length > 0 && (
@@ -205,6 +225,15 @@ export function ExerciseDetail({
         </Card>
       )}
 
+      <Card>
+        <div className={EYEBROW}>Muscles worked</div>
+        <MuscleVisualizer
+          primary={ex.primaryMuscle}
+          secondary={secondary}
+          muscles={ex.muscles}
+        />
+      </Card>
+
       {similar.length > 0 && (
         <Card>
           <div className={EYEBROW}>Similar exercises</div>
@@ -226,6 +255,19 @@ export function ExerciseDetail({
             ))}
           </ul>
         </Card>
+      )}
+
+      {points.length > 0 && (
+        <>
+          <Card variant="feature">
+            <div className={EYEBROW}>Est 1RM over time</div>
+            <LineChart data={points.map((p) => display(p.best1rm))} unit={unit} />
+          </Card>
+          <Card variant="feature">
+            <div className={EYEBROW}>Volume · last {VOL_WINDOW} sessions</div>
+            <BarChart data={volumeSeries} unit={unit} />
+          </Card>
+        </>
       )}
     </div>
   );

@@ -62,7 +62,10 @@ export {
   muscleHue,
   exerciseGradient,
 } from "./components/MuscleVisualizer";
-export type { MuscleVisualizerProps } from "./components/MuscleVisualizer";
+export type {
+  MuscleVisualizerProps,
+  MuscleInvolvementView,
+} from "./components/MuscleVisualizer";
 export { MuscleMap } from "./components/MuscleMap";
 export type { MuscleMapProps } from "./components/MuscleMap";
 export { ShareCard } from "./components/ShareCard";

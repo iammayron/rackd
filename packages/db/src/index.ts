@@ -67,6 +67,53 @@ async function insertRow(
  * Sessions (live workout tree)
  * ------------------------------------------------------------------------- */
 
+/**
+ * One exercise plus its fine-grained muscle involvement (joined to the muscle
+ * taxonomy for display name + canonical group) and ordered media. Muscles are
+ * sorted primary → secondary → tertiary, then by activation. Read-only; the
+ * route does the owner/visibility check on the base row.
+ */
+export async function getExerciseDetail(id: string) {
+  const [exercise] = await db
+    .select()
+    .from(t.exercises)
+    .where(eq(t.exercises.id, id))
+    .limit(1);
+  if (!exercise) return null;
+
+  const muscles = await db
+    .select({
+      muscleId: t.exerciseMuscles.muscleId,
+      role: t.exerciseMuscles.role,
+      activation: t.exerciseMuscles.activation,
+      name: t.muscles.name,
+      canonicalGroup: t.muscles.canonicalGroup,
+    })
+    .from(t.exerciseMuscles)
+    .innerJoin(t.muscles, eq(t.muscles.id, t.exerciseMuscles.muscleId))
+    .where(eq(t.exerciseMuscles.exerciseId, id));
+
+  const roleRank: Record<string, number> = { primary: 0, secondary: 1, tertiary: 2 };
+  muscles.sort(
+    (a, b) =>
+      (roleRank[a.role] ?? 9) - (roleRank[b.role] ?? 9) || b.activation - a.activation,
+  );
+
+  const media = await db
+    .select({
+      kind: t.exerciseMedia.kind,
+      url: t.exerciseMedia.url,
+      width: t.exerciseMedia.width,
+      height: t.exerciseMedia.height,
+      order: t.exerciseMedia.order,
+    })
+    .from(t.exerciseMedia)
+    .where(eq(t.exerciseMedia.exerciseId, id))
+    .orderBy(asc(t.exerciseMedia.order));
+
+  return { ...exercise, muscles, media };
+}
+
 export async function startSession(args: {
   ownerId: string;
   routineId?: string;
