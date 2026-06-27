@@ -1,15 +1,18 @@
 import { and, eq } from "drizzle-orm";
-import { db, schema } from "@rackd/db";
+import { db, schema, getExerciseDetail } from "@rackd/db";
 import { withUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
 const { exercises } = schema;
 
-/** GET /api/exercises/[id] — a single exercise (library or the caller's custom). */
+/**
+ * GET /api/exercises/[id] — a single exercise (library or the caller's custom),
+ * with its fine-grained muscle involvement (+ activation) and ordered media.
+ */
 export const GET = withUser(async (ownerId, _req, ctx) => {
   const { id } = await ctx.params;
-  const [row] = await db.select().from(exercises).where(eq(exercises.id, id)).limit(1);
+  const row = await getExerciseDetail(id);
   if (!row) return Response.json({ error: "Not found" }, { status: 404 });
   if (row.ownerId && row.ownerId !== ownerId) return Response.json({ error: "Forbidden" }, { status: 403 });
   return Response.json(row);

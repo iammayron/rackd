@@ -30,3 +30,6 @@ supabase/.temp/
 # .cursor/hooks.json + hooks). Keep personal/local + secrets out.
 .cursor/*.local.json
 .cursor/**/*.local.*
+
+# Local Claude Code worktrees
+.claude/worktrees/
