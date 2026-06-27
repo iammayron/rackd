@@ -33,24 +33,26 @@ muscle fatigue/recovery tracking, and AI-generated plans/programs.
 
 ## 3. Sourcing strategy
 
-| Source | License | Use | Ships in app? |
-|---|---|---|---|
-| **`yuhonas/free-exercise-db`** | Unlicense (public domain) | Primary base — ~800 exercises, real photos, `force`/`level`/`mechanic`/muscles | ✅ no strings |
-| **wger** | exercise DB CC-BY-SA 4.0 | Optional volume + extra media/translations | ✅ with attribution |
-| ExerciseDB v2 (AscendAPI) | commercial / RapidAPI | Optional later — 11k exercises + polished video, only if we want premium volume | ⚠️ license first |
+| Source                         | License                   | Use                                                                                 | Ships in app?    |
+| ------------------------------ | ------------------------- | ----------------------------------------------------------------------------------- | ---------------- |
+| **`yuhonas/free-exercise-db`** | Unlicense (public domain) | Primary base — ~800 exercises, real photos, `force`/`level`/`mechanic`/muscles      | ✅ no strings    |
+| ~~**wger**~~                   | exercise DB CC-BY-SA 4.0  | **Dropped** — copyleft + attribution burden; free-exercise-db already covers volume | ❌               |
+| ExerciseDB v2 (AscendAPI)      | commercial / RapidAPI     | Optional later — 11k exercises + polished video, only if we want premium volume     | ⚠️ license first |
 
 **Source links:**
+
 - free-exercise-db: repo https://github.com/yuhonas/free-exercise-db · dataset https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/dist/exercises.json · images base https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/
 - wger: site https://wger.de · API https://wger.de/api/v2/ · docs https://wger.de/en/software/api · source https://github.com/wger-project/wger
 - ExerciseDB v2 (AscendAPI): site https://exercisedb.dev · docs https://docs.ascendapi.com · repos https://github.com/ExerciseDB/exercisedb-api + https://github.com/ExerciseDB/muscle-visualizer-api
 
 - **Schema is source-agnostic** (`source` + `sourceId` columns) so any source bolts on
   without rework.
-- **Plans/programs: author our own.** Training *methodologies* aren't copyrightable;
-  someone's program *text* is. We hand-author templates of proven systems and optionally
+- **Plans/programs: author our own.** Training _methodologies_ aren't copyrightable;
+  someone's program _text_ is. We hand-author templates of proven systems and optionally
   import wger's CC-BY-SA community templates. **No scraping muscleandstrength.com.**
 
 ### Media strategy
+
 - **Now:** ship free-exercise-db's real public-domain **photos** (start/end position).
   Anatomically correct, free, zero generation cost.
 - **Later (optional polish):** AI-generated demo clips — one consistent stylized look,
@@ -58,6 +60,7 @@ muscle fatigue/recovery tracking, and AI-generated plans/programs.
 - All media **mirrored to our CDN** (Supabase Storage); DB stores our URL + `originalUrl`.
 
 ### AI strategy
+
 - **AI plans = core, high ROI.** Plan generation is constraint satisfaction over our
   structured data (muscle coverage, volume, fatigue, equipment, balance). Needs the data
   model first — garbage in, garbage out.
@@ -69,29 +72,33 @@ muscle fatigue/recovery tracking, and AI-generated plans/programs.
 ## 4. Source data shapes
 
 ### free-exercise-db (primary)
+
 ```jsonc
 {
   "id": "Alternate_Incline_Dumbbell_Curl",
   "name": "Alternate Incline Dumbbell Curl",
-  "force": "pull",                 // push | pull | static | null
-  "level": "beginner",             // beginner | intermediate | expert
-  "mechanic": "isolation",         // compound | isolation | null
-  "equipment": "dumbbell",         // or null
+  "force": "pull", // push | pull | static | null
+  "level": "beginner", // beginner | intermediate | expert
+  "mechanic": "isolation", // compound | isolation | null
+  "equipment": "dumbbell", // or null
   "primaryMuscles": ["biceps"],
   "secondaryMuscles": ["forearms"],
   "instructions": ["...", "..."],
   "category": "strength",
-  "images": ["Alternate_Incline_Dumbbell_Curl/0.jpg", ".../1.jpg"]
+  "images": ["Alternate_Incline_Dumbbell_Curl/0.jpg", ".../1.jpg"],
 }
 ```
+
 - ~800 exercises. Raw base URL: `https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/`
 - One JSON array (`dist/exercises.json`) + per-exercise image folders.
 
 ### wger (optional second source)
+
 - REST API + downloadable DB; fields: name (multilingual), category, equipment, muscles
   (primary/secondary), images, some videos. License CC-BY-SA 4.0 → keep attribution.
 
 ### ExerciseDB v2 (optional, later, paid)
+
 - Adds `videoUrl`, `exerciseTips[]`, `variations[]`, `relatedExerciseIds[]`, multilingual,
   11k exercises. Only pursue if premium volume/video is wanted; confirm storage license.
 
@@ -103,10 +110,12 @@ Extend the existing `exercises` table; add the rich layer around it. Types mirro
 `@rackd/core` per project rules.
 
 ### 5.1 `exercises` (extend existing)
+
 Existing columns kept: `id, name, primaryMuscle, secondaryMuscles[], equipment, category,
 instructions, formCues[], thumbnailUrl, clipUrl, clipUrlWebm, mediaSource, isCustom, ownerId`.
 
 Add:
+
 ```
 source           text   not null default 'rackd'   -- 'free-exercise-db' | 'wger' | 'exercisedb' | 'rackd'
 sourceId         text                              -- original id from the source
@@ -122,6 +131,7 @@ popularity       integer not null default 0        -- for ranking/search
 ```
 
 ### 5.2 `muscles` — fine-grained taxonomy
+
 ```
 id             text primary key      -- 'lats', 'rectus_femoris', ...
 name           text not null
@@ -132,6 +142,7 @@ recoveryHours  integer not null default 48  -- baseline recovery time (fatigue e
 ```
 
 ### 5.3 `exercise_muscles` — exercise ↔ muscle join (with activation)
+
 ```
 exerciseId   text references exercises(id)
 muscleId     text references muscles(id)
@@ -141,6 +152,7 @@ primary key (exerciseId, muscleId)
 ```
 
 ### 5.4 `exercise_media`
+
 ```
 id           text primary key
 exerciseId   text references exercises(id)
@@ -154,6 +166,7 @@ lang         text                  -- for future i18n
 ```
 
 ### 5.5 `exercise_relations` — similarity / substitution graph
+
 ```
 exerciseId   text references exercises(id)
 relatedId    text references exercises(id)
@@ -164,12 +177,14 @@ primary key (exerciseId, relatedId, kind)
 ```
 
 ### 5.6 Lookup tables
+
 ```
 equipment_map: sourceValue text → canonical text (Equipment enum)
 muscle_map:    sourceValue text → muscleId text     -- reconcile source muscle strings
 ```
 
 ### 5.7 Plans / programs (separate from user `routines`)
+
 ```
 program_templates
   id, slug, name, description, goal, level, methodology ('PPL'|'5/3/1'|...),
@@ -184,6 +199,7 @@ program_day_exercises
 ```
 
 ### 5.8 Fatigue (user-scoped, owner_id)
+
 ```
 muscle_fatigue
   ownerId, muscleId, accumulatedLoad real, lastTrainedAt timestamptz
@@ -192,6 +208,7 @@ muscle_fatigue
 ```
 
 ### 5.9 AI / search (later)
+
 ```
 exercise_embeddings   -- pgvector: exerciseId, embedding vector(N)
 ```
@@ -201,16 +218,33 @@ exercise_embeddings   -- pgvector: exerciseId, embedding vector(N)
 ## 6. Core types (`packages/core/src/types.ts`)
 
 Add (mirror schema, types live once here):
+
 ```ts
 export type Force = "push" | "pull" | "static";
 export type Level = "beginner" | "intermediate" | "expert";
 export type Mechanic = "compound" | "isolation";
 export type MovementPattern =
-  | "squat" | "hinge" | "lunge" | "push" | "pull" | "carry" | "core" | "isolation";
+  | "squat"
+  | "hinge"
+  | "lunge"
+  | "push"
+  | "pull"
+  | "carry"
+  | "core"
+  | "isolation";
 export type MuscleRole = "primary" | "secondary" | "tertiary";
 
-export interface MuscleInvolvement { muscleId: string; role: MuscleRole; activation: number; }
-export interface ExerciseRelation { relatedId: string; kind: "variation" | "similar" | "substitute"; score: number; reason?: string; }
+export interface MuscleInvolvement {
+  muscleId: string;
+  role: MuscleRole;
+  activation: number;
+}
+export interface ExerciseRelation {
+  relatedId: string;
+  kind: "variation" | "similar" | "substitute";
+  score: number;
+  reason?: string;
+}
 // extend existing Exercise with: source, sourceId, slug, force?, level?, mechanic?,
 // movementPattern?, isUnilateral, bodyPart?, aliases, muscles: MuscleInvolvement[]
 ```
@@ -229,13 +263,13 @@ values are logged for manual triage, never silently dropped.**
 
 ## 8. Derived enrichment (our moat — computed once at ingest)
 
-| Field | How derived |
-|---|---|
+| Field             | How derived                                                                                                                                    |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `movementPattern` | Rule map from name + primary muscle + `mechanic` (e.g. "squat"/"press"/"row"/"curl" keywords → pattern). Manual override table for edge cases. |
-| `isUnilateral` | Name keywords ("single-arm", "alternate", "split", "lunge", "pistol", "bulgarian"). |
-| `activation` | Role heuristic v1: primary 1.0 / secondary 0.5 / tertiary 0.25. Tunable table. |
-| `bodyPart` | From primary muscle's region. |
-| `aliases` | Curated synonym list per common exercise (search). |
+| `isUnilateral`    | Name keywords ("single-arm", "alternate", "split", "lunge", "pistol", "bulgarian").                                                            |
+| `activation`      | Role heuristic v1: primary 1.0 / secondary 0.5 / tertiary 0.25. Tunable table.                                                                 |
+| `bodyPart`        | From primary muscle's region.                                                                                                                  |
+| `aliases`         | Curated synonym list per common exercise (search).                                                                                             |
 
 These power §10–§13. Stored as plain columns/rows — no runtime computation.
 
@@ -244,6 +278,7 @@ These power §10–§13. Stored as plain columns/rows — no runtime computation
 ## 9. Substitution / similarity graph
 
 Populate `exercise_relations`:
+
 - **`similar`** (the "Similar exercises" UI list): same `canonicalGroup` primary muscle.
   Score by overlap of (primary+secondary muscles, Jaccard) and equipment availability.
 - **`variation`**: same `movementPattern` + primary muscle, different equipment.
@@ -268,6 +303,7 @@ Populate `exercise_relations`:
 ## 11. Exercise detail page — render contract
 
 Top → bottom (from the mocks):
+
 1. **Media**: short GIF/video loop + poster thumbnail (real photo today). Replaces the
    initials placeholder once media exists.
 2. **Title** + **mechanic badge** (Compound/Isolation).
@@ -287,6 +323,7 @@ Stored but not all shown (power search/AI): `force`, `level`, `bodyPart`, `isUni
 ## 12. Muscle fatigue / recovery engine
 
 Powers "tiredness %", rest guidance, "what to train today", AI plans.
+
 1. **Activation weights** — `exercise_muscles.activation` (§8).
 2. **Accrual** — per logged set: `fatigue[muscle] += volume(sets×reps×load) × activation`,
    updates `muscle_fatigue.accumulatedLoad` + `lastTrainedAt`.
@@ -318,17 +355,17 @@ Adjacent: weekly volume/muscle vs landmarks (MEV/MAV/MRV), push/pull & upper/low
 All under `packages/db/src/ingest/`, runnable like the existing `seed-pg.ts`. Idempotent,
 resumable, `--dry-run` + `--limit` supported, structured logging + a summary report.
 
-| Script | Command | Purpose |
-|---|---|---|
-| `fetch-source.ts` | `pnpm --filter @rackd/db ingest:fetch -- --source=free-exercise-db` | Download the raw source dataset JSON to a local cache dir. |
-| `build-mappings.ts` | `pnpm --filter @rackd/db ingest:mappings` | Generate/refresh `muscle_map` + `equipment_map`; print unmapped values for manual review. |
-| `seed-exercises.ts` | `pnpm --filter @rackd/db ingest:exercises -- --source=free-exercise-db` | Normalize + upsert exercises, `exercise_muscles`, instructions; map fine→coarse. Upsert by `(source, sourceId)`. |
-| `download-media.ts` | `pnpm --filter @rackd/db ingest:media` | Download each image/clip from source, dedupe by content hash, upload to Supabase Storage, write `exercise_media` (our URL + `originalUrl`). Concurrency-limited + retry/backoff. Resumable via checkpoint. |
-| `enrich.ts` | `pnpm --filter @rackd/db ingest:enrich` | Compute `movementPattern`, `isUnilateral`, `bodyPart`, `activation`; apply override tables. |
-| `build-relations.ts` | `pnpm --filter @rackd/db ingest:relations` | Compute `exercise_relations` (similar/variation/substitute) + scores. |
-| `seed-programs.ts` | `pnpm --filter @rackd/db ingest:programs` | Insert authored `program_templates*` from `data/programs/*.json`. |
-| `merge-source.ts` | `pnpm --filter @rackd/db ingest:merge -- --source=wger` | Dedupe a second source against existing exercises (fuzzy name + muscle match); merge or insert. |
-| `embed.ts` (later) | `pnpm --filter @rackd/db ingest:embed` | Generate pgvector embeddings. |
+| Script                      | Command                                                                 | Purpose                                                                                                                                                                                                               |
+| --------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetch-source.ts`           | `pnpm --filter @rackd/db ingest:fetch -- --source=free-exercise-db`     | Download the raw source dataset JSON to a local cache dir.                                                                                                                                                            |
+| `build-mappings.ts`         | `pnpm --filter @rackd/db ingest:mappings`                               | Generate/refresh `muscle_map` + `equipment_map`; print unmapped values for manual review.                                                                                                                             |
+| `seed-exercises.ts`         | `pnpm --filter @rackd/db ingest:exercises -- --source=free-exercise-db` | Normalize + upsert exercises, `exercise_muscles`, instructions; map fine→coarse. Upsert by `(source, sourceId)`.                                                                                                      |
+| `download-media.ts`         | `pnpm --filter @rackd/db ingest:media`                                  | Download each image/clip from source, dedupe by content hash, upload to Supabase Storage, write `exercise_media` (our URL + `originalUrl`). Concurrency-limited + retry/backoff. Resumable via checkpoint.            |
+| `enrich.ts`                 | `pnpm --filter @rackd/db ingest:enrich`                                 | Compute `movementPattern`, `isUnilateral`, `bodyPart`, `activation`; apply override tables.                                                                                                                           |
+| `build-relations.ts`        | `pnpm --filter @rackd/db ingest:relations`                              | Compute `exercise_relations` (similar/variation/substitute) + scores.                                                                                                                                                 |
+| `seed-programs.ts`          | `pnpm --filter @rackd/db ingest:programs`                               | Insert authored `program_templates*` from `data/programs/*.json`.                                                                                                                                                     |
+| `dedup-legacy-exercises.ts` | `pnpm --filter @rackd/db ingest:dedup-legacy -- --dry-run`              | Match the legacy `ex_*` seed → imported library (pure matcher in `@rackd/core`), repoint routine/session/PR/template references, delete the now-unreferenced legacy rows. (Replaced the dropped wger `merge-source`.) |
+| `embed.ts` (later)          | `pnpm --filter @rackd/db ingest:embed`                                  | Generate pgvector embeddings.                                                                                                                                                                                         |
 
 One-shot orchestrator: `pnpm --filter @rackd/db ingest:all` runs fetch → mappings →
 exercises → media → enrich → relations → programs in order.
@@ -366,19 +403,19 @@ keys in the central `qk` registry; cache persists to IndexedDB for offline reads
 
 ## 17. Phasing / milestones
 
-| Phase | Deliverable | Ships value |
-|---|---|---|
-| **0** | Schema migration + `@rackd/core` types + lookup tables | foundation |
-| **1** | `<MuscleMap>` SVG component + exercise detail page (works on current data) | visible win |
-| **2** | `fetch` + `build-mappings` + `seed-exercises` (free-exercise-db) | ~800 owned exercises |
-| **3** | `download-media` → Supabase Storage | real photos in app, offline |
-| **4** | `enrich` (movementPattern/activation/etc.) | powers everything downstream |
-| **5** | `build-relations` + `/substitutes` endpoint + UI swap | replacement feature |
-| **6** | `seed-programs` (authored templates) + clone-to-routine | bundled plans |
-| **7** | Fatigue engine (accrual + freshness) | "tiredness %", rest guidance |
-| **8** | `merge-source` (wger) | more volume/media |
-| **9** | pgvector embeddings + AI plan generation | AI features |
-| **10** | (optional) AI-generated demo media, reviewed | polish |
+| Phase  | Deliverable                                                                   | Ships value                               |
+| ------ | ----------------------------------------------------------------------------- | ----------------------------------------- |
+| **0**  | Schema migration + `@rackd/core` types + lookup tables                        | foundation                                |
+| **1**  | `<MuscleMap>` SVG component + exercise detail page (works on current data)    | visible win                               |
+| **2**  | `fetch` + `build-mappings` + `seed-exercises` (free-exercise-db)              | ~800 owned exercises                      |
+| **3**  | `download-media` → Supabase Storage                                           | real photos in app, offline               |
+| **4**  | `enrich` (movementPattern/activation/etc.)                                    | powers everything downstream              |
+| **5**  | `build-relations` + `/substitutes` endpoint + UI swap                         | replacement feature                       |
+| **6**  | `seed-programs` (authored templates) + clone-to-routine                       | bundled plans                             |
+| **7**  | Fatigue engine (accrual + freshness)                                          | "tiredness %", rest guidance              |
+| **8**  | `dedup-legacy-exercises` (repoint `ex_*` history → imports, delete bare rows) | one clean library; ~~wger merge dropped~~ |
+| **9**  | pgvector embeddings + AI plan generation                                      | AI features                               |
+| **10** | (optional) AI-generated demo media, reviewed                                  | polish                                    |
 
 Each phase: small, typed, tested (pure logic → `@rackd/core`; repo/route → `@rackd/db`/
 `apps/web`). Run the gate (`pnpm typecheck && pnpm test`) before commits. Short-lived
@@ -420,27 +457,51 @@ branch + PR per phase.
   "sourceId": "Barbell_Row",
   "name": "Barbell Row",
   "slug": "barbell-row",
-  "primaryMuscle": "back",          // canonical
-  "secondaryMuscles": ["biceps"],   // canonical
+  "primaryMuscle": "back", // canonical
+  "secondaryMuscles": ["biceps"], // canonical
   "equipment": "barbell",
   "category": "barbell",
   "force": "pull",
   "level": "intermediate",
   "mechanic": "compound",
-  "movementPattern": "pull",        // derived
-  "bodyPart": "upper",              // derived
-  "isUnilateral": false,            // derived
-  "instructions": ["Hinge to ~45°...", "Row to lower ribs.", "Lower under control."],
-  "formCues": ["Pull with the elbows", "Keep torso angle fixed", "Squeeze the back"],
-  "muscles": [
-    { "muscleId": "lats", "role": "primary",   "activation": 1.0 },
-    { "muscleId": "rhomboids", "role": "secondary", "activation": 0.5 },
-    { "muscleId": "biceps", "role": "secondary", "activation": 0.5 }
+  "movementPattern": "pull", // derived
+  "bodyPart": "upper", // derived
+  "isUnilateral": false, // derived
+  "instructions": [
+    "Hinge to ~45°...",
+    "Row to lower ribs.",
+    "Lower under control.",
   ],
-  "media": [{ "kind": "image", "url": "https://cdn.rackd.../barbell-row/0.jpg", "originalUrl": "https://raw.githubusercontent.com/..." }],
+  "formCues": [
+    "Pull with the elbows",
+    "Keep torso angle fixed",
+    "Squeeze the back",
+  ],
+  "muscles": [
+    { "muscleId": "lats", "role": "primary", "activation": 1.0 },
+    { "muscleId": "rhomboids", "role": "secondary", "activation": 0.5 },
+    { "muscleId": "biceps", "role": "secondary", "activation": 0.5 },
+  ],
+  "media": [
+    {
+      "kind": "image",
+      "url": "https://cdn.rackd.../barbell-row/0.jpg",
+      "originalUrl": "https://raw.githubusercontent.com/...",
+    },
+  ],
   "relations": [
-    { "relatedId": "pendlay-row", "kind": "variation", "score": 0.9, "reason": "same pull pattern, barbell" },
-    { "relatedId": "seated-cable-row", "kind": "similar", "score": 0.8, "reason": "same primary muscle (back)" }
-  ]
+    {
+      "relatedId": "pendlay-row",
+      "kind": "variation",
+      "score": 0.9,
+      "reason": "same pull pattern, barbell",
+    },
+    {
+      "relatedId": "seated-cable-row",
+      "kind": "similar",
+      "score": 0.8,
+      "reason": "same primary muscle (back)",
+    },
+  ],
 }
 ```

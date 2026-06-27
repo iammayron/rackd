@@ -21,6 +21,7 @@
     "ingest:taxonomy": "tsx src/ingest/seed-taxonomy.ts",
     "ingest:exercises": "tsx src/ingest/seed-exercises.ts",
     "ingest:media": "tsx src/ingest/download-media.ts",
+    "ingest:dedup-legacy": "tsx src/ingest/dedup-legacy-exercises.ts",
     "ingest:all": "tsx src/ingest/index.ts",
     "test": "vitest run"
   },
