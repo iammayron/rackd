@@ -32,8 +32,12 @@ export function BottomSheet({
   children: ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [dragY, setDragY] = useState(0);
   const dragStart = useRef<number | null>(null);
+  // "pending" = a content gesture we haven't decided is a dismiss-drag vs a
+  // scroll; "dragging" = committed to dismissing; "none" = idle.
+  const dragMode = useRef<"none" | "pending" | "dragging">("none");
   // Height the on-screen keyboard overlaps into the layout viewport, so the
   // sheet can sit above it instead of being hidden behind it (see effect below).
   const [kbInset, setKbInset] = useState(0);
@@ -87,23 +91,46 @@ export function BottomSheet({
 
   if (!open) return null;
 
-  // Drag-down to dismiss, grabbed from the handle/header.
-  function onPointerDown(e: PointerEvent) {
+  // Drag-down to dismiss. From the handle it always drags; from the scrolling
+  // content it only becomes a dismiss-drag when the list is already at the top
+  // and the finger moves down — otherwise it's left as a normal scroll.
+  function onHandleDown(e: PointerEvent) {
     dragStart.current = e.clientY;
+    dragMode.current = "dragging";
     e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function onContentDown(e: PointerEvent) {
+    dragStart.current = e.clientY;
+    dragMode.current = "pending";
   }
   function onPointerMove(e: PointerEvent) {
     if (dragStart.current == null) return;
-    setDragY(Math.max(0, e.clientY - dragStart.current));
+    const dy = e.clientY - dragStart.current;
+    if (dragMode.current === "pending") {
+      const atTop = (scrollRef.current?.scrollTop ?? 0) <= 0;
+      if (dy > 6 && atTop) {
+        dragMode.current = "dragging";
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+      } else if (dy > 6) {
+        // Content isn't at the top → it's a scroll, not a dismiss. Bail out.
+        dragStart.current = null;
+        dragMode.current = "none";
+        return;
+      } else {
+        return;
+      }
+    }
+    if (dragMode.current === "dragging") setDragY(Math.max(0, dy));
   }
   function onPointerUp() {
     if (dragStart.current == null) return;
     const dismissed = dragY > 90;
     dragStart.current = null;
+    dragMode.current = "none";
     if (dismissed) onClose();
     else setDragY(0);
   }
-  const dragging = dragStart.current != null;
+  const dragging = dragY > 0 || dragStart.current != null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center">
@@ -128,7 +155,7 @@ export function BottomSheet({
         }}
       >
         <div
-          onPointerDown={onPointerDown}
+          onPointerDown={onHandleDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
@@ -145,7 +172,14 @@ export function BottomSheet({
           )}
         </div>
 
-        <div className="overflow-y-auto px-4 pt-2 pb-[calc(16px+env(safe-area-inset-bottom))]">
+        <div
+          ref={scrollRef}
+          onPointerDown={onContentDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
+          className="overflow-y-auto px-4 pt-2 pb-[calc(16px+env(safe-area-inset-bottom))]"
+        >
           {children}
         </div>
       </div>

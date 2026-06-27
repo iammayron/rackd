@@ -316,7 +316,7 @@ function RoutineEditor() {
             </Fragment>
           ))}
         </div>
-        <AddExercisePicker onPick={onPick} />
+        <AddExercisePicker onPick={onPick} existingIds={exercises.map((e) => e.exerciseId)} />
 
         <section className="mt-8">
           <div className="mb-3 text-xs font-semibold uppercase tracking-[0.06em] text-[var(--text-muted)]">

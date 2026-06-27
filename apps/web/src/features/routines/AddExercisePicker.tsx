@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@rackd/ui";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query";
 import { ExerciseThumb } from "@/components/ExerciseMedia";
@@ -27,9 +28,13 @@ const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
  */
 export function AddExercisePicker({
   onPick,
+  existingIds = [],
 }: {
   onPick: (exerciseId: string) => void;
+  /** Exercise ids already in the routine/workout — shown as "Added", not pickable. */
+  existingIds?: string[];
 }) {
+  const existing = useMemo(() => new Set(existingIds), [existingIds]);
   const { data: exercises = [] } = useQuery({
     queryKey: qk.exercises,
     queryFn: () => api<ExerciseRow[]>("/api/exercises"),
@@ -60,13 +65,19 @@ export function AddExercisePicker({
 
   return (
     <>
-      <button
-        type="button"
+      <Button
+        variant="secondary"
+        size="lg"
+        fullWidth
         onClick={() => setOpen(true)}
-        className="min-h-[52px] w-full rounded-[var(--radius-lg)] bg-[var(--surface-2)] text-[var(--accent)] border border-dashed border-[var(--border)] text-lg font-semibold"
+        style={{
+          background: "var(--surface-2)",
+          color: "var(--accent)",
+          borderStyle: "dashed",
+        }}
       >
         + Add exercise
-      </button>
+      </Button>
 
       <BottomSheet open={open} onClose={close}>
         {/* Sticky header (title + close + search) so the list scrolls under it. */}
@@ -106,6 +117,7 @@ export function AddExercisePicker({
           <ul className="list-none p-0 m-0 flex flex-col gap-2">
             {filtered.map((ex) => {
               const on = added === ex.id;
+              const already = existing.has(ex.id);
               const subtitle = ex.equipment
                 ? `${cap(ex.primaryMuscle)} · ${cap(ex.equipment)}`
                 : cap(ex.primaryMuscle);
@@ -113,13 +125,14 @@ export function AddExercisePicker({
                 <li key={ex.id}>
                   <button
                     type="button"
-                    onClick={() => pick(ex.id)}
-                    aria-label={`Add ${ex.name}`}
+                    onClick={() => !already && pick(ex.id)}
+                    disabled={already}
+                    aria-label={already ? `${ex.name} already added` : `Add ${ex.name}`}
                     className={`w-full text-left flex items-center gap-3 p-3 rounded-[var(--radius)] border focus:outline-none focus:ring-2 focus:ring-[var(--accent)] ${
                       on
                         ? "bg-[var(--success)] text-[#06231a] border-[var(--success)]"
                         : "bg-[var(--surface)] text-[var(--text)] border-[var(--border)]"
-                    }`}
+                    } ${already ? "opacity-55" : ""}`}
                   >
                     <ExerciseThumb ex={ex} size={44} />
                     <span className="min-w-0 flex-1">
@@ -133,9 +146,11 @@ export function AddExercisePicker({
                       </span>
                     </span>
                     <span
-                      className={`ms-2 shrink-0 text-sm font-semibold ${on ? "text-[#06231a]" : "text-[var(--accent)]"}`}
+                      className={`ms-2 shrink-0 text-sm font-semibold ${
+                        on ? "text-[#06231a]" : already ? "text-[var(--text-muted)]" : "text-[var(--accent)]"
+                      }`}
                     >
-                      {on ? "Added ✓" : "Add"}
+                      {already ? "Added ✓" : on ? "Added ✓" : "Add"}
                     </span>
                   </button>
                 </li>

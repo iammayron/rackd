@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { queryClient, qk } from "@/lib/query";
+import { Button } from "@rackd/ui";
 import { useUnit } from "@/lib/units-store";
 import { useAuth } from "@/lib/auth";
 import { BottomSheet } from "@/components/BottomSheet";
@@ -205,14 +206,16 @@ export function WeightProgressCard() {
             </button>
           </div>
 
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
             onClick={save}
             disabled={saving || value <= 0}
-            className="mt-7 min-h-[52px] w-full rounded-[var(--radius-lg)] bg-[var(--accent)] text-lg font-bold text-[var(--text-on-accent)] disabled:opacity-60"
+            className="mt-7"
           >
             {saving ? "Saving…" : "Save"}
-          </button>
+          </Button>
         </div>
       </BottomSheet>
     </section>
