@@ -14,6 +14,7 @@ import { api } from "@/lib/api";
 import { qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
 import { LineChart, BarChart } from "@/components/Chart";
+import { ExerciseDemo } from "./ExerciseDemo";
 
 interface ExerciseMediaView {
   kind: string;
@@ -155,6 +156,8 @@ export function ExerciseDetail({
             onClick={(e) => e.currentTarget.requestFullscreen?.()}
             className="absolute inset-0 h-full w-full object-cover cursor-pointer"
           />
+        ) : frames.length > 1 ? (
+          <ExerciseDemo frames={frames} alt={ex.name} />
         ) : heroImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
