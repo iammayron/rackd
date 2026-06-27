@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// 3-tab IA: Home / Plans / Progress. Settings lives behind the dashboard header
-// avatar, not the tab bar. Plans is the hub for programs + routines + templates;
+// 4-tab IA: Home / Plans / Exercises / Progress. Settings lives behind the
+// dashboard header avatar, not the tab bar. Plans is the hub for programs +
+// routines + templates; Exercises is the standalone library (browse + detail);
 // Progress is the hub for history + PRs/weight.
 const items = [
   { href: "/", label: "Home", match: (p: string) => p === "/" },
   { href: "/programs", label: "Plans", match: (p: string) => p.startsWith("/programs") || p.startsWith("/routines") },
+  { href: "/exercises", label: "Exercises", match: (p: string) => p.startsWith("/exercise") },
   { href: "/history", label: "Progress", match: (p: string) => p.startsWith("/history") },
 ];
 
