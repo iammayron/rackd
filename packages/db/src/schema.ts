@@ -5,6 +5,7 @@ import {
   doublePrecision,
   boolean,
   bigint,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -41,7 +42,160 @@ export const exercises = pgTable("exercises", {
   mediaSource: text("media_source").notNull().default("library"),
   isCustom: boolean("is_custom").notNull().default(false),
   ownerId: text("owner_id"),
+  // --- Exercise data platform (see docs/specs/exercise-data-platform.md) ---
+  // Dataset provenance; (source, sourceId) is the ingest upsert key.
+  source: text("source").notNull().default("rackd"),
+  sourceId: text("source_id"),
+  slug: text("slug").unique(),
+  force: text("force"),
+  level: text("level"),
+  mechanic: text("mechanic"),
+  // DERIVED at ingest.
+  movementPattern: text("movement_pattern"),
+  isUnilateral: boolean("is_unilateral").notNull().default(false),
+  bodyPart: text("body_part"),
+  aliases: text("aliases").array().notNull().default([]),
+  popularity: integer("popularity").notNull().default(0),
 });
+
+/**
+ * Fine-grained muscle taxonomy. `canonicalGroup` maps each muscle back to the
+ * coarse MuscleGroup the app UI/stats use; `svgRegion` keys the self-owned
+ * MuscleMap SVG path; `recoveryHours` is the fatigue-engine baseline.
+ */
+export const muscles = pgTable("muscles", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  canonicalGroup: text("canonical_group").notNull(),
+  region: text("region"),
+  svgRegion: text("svg_region"),
+  recoveryHours: integer("recovery_hours").notNull().default(48),
+});
+
+/** Exercise ↔ muscle join with DERIVED activation weight (0..1). */
+export const exerciseMuscles = pgTable(
+  "exercise_muscles",
+  {
+    exerciseId: text("exercise_id")
+      .notNull()
+      .references(() => exercises.id, { onDelete: "cascade" }),
+    muscleId: text("muscle_id")
+      .notNull()
+      .references(() => muscles.id),
+    role: text("role").notNull(),
+    activation: doublePrecision("activation").notNull(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.exerciseId, t.muscleId] }) }),
+);
+
+/** Media rows — our CDN URL + source provenance. Never binary in the DB. */
+export const exerciseMedia = pgTable("exercise_media", {
+  id: text("id").primaryKey(),
+  exerciseId: text("exercise_id")
+    .notNull()
+    .references(() => exercises.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  url: text("url").notNull(),
+  originalUrl: text("original_url"),
+  width: integer("width"),
+  height: integer("height"),
+  order: integer("order").notNull().default(0),
+  lang: text("lang"),
+});
+
+/** Similarity / substitution graph edges. */
+export const exerciseRelations = pgTable(
+  "exercise_relations",
+  {
+    exerciseId: text("exercise_id")
+      .notNull()
+      .references(() => exercises.id, { onDelete: "cascade" }),
+    relatedId: text("related_id")
+      .notNull()
+      .references(() => exercises.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    score: doublePrecision("score").notNull(),
+    reason: text("reason"),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.exerciseId, t.relatedId, t.kind] }) }),
+);
+
+/** Source equipment string → canonical Equipment enum value. */
+export const equipmentMap = pgTable("equipment_map", {
+  sourceValue: text("source_value").primaryKey(),
+  canonical: text("canonical").notNull(),
+});
+
+/** Source muscle string → our muscle id (taxonomy reconciliation). */
+export const muscleMap = pgTable("muscle_map", {
+  sourceValue: text("source_value").primaryKey(),
+  muscleId: text("muscle_id")
+    .notNull()
+    .references(() => muscles.id),
+});
+
+/**
+ * Bundled, public plan template (PPL, 5/3/1, …) — the read-only library users
+ * clone into their own `routines`. Distinct from the user-scoped `programs`.
+ */
+export const programTemplates = pgTable("program_templates", {
+  id: text("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  goal: text("goal"),
+  level: text("level"),
+  methodology: text("methodology"),
+  daysPerWeek: integer("days_per_week"),
+  durationWeeks: integer("duration_weeks"),
+  equipmentNeeded: text("equipment_needed").array().notNull().default([]),
+  source: text("source"),
+  attribution: text("attribution"),
+  isPublic: boolean("is_public").notNull().default(true),
+});
+
+export const programTemplateDays = pgTable("program_template_days", {
+  id: text("id").primaryKey(),
+  programTemplateId: text("program_template_id")
+    .notNull()
+    .references(() => programTemplates.id, { onDelete: "cascade" }),
+  weekIndex: integer("week_index"),
+  dayIndex: integer("day_index").notNull(),
+  label: text("label").notNull(),
+});
+
+export const programTemplateExercises = pgTable("program_template_exercises", {
+  id: text("id").primaryKey(),
+  dayId: text("day_id")
+    .notNull()
+    .references(() => programTemplateDays.id, { onDelete: "cascade" }),
+  // Null while only `sourceName` is known (unresolved import).
+  exerciseId: text("exercise_id").references(() => exercises.id),
+  order: integer("order").notNull(),
+  sets: integer("sets"),
+  repScheme: text("rep_scheme"),
+  restSeconds: integer("rest_seconds"),
+  intensity: text("intensity"),
+  notes: text("notes"),
+  sourceName: text("source_name"),
+});
+
+/**
+ * Per-user, per-muscle fatigue. `accumulatedLoad` decays on read (wall-clock,
+ * like the rest timer); `lastTrainedAt` is epoch ms. Owner-scoped.
+ */
+export const muscleFatigue = pgTable(
+  "muscle_fatigue",
+  {
+    ownerId: text("owner_id").notNull(),
+    muscleId: text("muscle_id")
+      .notNull()
+      .references(() => muscles.id),
+    accumulatedLoad: doublePrecision("accumulated_load").notNull().default(0),
+    lastTrainedAt: bigint("last_trained_at", { mode: "number" }),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.ownerId, t.muscleId] }) }),
+);
 
 export const routines = pgTable("routines", {
   id: text("id").primaryKey(),
@@ -246,6 +400,12 @@ export const scheduledPushes = pgTable("scheduled_pushes", {
 /** All tables, for `drizzle(pool, { schema })` relational queries. */
 export const schema = {
   exercises,
+  muscles,
+  exerciseMuscles,
+  exerciseMedia,
+  exerciseRelations,
+  equipmentMap,
+  muscleMap,
   routines,
   routineExercises,
   routineSets,
@@ -257,6 +417,10 @@ export const schema = {
   bodyWeightLogs,
   programs,
   programDays,
+  programTemplates,
+  programTemplateDays,
+  programTemplateExercises,
+  muscleFatigue,
   sharedRoutines,
   userProfile,
   pushSubscriptions,

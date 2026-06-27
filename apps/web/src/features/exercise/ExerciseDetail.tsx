@@ -13,7 +13,7 @@ interface ExerciseRow {
   id: string;
   name: string;
   primaryMuscle: string;
-  secondaryMuscles?: string[] | Set<string>;
+  secondaryMuscles?: string[];
   equipment: string;
   category: string;
   instructions?: string;
@@ -21,6 +21,9 @@ interface ExerciseRow {
   thumbnailUrl?: string;
   clipUrl?: string;
   clipUrlWebm?: string;
+  // Exercise-data-platform fields (present on seeded library rows).
+  movementPattern?: string;
+  mechanic?: string;
 }
 
 /** Per-session stat point for one exercise (mirrors the /stats route). */
@@ -83,6 +86,9 @@ export function ExerciseDetail({
       id: ex.id,
       primaryMuscle: ex.primaryMuscle,
       equipment: ex.equipment,
+      secondaryMuscles: [...(ex.secondaryMuscles ?? [])],
+      movementPattern: ex.movementPattern,
+      mechanic: ex.mechanic,
     }).slice(0, 5);
   }, [all, ex]);
 

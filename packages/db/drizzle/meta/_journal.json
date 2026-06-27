@@ -29,6 +29,13 @@
       "when": 1782434383710,
       "tag": "0003_black_abomination",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782525745806,
+      "tag": "0004_third_talisman",
+      "breakpoints": true
     }
   ]
 }

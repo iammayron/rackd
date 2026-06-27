@@ -16,6 +16,10 @@
     "db:deploy": "node scripts/migrate.mjs",
     "seed": "tsx src/seed-pg.ts",
     "db:seed-demo": "tsx src/seed-demo.ts",
+    "ingest:fetch": "tsx src/ingest/fetch-source.ts",
+    "ingest:taxonomy": "tsx src/ingest/seed-taxonomy.ts",
+    "ingest:exercises": "tsx src/ingest/seed-exercises.ts",
+    "ingest:all": "tsx src/ingest/index.ts",
     "test": "vitest run"
   },
   "dependencies": {

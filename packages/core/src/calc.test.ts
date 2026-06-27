@@ -262,6 +262,23 @@ describe("suggestReplacements", () => {
   it("returns empty when nothing matches", () => {
     expect(suggestReplacements([bench], bench)).toEqual([]);
   });
+
+  it("boosts a shared movement pattern above equipment-only", () => {
+    const target = { id: "t", name: "Barbell Row", primaryMuscle: "back", equipment: "barbell", movementPattern: "pull" };
+    const pulldown = { id: "p", name: "Lat Pulldown", primaryMuscle: "back", equipment: "cable", movementPattern: "pull" };
+    const benchBb = { id: "b", name: "Bench Press", primaryMuscle: "chest", equipment: "barbell", movementPattern: "push" };
+    const ranked = suggestReplacements([pulldown, benchBb], target).map((e) => e.id);
+    // pulldown: primary(2)+pattern(2)=4; bench: equipment(1) → pulldown first
+    expect(ranked[0]).toBe("p");
+  });
+
+  it("rewards shared secondary muscles", () => {
+    const target = { id: "t", name: "Pull-Up", primaryMuscle: "back", equipment: "bodyweight", secondaryMuscles: ["biceps"] };
+    const chin = { id: "c", name: "Chin-Up", primaryMuscle: "back", equipment: "bodyweight", secondaryMuscles: ["biceps"] };
+    const rack = { id: "r", name: "Rack Pull", primaryMuscle: "back", equipment: "barbell", secondaryMuscles: ["traps"] };
+    // chin: primary(2)+equip(1)+secondary(1)=4; rack: primary(2) → chin first
+    expect(suggestReplacements([rack, chin], target)[0]?.id).toBe("c");
+  });
 });
 
 describe("currentStreak", () => {
