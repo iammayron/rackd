@@ -14,6 +14,8 @@ import * as t from "./schema";
 export { db } from "./db";
 export type { DB } from "./db";
 export * as schema from "./schema";
+// S3 helpers are exposed via the "@rackd/db/s3" subpath (not here) so packages
+// without the DOM lib (e.g. @rackd/push) don't compile the fetch/BodyInit code.
 export { SEED_EXERCISES } from "./seed";
 export type { SeedExercise } from "./seed";
 export { seedExercises } from "./seed-pg";
