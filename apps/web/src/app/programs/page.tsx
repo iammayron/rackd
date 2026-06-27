@@ -208,7 +208,7 @@ export default function ProgramsPage() {
       body: JSON.stringify({ name: "New Routine", order: routines.length }),
     });
     queryClient.invalidateQueries({ queryKey: qk.routines });
-    router.push(`/routines/${r.id}`);
+    router.push(`/routines/${r.id}?from=routines`);
   }
 
   function onNew() {
@@ -390,7 +390,7 @@ export default function ProgramsPage() {
                 const count = exCountByRoutine.get(r.id) ?? 0;
                 return (
                   <li key={r.id}>
-                    <Link href={`/routines/${r.id}`} className="no-underline block">
+                    <Link href={`/routines/${r.id}?from=routines`} className="no-underline block">
                       <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
                         <div className="flex-1">
                           <div className="font-bold text-[var(--text)]">{r.name}</div>

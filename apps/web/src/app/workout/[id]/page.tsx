@@ -450,7 +450,12 @@ export default function WorkoutPage() {
             );
           })}
         </div>
-        {!fetching && <AddExercisePicker onPick={onAddExercise} />}
+        {!fetching && (
+          <AddExercisePicker
+            onPick={onAddExercise}
+            existingIds={sessionExercises.map((e) => e.exerciseId)}
+          />
+        )}
       </main>
 
       <RestTimerBar />
