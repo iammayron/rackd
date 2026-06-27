@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { MuscleMap } from "./MuscleMap";
 
 /**
  * Muscle → accent hue (OKLCH), driving placeholder media + the visualizer bars.
@@ -54,9 +55,9 @@ export interface MuscleVisualizerProps
 }
 
 /**
- * Muscles-worked visualizer: a primary mover at full intensity + secondaries at
- * ~55%, each as a hue-tinted bar. Non-anatomical schematic body block is a
- * placeholder slot (flagged) — real art replaces it later. No hand-drawn SVG figure.
+ * Muscles-worked visualizer: a self-owned anatomical MuscleMap (front + back,
+ * worked regions highlighted) beside per-muscle intensity bars — primary at full
+ * intensity, secondaries at ~55%, each hue-tinted to match its map region.
  */
 export function MuscleVisualizer({
   primary,
@@ -68,35 +69,21 @@ export function MuscleVisualizer({
   const worked = [{ muscle: primary, level: 1, role: "Primary" }].concat(
     secondary.filter(Boolean).map((m) => ({ muscle: m, level: 0.55, role: "Secondary" })),
   );
-  const hue = muscleHue(primary);
 
   return (
-    <div style={{ display: "flex", gap: 14, ...style }} {...rest}>
+    <div style={{ display: "flex", gap: 14, alignItems: "center", ...style }} {...rest}>
       {showBody && (
-        <div
-          aria-hidden="true"
+        <MuscleMap
+          primary={primary}
+          secondary={secondary}
+          size={104}
           style={{
-            width: 64,
-            flexShrink: 0,
             borderRadius: "var(--radius)",
             background: "var(--surface-2)",
             border: "1px solid var(--border)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 4,
-            padding: "12px 0",
-            color: `oklch(0.6 0.13 ${hue})`,
+            padding: "8px 6px",
           }}
-        >
-          <span style={{ width: 16, height: 16, borderRadius: 999, background: "currentColor", opacity: 0.9 }} />
-          <span style={{ width: 30, height: 34, borderRadius: "10px 10px 8px 8px", background: "currentColor", opacity: 0.9 }} />
-          <span style={{ display: "flex", gap: 4 }}>
-            <span style={{ width: 9, height: 24, borderRadius: 6, background: "currentColor", opacity: 0.55 }} />
-            <span style={{ width: 9, height: 24, borderRadius: 6, background: "currentColor", opacity: 0.55 }} />
-          </span>
-        </div>
+        />
       )}
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 10, justifyContent: "center" }}>
         {worked.map((w) => (

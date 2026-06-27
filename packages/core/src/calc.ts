@@ -148,12 +148,43 @@ export function todaysRoutine<T extends { order: number; scheduledDays?: number[
  * outranks a match on either alone; ties broken by name. Pure, so the UI can
  * compute suggestions offline from the in-memory library.
  */
-export function suggestReplacements<
-  T extends { id: string; name: string; primaryMuscle: string; equipment: string },
->(library: readonly T[], target: Pick<T, "id" | "primaryMuscle" | "equipment">): T[] {
-  const score = (e: T) =>
-    (e.primaryMuscle === target.primaryMuscle ? 2 : 0) +
-    (e.equipment === target.equipment ? 1 : 0);
+/** Fields scored when picking similar/substitute exercises. */
+export interface SubstituteCandidate {
+  id: string;
+  name: string;
+  primaryMuscle: string;
+  equipment: string;
+  /** Optional richer signals — improve ranking when present, ignored when absent. */
+  secondaryMuscles?: string[];
+  movementPattern?: string;
+  mechanic?: string;
+}
+
+/**
+ * Rank library exercises similar to `target` (for "Similar exercises" + the
+ * swap-exercise feature). Primary muscle is the main signal; movement pattern,
+ * mechanic, shared secondary muscles, and equipment refine the order. The
+ * optional signals are scored only when defined on both sides, so callers
+ * passing just {primaryMuscle, equipment} get the original behavior.
+ */
+export function suggestReplacements<T extends SubstituteCandidate>(
+  library: readonly T[],
+  target: Pick<T, "id" | "primaryMuscle" | "equipment"> &
+    Partial<Pick<T, "secondaryMuscles" | "movementPattern" | "mechanic">>,
+): T[] {
+  const targetSecondary = new Set(target.secondaryMuscles ?? []);
+  const score = (e: T) => {
+    let s = 0;
+    if (e.primaryMuscle === target.primaryMuscle) s += 2;
+    if (e.equipment === target.equipment) s += 1;
+    if (target.movementPattern && e.movementPattern === target.movementPattern) s += 2;
+    if (target.mechanic && e.mechanic === target.mechanic) s += 1;
+    if (targetSecondary.size && e.secondaryMuscles) {
+      const overlap = e.secondaryMuscles.filter((m) => targetSecondary.has(m)).length;
+      s += Math.min(overlap, 2);
+    }
+    return s;
+  };
   return library
     .filter((e) => e.id !== target.id && score(e) > 0)
     .sort((a, b) => score(b) - score(a) || a.name.localeCompare(b.name));

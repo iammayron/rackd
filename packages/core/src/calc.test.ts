@@ -262,6 +262,53 @@ describe("suggestReplacements", () => {
   it("returns empty when nothing matches", () => {
     expect(suggestReplacements([bench], bench)).toEqual([]);
   });
+
+  it("boosts a shared movement pattern above equipment-only", () => {
+    const target = { id: "t", name: "Barbell Row", primaryMuscle: "back", equipment: "barbell", movementPattern: "pull" };
+    const pulldown = { id: "p", name: "Lat Pulldown", primaryMuscle: "back", equipment: "cable", movementPattern: "pull" };
+    const benchBb = { id: "b", name: "Bench Press", primaryMuscle: "chest", equipment: "barbell", movementPattern: "push" };
+    const ranked = suggestReplacements([pulldown, benchBb], target).map((e) => e.id);
+    // pulldown: primary(2)+pattern(2)=4; bench: equipment(1) → pulldown first
+    expect(ranked[0]).toBe("p");
+  });
+
+  it("rewards shared secondary muscles", () => {
+    const target = { id: "t", name: "Pull-Up", primaryMuscle: "back", equipment: "bodyweight", secondaryMuscles: ["biceps"] };
+    const chin = { id: "c", name: "Chin-Up", primaryMuscle: "back", equipment: "bodyweight", secondaryMuscles: ["biceps"] };
+    const rack = { id: "r", name: "Rack Pull", primaryMuscle: "back", equipment: "barbell", secondaryMuscles: ["traps"] };
+    // chin: primary(2)+equip(1)+secondary(1)=4; rack: primary(2) → chin first
+    expect(suggestReplacements([rack, chin], target)[0]?.id).toBe("c");
+  });
+
+  it("caps the secondary-overlap bonus at 2", () => {
+    // Both share the primary muscle; one shares 3 secondaries, the other 2. The
+    // cap makes the secondary bonus tie (2 each), so equipment breaks it: the
+    // barbell match wins. If the cap were removed (3 > 2), `three` would win.
+    const target = { id: "t", name: "T", primaryMuscle: "back", equipment: "barbell", secondaryMuscles: ["biceps", "traps", "forearms"] };
+    const three = { id: "x3", name: "Three", primaryMuscle: "back", equipment: "cable", secondaryMuscles: ["biceps", "traps", "forearms"] };
+    const twoBarbell = { id: "x2", name: "Two", primaryMuscle: "back", equipment: "barbell", secondaryMuscles: ["biceps", "traps"] };
+    // three: primary(2)+secondary(min(3,2)=2)=4; twoBarbell: primary(2)+equip(1)+secondary(2)=5
+    expect(suggestReplacements([three, twoBarbell], target)[0]?.id).toBe("x2");
+  });
+
+  it("breaks a tie on shared mechanic", () => {
+    const target = { id: "t", name: "T", primaryMuscle: "chest", equipment: "barbell", mechanic: "compound" };
+    const compound = { id: "co", name: "Compound", primaryMuscle: "chest", equipment: "dumbbell", mechanic: "compound" };
+    const isolation = { id: "is", name: "Isolation", primaryMuscle: "chest", equipment: "dumbbell", mechanic: "isolation" };
+    // compound: primary(2)+mechanic(1)=3; isolation: primary(2)=2 → compound first
+    expect(suggestReplacements([isolation, compound], target)[0]?.id).toBe("co");
+  });
+
+  it("does not award pattern bonus when only one side defines it", () => {
+    // target has a movementPattern, candidate has none → no +2; the candidate
+    // that merely matches equipment must not be out-ranked by a phantom bonus.
+    const target = { id: "t", name: "Row", primaryMuscle: "back", equipment: "cable", movementPattern: "pull" };
+    const noPattern = { id: "np", name: "No Pattern", primaryMuscle: "back", equipment: "cable" };
+    // noPattern: primary(2)+equip(1)=3, pattern guarded off (undefined !== "pull")
+    expect(suggestReplacements([noPattern], target)[0]?.id).toBe("np");
+    // sanity: the only candidate still scores > 0 and is returned
+    expect(suggestReplacements([noPattern], target)).toHaveLength(1);
+  });
 });
 
 describe("currentStreak", () => {

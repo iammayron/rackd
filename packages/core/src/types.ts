@@ -41,6 +41,28 @@ export type SetType = "warmup" | "normal" | "drop" | "failure";
 
 export type MediaSource = "library" | "user";
 
+/** Direction of resistance — powers push/pull balance in plan generation. */
+export type Force = "push" | "pull" | "static";
+/** Difficulty tier — search facet + plan filtering. */
+export type Level = "beginner" | "intermediate" | "expert";
+/** Multi- vs single-joint — shown as the Compound/Isolation badge. */
+export type Mechanic = "compound" | "isolation";
+/**
+ * Movement pattern — DERIVED (no source ships it). Drives plan templates,
+ * substitution, and balance checks.
+ */
+export type MovementPattern =
+  | "squat"
+  | "hinge"
+  | "lunge"
+  | "push"
+  | "pull"
+  | "carry"
+  | "core"
+  | "isolation";
+/** Coarse body region for search facets + upper/lower balance. */
+export type BodyRegion = "upper" | "lower" | "core" | "full";
+
 export interface Exercise {
   id: string;
   name: string;
@@ -60,6 +82,142 @@ export interface Exercise {
   mediaSource: MediaSource;
   isCustom: boolean;
   ownerId?: string;
+
+  // --- Exercise data platform (all optional so existing rows/code stay valid) ---
+  /** Dataset this row came from: 'free-exercise-db' | 'wger' | 'exercisedb' | 'rackd'. */
+  source?: string;
+  /** Original id from the source dataset (upsert key with `source`). */
+  sourceId?: string;
+  /** URL-safe identifier. */
+  slug?: string;
+  force?: Force;
+  level?: Level;
+  mechanic?: Mechanic;
+  /** DERIVED at ingest. */
+  movementPattern?: MovementPattern;
+  /** DERIVED at ingest — single-limb movement (affects per-side fatigue/balance). */
+  isUnilateral?: boolean;
+  bodyPart?: BodyRegion;
+  /** Search synonyms / alternate names. */
+  aliases?: string[];
+  /** Ranking weight for search. */
+  popularity?: number;
+}
+
+/** Which muscle an exercise hits and how hard. */
+export type MuscleRole = "primary" | "secondary" | "tertiary";
+
+/**
+ * Fine-grained muscle in the taxonomy. `canonicalGroup` maps it back to the
+ * coarse 13-value MuscleGroup the app UI/logic uses; `svgRegion` is the path id
+ * in the self-owned MuscleMap SVG. `recoveryHours` feeds the fatigue engine.
+ */
+export interface Muscle {
+  id: string;
+  name: string;
+  canonicalGroup: MuscleGroup;
+  region?: BodyRegion;
+  svgRegion?: string;
+  recoveryHours: number;
+}
+
+/** A muscle an exercise works, with a DERIVED activation weight (0..1). */
+export interface MuscleInvolvement {
+  muscleId: string;
+  role: MuscleRole;
+  activation: number;
+}
+
+export type ExerciseMediaKind =
+  | "image"
+  | "thumbnail"
+  | "gif"
+  | "video"
+  | "muscle_map";
+
+/** Media row — URL only (mirrored to our CDN), never binary in the DB. */
+export interface ExerciseMedia {
+  id: string;
+  exerciseId: string;
+  kind: ExerciseMediaKind;
+  /** Our CDN URL. */
+  url: string;
+  /** Source URL kept for provenance. */
+  originalUrl?: string;
+  width?: number;
+  height?: number;
+  order: number;
+  lang?: string;
+}
+
+export type ExerciseRelationKind = "variation" | "similar" | "substitute";
+
+/** Edge in the similarity / substitution graph. */
+export interface ExerciseRelation {
+  exerciseId: string;
+  relatedId: string;
+  kind: ExerciseRelationKind;
+  score: number;
+  reason?: string;
+}
+
+/**
+ * A bundled, public plan template (PPL, 5/3/1, …) — the read-only library users
+ * clone into their own `routines`. Distinct from the user-scoped `Program`.
+ */
+export interface ProgramTemplate {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string;
+  goal?: TrainingGoal;
+  level?: Level;
+  /** Methodology label, e.g. "PPL", "5/3/1", "Starting Strength". */
+  methodology?: string;
+  daysPerWeek?: number;
+  durationWeeks?: number;
+  equipmentNeeded: Equipment[];
+  source?: string;
+  /** Attribution string for CC-BY-SA sources (e.g. wger). */
+  attribution?: string;
+  isPublic: boolean;
+}
+
+export interface ProgramTemplateDay {
+  id: string;
+  programTemplateId: string;
+  /** Null for templates that don't vary day content by week. */
+  weekIndex?: number;
+  dayIndex: number;
+  label: string;
+}
+
+export interface ProgramTemplateExercise {
+  id: string;
+  dayId: string;
+  /** Resolved to our exercise; null when only `sourceName` is known. */
+  exerciseId?: string;
+  order: number;
+  sets?: number;
+  /** e.g. "8-12" or "5,5,5,5,1". */
+  repScheme?: string;
+  restSeconds?: number;
+  /** e.g. "RPE 8" or "75% 1RM". */
+  intensity?: string;
+  notes?: string;
+  /** Raw source name kept when unresolved to an exercise id. */
+  sourceName?: string;
+}
+
+/**
+ * Per-user, per-muscle fatigue. `accumulatedLoad` decays on read (wall-clock,
+ * like the rest timer — never tick-counted); `lastTrainedAt` is epoch ms.
+ */
+export interface MuscleFatigue {
+  ownerId: string;
+  muscleId: string;
+  accumulatedLoad: number;
+  lastTrainedAt?: number;
 }
 
 /**
