@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@rackd/ui";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query";
 import { ExerciseThumb } from "@/components/ExerciseMedia";
@@ -60,13 +61,19 @@ export function AddExercisePicker({
 
   return (
     <>
-      <button
-        type="button"
+      <Button
+        variant="secondary"
+        size="lg"
+        fullWidth
         onClick={() => setOpen(true)}
-        className="min-h-[52px] w-full rounded-[var(--radius-lg)] bg-[var(--surface-2)] text-[var(--accent)] border border-dashed border-[var(--border)] text-lg font-semibold"
+        style={{
+          background: "var(--surface-2)",
+          color: "var(--accent)",
+          borderStyle: "dashed",
+        }}
       >
         + Add exercise
-      </button>
+      </Button>
 
       <BottomSheet open={open} onClose={close}>
         {/* Sticky header (title + close + search) so the list scrolls under it. */}
