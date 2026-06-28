@@ -1,4 +1,27 @@
-import type { SetLog } from "./types";
+import type { BarType, SetLog } from "./types";
+
+/**
+ * Bar weights per display unit. Kept per-unit (not a single canonical kg)
+ * because the standard bar is 20 kg *or* 45 lb depending on the gym — one
+ * stored kg would show lb users a 44 lb bar. Plate math runs in display
+ * units (lb plates differ from kg plates), so the bar is read here too.
+ */
+export const BAR_WEIGHTS: Record<BarType, { kg: number; lb: number }> = {
+  standard: { kg: 20, lb: 45 },
+  womens: { kg: 15, lb: 35 },
+  ezbar: { kg: 10, lb: 25 },
+  trap: { kg: 25, lb: 60 },
+  safety: { kg: 25, lb: 60 },
+};
+
+/** Human label for each bar type (UI picker). */
+export const BAR_LABELS: Record<BarType, string> = {
+  standard: "Standard (Olympic)",
+  womens: "Women's",
+  ezbar: "EZ curl",
+  trap: "Trap / hex",
+  safety: "Safety squat",
+};
 
 /**
  * Estimate one-rep max (Epley). Pure, the single 1RM source for the whole app.

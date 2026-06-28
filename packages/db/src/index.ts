@@ -182,12 +182,15 @@ export async function setRoutineExerciseOrder(id: string, order: number) {
 /** Patch mutable fields of a routine exercise (currently its rest time). */
 export async function updateRoutineExercise(
   id: string,
-  patch: { restSec?: number },
+  patch: { restSec?: number; barType?: string },
 ) {
-  if (patch.restSec === undefined) return;
+  const set: { restSec?: number; barType?: string } = {};
+  if (patch.restSec !== undefined) set.restSec = patch.restSec;
+  if (patch.barType !== undefined) set.barType = patch.barType;
+  if (Object.keys(set).length === 0) return;
   await db
     .update(t.routineExercises)
-    .set({ restSec: patch.restSec })
+    .set(set)
     .where(eq(t.routineExercises.id, id));
 }
 
@@ -782,6 +785,7 @@ export async function addRoutineExercise(args: {
   exerciseId: string;
   order: number;
   restSec?: number;
+  barType?: string;
 }) {
   return insertRow(t.routineExercises, {
     ownerId: await ownerOf(t.routines, args.routineId),
@@ -789,6 +793,7 @@ export async function addRoutineExercise(args: {
     exerciseId: args.exerciseId,
     order: args.order,
     restSec: args.restSec ?? 120,
+    ...(args.barType !== undefined ? { barType: args.barType } : {}),
   });
 }
 
@@ -890,6 +895,7 @@ export async function startSessionFromRoutine(args: {
       order: ex.order,
       supersetGroup: ex.supersetGroup,
       restSec: ex.restSec,
+      barType: ex.barType,
     });
     const sets = await db
       .select()

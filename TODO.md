@@ -20,12 +20,10 @@ Braindump from on-device testing. Each item gets discussed/scoped before impleme
 - [x] 14. Some buttons are too close to the edge (safe-area / edge padding) — resolved: existing edge gutters (`px-4`/`px-5` pages + cards, 12–16px floating overlays) verified adequate on iPhone. Horizontal safe-area insets are moot — the app is iPhone-only and portrait-locked, so `safe-area-inset-left/right` are always 0. No code change needed.
 - [x] 15. Weight & reps editing — tap cell opens slide-up sheet with [−] [typeable value] [+], select-all on focus, −/＋ steps (reps 1, weight 2.5kg/5lb), commit on Done/close
 - [x] 16. Superset — routine-editor toggle creates groups; in-workout view now renders a superset as one bounded unit (accent "Superset · one set of each, then rest" header, members stacked tight). Rest fires only after the LAST member (`startsRest` gates `startTimer` in `SetRow.tsx`); non-resting members show "no rest →" instead of a rest pill. Fixed the missing bottom spacing (group wrapper owns the gap). In-workout "make superset" menu action still stubbed (created via routine editor).
-- [ ] 17. Bar weight + plate breakdown (barbell only) — per-side plate breakdown shipped (`PlatesPanel.tsx`); still missing the global bar-weight setting in Settings (bar hard-coded 20 kg / 45 lb)
-  - Typed weight = TOTAL lifted incl. bar; min = bar weight; store the true total.
-  - Global bar weight in Settings (default 45 lb / 20 kg), applied to barbell-category exercises only (auto-detected from equipment); others type normally.
-  - Default a barbell exercise's starting weight to the bar weight, with help text.
-  - Show per-side plate breakdown: per side = (total − bar) / 2, decomposed greedily from available plates — lb: 2.5/5/10/25/35/45; kg: 1.25/2.5/5/10/15/20/25. Display e.g. "45 bar + 25 each side".
-  - If per-side isn't exactly achievable, show the closest combo and flag the remainder.
+- [x] 17. Bar weight + plate breakdown (barbell only) — per-exercise **bar type** (instead of a single global setting): pick the bar per routine exercise (Standard/Women's/EZ/Trap/Safety), baked weights in `@rackd/core` `BAR_WEIGHTS` (per display unit, sidesteps 20 kg≠45 lb). `barType` stored on `routineExercises` + copied to `sessionExercises` at start; plate panel + warmup ramp gated to barbell exercises and driven by the chosen bar. Migration `0005`.
+  - Typed weight = TOTAL lifted incl. bar; store the true total. ✓ (already canonical kg)
+  - Per-side plate breakdown: per side = (total − bar) / 2, greedy from available plates; closest combo + remainder flag. ✓ (`plateBreakdown`)
+  - Deferred follow-ups: stepper min-clamp at bar weight; default first barbell set to the bar; per-library-exercise default bar type.
 - [x] 18. Always scroll to current exercise — snaps back to the current exercise after a rest, on reopen, once on load, and after editing (`workout/[id]/page.tsx`, `SetRow.tsx`)
 - [x] 19. Complete summary not computing properly — verified on device (renders + populates) and audited: volume/sets/duration/PRs/top-set traced through `summary/page.tsx` → `sessionVolume` + `fromKg` (canonical kg, linear unit conversion) and confirmed correct. Underlying pure fns covered in `calc.test.ts`. Accuracy confirmed.
 - [x] 20. Share not working — verified working on device (native share + PNG/clipboard fallback).

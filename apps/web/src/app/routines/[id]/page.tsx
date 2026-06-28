@@ -4,6 +4,7 @@ import { Fragment, Suspense, useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
+import type { BarType } from "@rackd/core";
 import { api } from "@/lib/api";
 import { queryClient, qk } from "@/lib/query";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -19,6 +20,7 @@ interface RoutineExerciseRow {
   exerciseId: string;
   restSec: number;
   supersetGroup?: number;
+  barType?: BarType;
   exercise?: ExerciseMediaData | null;
 }
 

@@ -222,6 +222,9 @@ export const routineExercises = pgTable("routine_exercises", {
   supersetGroup: integer("superset_group"),
   restSec: integer("rest_sec").notNull().default(120),
   notes: text("notes"),
+  // Bar used for plate math (BarType in @rackd/core); only meaningful for
+  // barbell exercises. Default "standard" so existing rows behave as today.
+  barType: text("bar_type").notNull().default("standard"),
 });
 
 export const routineSets = pgTable("routine_sets", {
@@ -272,6 +275,8 @@ export const sessionExercises = pgTable("session_exercises", {
   order: integer("order").notNull(),
   supersetGroup: integer("superset_group"),
   restSec: integer("rest_sec").notNull().default(120),
+  // Copied from the routine exercise at session start (see startSessionFromRoutine).
+  barType: text("bar_type").notNull().default("standard"),
 });
 
 export const setLogs = pgTable("set_logs", {

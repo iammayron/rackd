@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { plateBreakdown, warmupSets } from "@rackd/core";
+import { BAR_WEIGHTS, plateBreakdown, warmupSets } from "@rackd/core";
+import type { BarType } from "@rackd/core";
 import { useUnit } from "@/lib/units-store";
 
 const PLATE_COLOR: Record<number, string> = {
@@ -18,15 +19,22 @@ const PLATE_COLOR: Record<number, string> = {
   35: "#f5b301",
 };
 
-const BARS = { kg: 20, lb: 45 } as const;
 const PLATES = {
   kg: [25, 20, 15, 10, 5, 2.5, 1.25],
   lb: [45, 35, 25, 10, 5, 2.5],
 } as const;
 const STEP = { kg: 2.5, lb: 5 } as const;
 
-function PlateChips({ value, unit }: { value: number; unit: "kg" | "lb" }) {
-  const { perSide, leftover } = plateBreakdown(value, BARS[unit], [...PLATES[unit]]);
+function PlateChips({
+  value,
+  unit,
+  bar,
+}: {
+  value: number;
+  unit: "kg" | "lb";
+  bar: number;
+}) {
+  const { perSide, leftover } = plateBreakdown(value, bar, [...PLATES[unit]]);
   if (perSide.length === 0) {
     return <span className="text-sm text-[var(--text-muted)]">bar only</span>;
   }
@@ -53,11 +61,18 @@ function PlateChips({ value, unit }: { value: number; unit: "kg" | "lb" }) {
  * `topWeight` is canonical kg; rendered in the user's unit with unit-correct
  * bars/plates. Read-only (KISS) — shows what to load, doesn't mutate sets.
  */
-export function PlatesPanel({ topWeight }: { topWeight: number }) {
+export function PlatesPanel({
+  topWeight,
+  barType = "standard",
+}: {
+  topWeight: number;
+  barType?: BarType;
+}) {
   const { unit, display } = useUnit();
   const [open, setOpen] = useState(false);
   const top = display(topWeight, unit === "kg" ? 1 : 0);
-  const warmups = warmupSets(top, BARS[unit], STEP[unit]);
+  const bar = BAR_WEIGHTS[barType][unit];
+  const warmups = warmupSets(top, bar, STEP[unit]);
 
   return (
     <div className="mt-2">
@@ -79,7 +94,7 @@ export function PlatesPanel({ topWeight }: { topWeight: number }) {
                 <span className="font-bold">
                   Working {top} {unit}
                 </span>
-                <PlateChips value={top} unit={unit} />
+                <PlateChips value={top} unit={unit} bar={bar} />
               </div>
               {warmups.length > 0 && (
                 <div>
@@ -89,7 +104,7 @@ export function PlatesPanel({ topWeight }: { topWeight: number }) {
                       <span className="w-[90px]">
                         {w.weight} {unit} × {w.reps}
                       </span>
-                      <PlateChips value={w.weight} unit={unit} />
+                      <PlateChips value={w.weight} unit={unit} bar={bar} />
                     </div>
                   ))}
                 </div>

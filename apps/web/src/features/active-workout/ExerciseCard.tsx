@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { PointerEvent } from "react";
 import { nextWeight } from "@rackd/core";
+import type { BarType } from "@rackd/core";
 import { mmss } from "@rackd/ui";
 import { api } from "@/lib/api";
 import { queryClient, qk } from "@/lib/query";
@@ -37,6 +38,7 @@ interface SessionExerciseRow {
   exerciseId: string;
   order: number;
   restSec: number;
+  barType?: BarType;
   exercise?: ExerciseMediaData | null;
   sets?: SetRowData[];
 }
@@ -365,9 +367,12 @@ export function ExerciseCard({
         + Add set
       </button>
 
-      <PlatesPanel
-        topWeight={sets.reduce((m, s) => Math.max(m, s.weight), 0)}
-      />
+      {sessionExercise.exercise?.equipment === "barbell" && (
+        <PlatesPanel
+          topWeight={sets.reduce((m, s) => Math.max(m, s.weight), 0)}
+          barType={sessionExercise.barType}
+        />
+      )}
     </section>
   );
 }

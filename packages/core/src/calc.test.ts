@@ -17,6 +17,7 @@ import {
   programDayKinds,
   sessionCountsForProgram,
   estimateSessionMinutes,
+  BAR_WEIGHTS,
 } from "./calc";
 import type { ProgramDayKind } from "./calc";
 import { toKg, fromKg, formatWeight } from "./units";
@@ -94,6 +95,35 @@ describe("plateBreakdown", () => {
   it("reports unreachable remainder", () => {
     const r = plateBreakdown(101, 20);
     expect(r.leftover).toBeGreaterThan(0);
+  });
+  it("decomposes against a non-standard (lighter) bar", () => {
+    // 15 kg women's bar: (60 - 15) / 2 = 22.5 per side → 20 + 2.5
+    const r = plateBreakdown(60, 15);
+    expect(r.perSide).toEqual([20, 2.5]);
+    expect(r.leftover).toBe(0);
+  });
+  it("flags the leftover when a per-side target isn't reachable on a heavy bar", () => {
+    // 25 kg trap bar: (61 - 25) / 2 = 18 per side → 15 + 2.5 = 17.5, 0.5 short
+    const r = plateBreakdown(61, 25);
+    expect(r.perSide).toEqual([15, 2.5]);
+    expect(r.leftover).toBeCloseTo(1, 5); // 0.5 per side × 2
+  });
+  it("returns bar-only (empty per side) when target equals the bar", () => {
+    const r = plateBreakdown(25, 25);
+    expect(r.perSide).toEqual([]);
+    expect(r.leftover).toBe(0);
+  });
+});
+
+describe("BAR_WEIGHTS", () => {
+  it("keeps clean per-unit standards (20 kg is not the 45 lb of the same bar)", () => {
+    expect(BAR_WEIGHTS.standard).toEqual({ kg: 20, lb: 45 });
+    expect(BAR_WEIGHTS.womens).toEqual({ kg: 15, lb: 35 });
+  });
+  it("drives warmups off the chosen bar (empty-bar set uses the lighter bar)", () => {
+    const w = warmupSets(60, BAR_WEIGHTS.womens.kg); // 15 kg bar
+    expect(w[0]!.weight).toBe(15);
+    expect(w.every((s) => s.weight < 60)).toBe(true);
   });
 });
 
