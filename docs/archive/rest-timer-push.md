@@ -84,7 +84,7 @@ Key contrasts vs `main`:
 ## 5. Deployment Topology
 
 ### 5a. This branch (`migrate/triplit-to-postgres`) — intended target: **Fly.io**
-Per `docs/specs/fly-migration.md` + `docs/specs/fly-setup-guide.md` + `DEPLOY.md`:
+Per `docs/archive/fly-migration.md` + `docs/specs/fly-setup-guide.md` + `DEPLOY.md`:
 - **web** → a Fly Machine (Next.js). `NEXT_PUBLIC_*` baked at build (build args / image), server secrets as Fly secrets.
 - **push** → a second Fly Machine running `apps/push` (`tsx worker.ts`), needs `DATABASE_URL` + VAPID secrets.
 - **Postgres** → Supabase Postgres (or Fly Postgres) via `DATABASE_URL`.
@@ -201,7 +201,7 @@ Interpret:
 ---
 
 ## Related Resources
-- `docs/specs/fly-migration.md`, `docs/specs/fly-setup-guide.md`, `DEPLOY.md` — Fly + Supabase Cloud + Tigris target for this branch.
-- `docs/specs/migration-brief.md`, `docs/specs/ui-migration-contract.md` — broader Triplit→Postgres migration context.
+- `docs/archive/fly-migration.md`, `docs/specs/fly-setup-guide.md`, `DEPLOY.md` — Fly + Supabase Cloud + Tigris target for this branch.
+- `docs/archive/migration-brief.md`, `docs/archive/ui-migration-contract.md` — broader Triplit→Postgres migration context.
 - `CLAUDE.md` (repo root) — project conventions (note: some Docker/Triplit/Supabase-local guidance there reflects the `main` self-host era).
 - Branch commit that ported push to Postgres: `0f008e6 feat: migrate from Triplit to Postgres + API routes + React Query`.

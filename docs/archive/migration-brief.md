@@ -1,7 +1,7 @@
 # Migration Brief: Triplit → Postgres + API Routes
 
 > **For Claude Code.** This document contains everything needed to execute the
-> migration. Read `docs/specs/fly-migration.md` for architecture context.
+> migration. Read `docs/archive/fly-migration.md` for architecture context.
 > Read this file for the detailed implementation plan.
 
 ## Overview
@@ -65,7 +65,7 @@ All tables need:
 - `ownerId` TEXT NOT NULL (= Supabase `auth.users.id`)
 - Appropriate foreign keys with CASCADE deletes where parent-child
 
-See the full field list in `docs/specs/fly-migration.md` §4.1 and the Triplit
+See the full field list in `docs/archive/fly-migration.md` §4.1 and the Triplit
 schema audit below.
 
 ### Triplit Schema Field Reference
