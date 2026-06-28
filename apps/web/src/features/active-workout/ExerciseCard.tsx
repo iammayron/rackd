@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { PointerEvent } from "react";
 import { nextWeight } from "@rackd/core";
-import { Badge, mmss } from "@rackd/ui";
+import { mmss } from "@rackd/ui";
 import { api } from "@/lib/api";
 import { queryClient, qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
@@ -175,7 +175,7 @@ export function ExerciseCard({
       // scroll-margin so auto-scroll (#18) lands the card below the sticky header
       style={{ scrollMarginTop: "calc(var(--safe-top) + 72px)" }}
       className={`bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-lg)] p-4 ${
-        startsRest ? "mb-4" : "mb-1"
+        inGroup ? "" : "mb-4"
       } ${dragging ? "opacity-60 ring-2 ring-[var(--accent)]" : ""}`}
     >
       <div className="flex items-center gap-2 mb-2">
@@ -218,43 +218,47 @@ export function ExerciseCard({
           )}
         </button>
 
-        {inGroup && (
-          <Badge tone="accent">
-            {startsRest ? "Superset" : "Superset · no rest"}
-          </Badge>
+        {inGroup && !startsRest && (
+          <span className="shrink-0 text-xs font-semibold text-[var(--text-muted)]">
+            no rest →
+          </span>
         )}
 
-        <button
-          type="button"
-          onClick={() => setShowRest(true)}
-          aria-label={`Rest ${mmss(sessionExercise.restSec * 1000)} — edit`}
-          className="inline-flex shrink-0 items-center gap-1.5 min-h-9 px-3 rounded-full border border-[var(--border)] bg-[var(--surface)] text-sm font-semibold text-[var(--text)] tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            width="15"
-            height="15"
-            aria-hidden="true"
-            className="text-[var(--text-muted)]"
+        {/* In a superset, only the last exercise rests, so the rest control
+            lives on the resting member; the others go straight to the partner. */}
+        {startsRest && (
+          <button
+            type="button"
+            onClick={() => setShowRest(true)}
+            aria-label={`Rest ${mmss(sessionExercise.restSec * 1000)} — edit`}
+            className="inline-flex shrink-0 items-center gap-1.5 min-h-9 px-3 rounded-full border border-[var(--border)] bg-[var(--surface)] text-sm font-semibold text-[var(--text)] tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
           >
-            <circle
-              cx="12"
-              cy="13"
-              r="8"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            />
-            <path
-              d="M12 9v4l2.5 1.5M9 2h6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-          {mmss(sessionExercise.restSec * 1000)}
-        </button>
+            <svg
+              viewBox="0 0 24 24"
+              width="15"
+              height="15"
+              aria-hidden="true"
+              className="text-[var(--text-muted)]"
+            >
+              <circle
+                cx="12"
+                cy="13"
+                r="8"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+              <path
+                d="M12 9v4l2.5 1.5M9 2h6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+            {mmss(sessionExercise.restSec * 1000)}
+          </button>
+        )}
 
         <HeaderMenu
           open={showMenu}
