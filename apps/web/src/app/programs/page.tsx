@@ -94,15 +94,26 @@ export default function ProgramsPage() {
     queryKey: ["program-templates"],
     queryFn: () => api<ProgramTemplate[]>("/api/program-templates"),
   });
+  // Library names, to resolve a template's exercise ids for the preview.
+  const { data: libraryExercises = [] } = useQuery({
+    queryKey: qk.exercises,
+    queryFn: () => api<{ id: string; name: string }[]>("/api/exercises"),
+  });
+  const exerciseName = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const ex of libraryExercises) m.set(ex.id, ex.name);
+    return m;
+  }, [libraryExercises]);
 
   // Each program's days (with nested routine) come from the program detail
   // endpoint; fan out one query per program.
   const programDetailQueries = useQueries({
     queries: programs.map((p) => ({
       queryKey: qk.program(p.id),
-      queryFn: () => api<ProgramRow & { days: (DayRow & { routine: RoutineRow | null })[] }>(
-        `/api/programs/${p.id}`,
-      ),
+      queryFn: () =>
+        api<ProgramRow & { days: (DayRow & { routine: RoutineRow | null })[] }>(
+          `/api/programs/${p.id}`,
+        ),
     })),
   });
 
@@ -111,12 +122,14 @@ export default function ProgramsPage() {
   const routineDetailQueries = useQueries({
     queries: routines.map((r) => ({
       queryKey: qk.routine(r.id),
-      queryFn: () => api<RoutineRow & { exercises: unknown[] }>(`/api/routines/${r.id}`),
+      queryFn: () =>
+        api<RoutineRow & { exercises: unknown[] }>(`/api/routines/${r.id}`),
     })),
   });
 
   const [tab, setTab] = useState<"programs" | "routines">("programs");
   const [browsing, setBrowsing] = useState(false);
+  const [previewTpl, setPreviewTpl] = useState<ProgramTemplate | null>(null);
   const [cloning, setCloning] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -152,7 +165,9 @@ export default function ProgramsPage() {
     const pdays = daysByProgram.get(p.id) ?? [];
     const mode = p.scheduleMode ?? "rotation";
     const workoutDays = pdays.filter((d) => d.routineId);
-    const distinctRoutines = new Set(workoutDays.map((d) => d.routineId as string));
+    const distinctRoutines = new Set(
+      workoutDays.map((d) => d.routineId as string),
+    );
 
     let schedule: string;
     if (mode === "weekly") {
@@ -160,7 +175,9 @@ export default function ProgramsPage() {
         .filter((d) => d.routineId && d.weekday != null)
         .sort((a, b) => (a.weekday as number) - (b.weekday as number))
         .map((d) => WEEKDAY_LETTERS[d.weekday as number]);
-      schedule = letters.length ? `Weekly · trains ${letters.join(" ")}` : "Weekly";
+      schedule = letters.length
+        ? `Weekly · trains ${letters.join(" ")}`
+        : "Weekly";
     } else {
       const cycleLength = pdays.length;
       const onRun = longestWorkoutRun(pdays.map((d) => !!d.routineId));
@@ -174,12 +191,16 @@ export default function ProgramsPage() {
     if (p.blockWeeks) meta.push(`${p.blockWeeks}-week block`);
     if (workoutDays.length) meta.push(`${workoutDays.length} days/wk`);
     if (distinctRoutines.size)
-      meta.push(`${distinctRoutines.size} routine${distinctRoutines.size === 1 ? "" : "s"}`);
+      meta.push(
+        `${distinctRoutines.size} routine${distinctRoutines.size === 1 ? "" : "s"}`,
+      );
 
     const rows = workoutDays.map((d) => {
       const r = d.routineId ? routineById.get(d.routineId) : undefined;
       const title = r?.name ?? d.name;
-      const exCount = d.routineId ? exCountByRoutine.get(d.routineId) ?? 0 : 0;
+      const exCount = d.routineId
+        ? (exCountByRoutine.get(d.routineId) ?? 0)
+        : 0;
       // Prefer the routine's explicit category tag; fall back to deriving one
       // from the routine/day name so existing (un-tagged) data still shows a tag.
       const tag = r?.category?.trim() || splitLabel(title);
@@ -229,9 +250,12 @@ export default function ProgramsPage() {
     const tpl = templates.find((t) => t.id === templateId);
     if (!tpl) return;
     setCloning(true);
-    const { id } = await api<{ id: string }>(`/api/program-templates/${templateId}/clone`, {
-      method: "POST",
-    });
+    const { id } = await api<{ id: string }>(
+      `/api/program-templates/${templateId}/clone`,
+      {
+        method: "POST",
+      },
+    );
     queryClient.invalidateQueries({ queryKey: qk.programs });
     queryClient.invalidateQueries({ queryKey: qk.routines });
     router.push(`/programs/${id}`);
@@ -267,12 +291,20 @@ export default function ProgramsPage() {
         {tab === "programs" ? (
           <>
             {programs.length === 0 && (
-              <Card variant="dashed" style={{ textAlign: "center", padding: 28, marginBottom: 16 }}>
+              <Card
+                variant="dashed"
+                style={{ textAlign: "center", padding: 28, marginBottom: 16 }}
+              >
                 <div className="text-lg font-bold mb-1">No programs yet</div>
                 <p className="text-sm text-[var(--text-muted)] mb-4">
-                  Group your routines into a weekly plan — like Push / Pull / Legs.
+                  Group your routines into a weekly plan — like Push / Pull /
+                  Legs.
                 </p>
-                <Button variant="primary" fullWidth onClick={() => setBrowsing(true)}>
+                <Button
+                  variant="primary"
+                  fullWidth
+                  onClick={() => setBrowsing(true)}
+                >
                   Browse templates
                 </Button>
               </Card>
@@ -329,7 +361,9 @@ export default function ProgramsPage() {
                               key={row.id}
                               className="flex items-center gap-2 rounded-[var(--radius)] bg-[var(--surface-2)] px-3.5 py-3"
                             >
-                              <span className="font-bold text-[var(--text)]">{row.title}</span>
+                              <span className="font-bold text-[var(--text)]">
+                                {row.title}
+                              </span>
                               <span className="text-sm text-[var(--text-muted)]">
                                 · {row.exCount} ex
                               </span>
@@ -345,7 +379,11 @@ export default function ProgramsPage() {
 
                       {!p.active && (
                         <div className="px-3 pb-3">
-                          <Button variant="secondary" fullWidth onClick={() => activate(p.id)}>
+                          <Button
+                            variant="secondary"
+                            fullWidth
+                            onClick={() => activate(p.id)}
+                          >
                             Set as active
                           </Button>
                         </div>
@@ -362,7 +400,11 @@ export default function ProgramsPage() {
                 size="lg"
                 fullWidth
                 onClick={() => setBrowsing(true)}
-                style={{ marginTop: 16, borderStyle: "dashed", color: "var(--accent)" }}
+                style={{
+                  marginTop: 16,
+                  borderStyle: "dashed",
+                  color: "var(--accent)",
+                }}
               >
                 Browse templates
               </Button>
@@ -375,11 +417,19 @@ export default function ProgramsPage() {
             </div>
 
             {routines.length === 0 && (
-              <Card variant="dashed" style={{ textAlign: "center", padding: 28 }}>
+              <Card
+                variant="dashed"
+                style={{ textAlign: "center", padding: 28 }}
+              >
                 <p className="text-sm text-[var(--text-muted)] mb-4">
                   No routines yet. Create one to run the same workout each week.
                 </p>
-                <Button variant="primary" fullWidth onClick={newRoutine} disabled={busy}>
+                <Button
+                  variant="primary"
+                  fullWidth
+                  onClick={newRoutine}
+                  disabled={busy}
+                >
                   + New routine
                 </Button>
               </Card>
@@ -390,13 +440,28 @@ export default function ProgramsPage() {
                 const count = exCountByRoutine.get(r.id) ?? 0;
                 return (
                   <li key={r.id}>
-                    <Link href={`/routines/${r.id}?from=routines`} className="no-underline block">
-                      <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <Link
+                      href={`/routines/${r.id}?from=routines`}
+                      className="no-underline block"
+                    >
+                      <Card
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                        }}
+                      >
                         <div className="flex-1">
-                          <div className="font-bold text-[var(--text)]">{r.name}</div>
-                          <div className="text-sm text-[var(--text-muted)]">{count} ex</div>
+                          <div className="font-bold text-[var(--text)]">
+                            {r.name}
+                          </div>
+                          <div className="text-sm text-[var(--text-muted)]">
+                            {count} ex
+                          </div>
                         </div>
-                        <span className="text-[var(--text-muted)] text-lg leading-none">›</span>
+                        <span className="text-[var(--text-muted)] text-lg leading-none">
+                          ›
+                        </span>
                       </Card>
                     </Link>
                   </li>
@@ -424,31 +489,119 @@ export default function ProgramsPage() {
             className="flex items-center gap-2 px-4 pb-4 border-b border-[var(--border)]"
             style={{ paddingTop: "calc(1rem + var(--safe-top))" }}
           >
-            <h2 className="flex-1 text-lg font-bold">Templates</h2>
-            <Button variant="secondary" size="sm" onClick={() => setBrowsing(false)}>
+            {previewTpl ? (
+              <button
+                type="button"
+                onClick={() => setPreviewTpl(null)}
+                className="text-[var(--accent)] font-semibold"
+              >
+                ‹ Templates
+              </button>
+            ) : (
+              <h2 className="flex-1 text-lg font-bold">Templates</h2>
+            )}
+            <Button
+              variant="secondary"
+              size="sm"
+              className="ms-auto"
+              onClick={() => {
+                setBrowsing(false);
+                setPreviewTpl(null);
+              }}
+            >
               Close
             </Button>
           </header>
-          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-            {templates.map((t) => (
-              <Card key={t.id} variant="feature">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-lg font-bold flex-1">{t.name}</h3>
-                  <Badge tone="accent">{t.days.length} days</Badge>
+
+          {previewTpl ? (
+            // Preview — full breakdown before committing. Cloning copies the
+            // program into the user's plans; it does NOT activate it.
+            <>
+              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-xl font-extrabold flex-1">
+                      {previewTpl.name}
+                    </h3>
+                    <Badge tone="accent">{previewTpl.days.length} days</Badge>
+                  </div>
+                  <p className="text-sm text-[var(--text-muted)]">
+                    {previewTpl.description}
+                  </p>
                 </div>
-                <p className="text-sm text-[var(--text-muted)] mb-2">{t.description}</p>
-                <p className={`${EYEBROW} mb-3`}>{t.days.map((d) => d.name).join(" · ")}</p>
+
+                {previewTpl.days.map((d, i) => (
+                  <Card key={i} padding={0}>
+                    <div className="px-4 pt-3.5 pb-2 flex items-center gap-2">
+                      <span className="font-extrabold text-[var(--text)]">
+                        {d.name}
+                      </span>
+                      <span className="text-sm text-[var(--text-muted)]">
+                        · {d.exercises.length} exercises
+                      </span>
+                    </div>
+                    <ul className="list-none p-0 m-0 px-3 pb-3 flex flex-col gap-1.5">
+                      {d.exercises.map((ex, j) => (
+                        <li
+                          key={j}
+                          className="flex items-center gap-2 rounded-[var(--radius)] bg-[var(--surface-2)] px-3.5 py-2.5"
+                        >
+                          <span className="flex-1 font-semibold text-[var(--text)] truncate">
+                            {exerciseName.get(ex.exerciseId) ?? ex.exerciseId}
+                          </span>
+                          <span className="text-sm text-[var(--text-muted)] tabular-nums">
+                            {ex.sets} × {ex.reps}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </Card>
+                ))}
+              </div>
+
+              <div
+                className="border-t border-[var(--border)] p-4"
+                style={{ paddingBottom: "calc(1rem + var(--safe-bottom))" }}
+              >
                 <Button
                   variant="primary"
                   fullWidth
-                  onClick={() => useTemplate(t.id)}
+                  onClick={() => useTemplate(previewTpl.id)}
                   disabled={cloning}
                 >
-                  {cloning ? "Adding…" : "Use this program"}
+                  {cloning ? "Adding…" : "Add to my programs"}
                 </Button>
-              </Card>
-            ))}
-          </div>
+                <p className="mt-2 text-center text-xs text-[var(--text-muted)]">
+                  Copies it into your plans — activate it whenever you&apos;re
+                  ready.
+                </p>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+              {templates.map((t) => (
+                <Card key={t.id} variant="feature">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-lg font-bold flex-1">{t.name}</h3>
+                    <Badge tone="accent">{t.days.length} days</Badge>
+                  </div>
+                  <p className="text-sm text-[var(--text-muted)] mb-2">
+                    {t.description}
+                  </p>
+                  <p className={`${EYEBROW} mb-3`}>
+                    {t.days.map((d) => d.name).join(" · ")}
+                  </p>
+                  <Button
+                    variant="primary"
+                    fullWidth
+                    onClick={() => setPreviewTpl(t)}
+                  >
+                    Preview program ›
+                  </Button>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
