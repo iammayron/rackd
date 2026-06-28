@@ -16,9 +16,6 @@ export type { DB } from "./db";
 export * as schema from "./schema";
 // S3 helpers are exposed via the "@rackd/db/s3" subpath (not here) so packages
 // without the DOM lib (e.g. @rackd/push) don't compile the fetch/BodyInit code.
-export { SEED_EXERCISES } from "./seed";
-export type { SeedExercise } from "./seed";
-export { seedExercises } from "./seed-pg";
 export { PROGRAM_TEMPLATES, cloneProgramTemplate } from "./templates";
 export type { ProgramTemplate } from "./templates";
 
@@ -93,10 +90,15 @@ export async function getExerciseDetail(id: string) {
     .innerJoin(t.muscles, eq(t.muscles.id, t.exerciseMuscles.muscleId))
     .where(eq(t.exerciseMuscles.exerciseId, id));
 
-  const roleRank: Record<string, number> = { primary: 0, secondary: 1, tertiary: 2 };
+  const roleRank: Record<string, number> = {
+    primary: 0,
+    secondary: 1,
+    tertiary: 2,
+  };
   muscles.sort(
     (a, b) =>
-      (roleRank[a.role] ?? 9) - (roleRank[b.role] ?? 9) || b.activation - a.activation,
+      (roleRank[a.role] ?? 9) - (roleRank[b.role] ?? 9) ||
+      b.activation - a.activation,
   );
 
   const media = await db

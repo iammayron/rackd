@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   isApplicable,
+  LEGACY_EXERCISE_MAP,
   LEGACY_OVERRIDES,
   matchLegacyExercise,
   normalizeExerciseName,
@@ -8,8 +9,10 @@ import {
   type MatchExercise,
 } from "./legacy-dedup";
 
+// A legacy id deliberately NOT in LEGACY_EXERCISE_MAP, so these exercise the
+// auto-matcher rather than short-circuiting on a real override.
 const legacy = (over: Partial<MatchExercise> = {}): MatchExercise => ({
-  id: "ex_bench_press",
+  id: "ex_unmapped_fixture",
   name: "Barbell Bench Press",
   primaryMuscle: "chest",
   source: "rackd",
@@ -87,7 +90,8 @@ describe("matchLegacyExercise", () => {
   });
 
   it("an override wins over a better auto-match", () => {
-    LEGACY_OVERRIDES["ex_bench_press"] = "hand-picked-id";
+    // Use a throwaway key so we don't mutate a real LEGACY_EXERCISE_MAP entry.
+    LEGACY_OVERRIDES["ex_unmapped_fixture"] = "hand-picked-id";
     try {
       const m = matchLegacyExercise(legacy(), [
         imported(), // would auto-match exactly
@@ -97,8 +101,29 @@ describe("matchLegacyExercise", () => {
       expect(m.via).toBe("override");
       expect(m.confidence).toBe("exact");
     } finally {
-      delete LEGACY_OVERRIDES["ex_bench_press"];
+      delete LEGACY_OVERRIDES["ex_unmapped_fixture"];
     }
+  });
+});
+
+describe("LEGACY_EXERCISE_MAP", () => {
+  it("is the dedup override table (single source of truth)", () => {
+    expect(LEGACY_OVERRIDES).toBe(LEGACY_EXERCISE_MAP);
+  });
+
+  it("maps every legacy id to an import slug, never back to another ex_*", () => {
+    for (const [legacy, target] of Object.entries(LEGACY_EXERCISE_MAP)) {
+      expect(legacy.startsWith("ex_")).toBe(true);
+      expect(target).toMatch(/^[a-z0-9-]+$/);
+      expect(target.startsWith("ex_")).toBe(false);
+    }
+  });
+
+  it("uses the corrected variants, not the auto-matcher's wrong picks", () => {
+    expect(LEGACY_EXERCISE_MAP.ex_pullup).toBe("pullups"); // not band-assisted
+    expect(LEGACY_EXERCISE_MAP.ex_leg_ext).toBe("leg-extensions"); // not single-leg
+    expect(LEGACY_EXERCISE_MAP.ex_leg_curl).toBe("lying-leg-curls"); // not seated
+    expect(LEGACY_EXERCISE_MAP.ex_cable_chest_fly).toBe("cable-crossover"); // not a press
   });
 });
 

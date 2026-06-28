@@ -16,7 +16,7 @@ Gym workout tracker (plan routines, run workouts, rest timer, history). PWA web 
 - `pnpm --filter @rackd/core test` — fast core logic tests
 - `pnpm build` — production build
 - `pnpm --filter @rackd/db db:generate` / `db:push` — generate/apply Drizzle migrations against `DATABASE_URL`
-- `pnpm --filter @rackd/db seed` — seed the exercise library into Postgres (run once)
+- `pnpm --filter @rackd/db ingest:all` — fetch + seed the free-exercise-db exercise library into Postgres (run once)
 
 Before committing, run: `pnpm typecheck && pnpm test`.
 
@@ -25,28 +25,28 @@ Claude Code helpers (`.claude/`): slash commands `/add-endpoint` (scaffold an ow
 ### Auth (Supabase Cloud)
 
 - Supabase Cloud issues the JWTs; the client is unchanged. Web env:
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (baked at build).
+  `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (baked at build).
 - The app is auth-gated (no anonymous use). After login `AuthProvider` holds the
-Supabase session; the `api()` helper attaches `Authorization: Bearer <access_token>`
-to every request. `getCurrentUserId()` = Supabase user id (client-side reads).
+  Supabase session; the `api()` helper attaches `Authorization: Bearer <access_token>`
+  to every request. `getCurrentUserId()` = Supabase user id (client-side reads).
 - API routes validate that token server-side via `SUPABASE_SERVICE_ROLE_KEY`
-(`lib/api-auth.ts` → `getAuthUser` / `withUser`), derive `ownerId` from the
-token's `sub`, and scope every query by `ownerId`. The exercise + sharedRoutines
-libraries are the public exceptions (world-readable, owner-writable).
+  (`lib/api-auth.ts` → `getAuthUser` / `withUser`), derive `ownerId` from the
+  token's `sub`, and scope every query by `ownerId`. The exercise + sharedRoutines
+  libraries are the public exceptions (world-readable, owner-writable).
 - No Triplit signing-key dance, no RS256/HS256 JWK, no `SUPABASE_JWT_SECRET`.
 
 ### Data layer
 
 - **Drizzle ORM → Supabase Postgres.** `packages/db` owns the schema and the
-repository functions; nothing else touches `pg` (single pool in `db.ts`).
+  repository functions; nothing else touches `pg` (single pool in `db.ts`).
 - **Reads/writes go through Next API route handlers** under
-`apps/web/src/app/api/**` (~43 routes). The client never calls the DB — it calls
-`api()` (`lib/api.ts`) wrapped in **React Query** (`lib/query.ts`, central `qk`
-key registry). The query cache is persisted to IndexedDB for offline reads; a
-write that fails offline is queued in IndexedDB (`lib/offline-queue.ts`) and
-flushed FIFO on reconnect.
+  `apps/web/src/app/api/**` (~43 routes). The client never calls the DB — it calls
+  `api()` (`lib/api.ts`) wrapped in **React Query** (`lib/query.ts`, central `qk`
+  key registry). The query cache is persisted to IndexedDB for offline reads; a
+  write that fails offline is queued in IndexedDB (`lib/offline-queue.ts`) and
+  flushed FIFO on reconnect.
 - `apps/push` polls Postgres (`getPendingPushes()`) to deliver scheduled web-push
-notifications (needs `DATABASE_URL` + VAPID env). No Triplit anywhere.
+  notifications (needs `DATABASE_URL` + VAPID env). No Triplit anywhere.
 
 No formatter/linter is wired yet — the format hook auto-detects and no-ops until one is added. Don't reference a `lint`/`format` script until it actually exists.
 
@@ -79,7 +79,7 @@ Logic lives in `packages/`; apps are thin shells.
 
 ## Migrations / data
 
-Schema is the Drizzle schema in `packages/db/src/schema.ts` — keep it in sync with the `@rackd/core` types it mirrors. Migrations: `pnpm --filter @rackd/db db:generate` (writes SQL) then `db:push` (applies to Supabase Postgres via `DATABASE_URL`). The exercise library is seeded once server-side with `pnpm --filter @rackd/db seed` (`src/seed-pg.ts`), not per login.
+Schema is the Drizzle schema in `packages/db/src/schema.ts` — keep it in sync with the `@rackd/core` types it mirrors. Migrations: `pnpm --filter @rackd/db db:generate` (writes SQL) then `db:push` (applies to Supabase Postgres via `DATABASE_URL`). The exercise library is seeded once server-side with `pnpm --filter @rackd/db ingest:all` (free-exercise-db import; `src/ingest/`), not per login.
 
 ## Workflow
 
@@ -88,4 +88,3 @@ Schema is the Drizzle schema in `packages/db/src/schema.ts` — keep it in sync 
 - After changes, run the gate; verify UI/behavior in the running app when practical.
 - **Tests run automatically.** A `Stop` hook (`.claude/hooks/run-tests.sh`) runs the fast gate — `pnpm typecheck && pnpm --filter @rackd/core test` — whenever a turn touched `.ts/.tsx` under `packages/` or `apps/`, and blocks finishing if it fails. The hook deliberately skips the Postgres-dependent suites (`@rackd/db`, `apps/web` API tests); run those yourself with `pnpm test` when you changed repo functions, schema, or API routes and a DB is up.
 - If a change added or altered testable behavior with no covering test, invoke the **test-author** agent to write one (pure logic → `packages/core`; repo/route behavior → `packages/db` / `apps/web/test`). When tests exist but their quality is in doubt — or right after test-author writes new ones — invoke the **test-auditor** agent to vet them for false-positives and missing cases. Hooks can't call agents, so this stays a judgment call; skip it for trivial changes (docs, types, UI-only tweaks) with nothing to assert.
-
