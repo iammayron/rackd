@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -420,18 +420,33 @@ export default function WorkoutPage() {
           </p>
         )}
         <div ref={listRef}>
-          {ordered.map((se, i) => {
-            const prev = ordered[i - 1];
-            const next = ordered[i + 1];
-            const g = se.supersetGroup;
-            const inGroup =
-              g != null &&
-              (prev?.supersetGroup === g || next?.supersetGroup === g);
-            // skip rest when the next exercise is your superset partner (go straight to it)
-            const startsRest = g == null || next?.supersetGroup !== g;
-            return (
-              <Fragment key={se.id}>
+          {(() => {
+            // Group consecutive exercises sharing a superset group so the group
+            // renders as one unit: one set of each, then a single rest after the
+            // last member. Ungrouped exercises (and lone leftovers) stand alone.
+            const groups: SessionExerciseRow[][] = [];
+            for (const se of ordered) {
+              const run = groups[groups.length - 1];
+              if (
+                run &&
+                se.supersetGroup != null &&
+                run[0]!.supersetGroup === se.supersetGroup
+              ) {
+                run.push(se);
+              } else {
+                groups.push([se]);
+              }
+            }
+
+            const card = (
+              se: SessionExerciseRow,
+              inGroup: boolean,
+              startsRest: boolean,
+            ) => {
+              const i = ordered.indexOf(se);
+              return (
                 <ExerciseCard
+                  key={se.id}
                   sessionExercise={se}
                   index={i}
                   total={ordered.length}
@@ -441,14 +456,30 @@ export default function WorkoutPage() {
                   dragging={dragId === se.id}
                   onDragHandleDown={(e) => startDrag(se.id, e)}
                 />
-                {!startsRest && (
-                  <div aria-hidden="true" className="flex justify-center mb-1">
-                    <span className="w-[3px] h-5 rounded-full bg-[var(--accent)]" />
+              );
+            };
+
+            return groups.map((run) => {
+              // A real superset needs ≥2 members; a lone leftover rests normally.
+              if (run.length < 2) return card(run[0]!, false, true);
+              return (
+                <div
+                  key={`ss-${run[0]!.id}`}
+                  className="mb-4 flex flex-col gap-2 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-2)] p-2"
+                >
+                  <div className="flex items-center gap-2 px-1 pt-0.5">
+                    <span className="inline-flex items-center rounded-full bg-[var(--accent)] px-2 py-0.5 text-xs font-bold text-white">
+                      Superset
+                    </span>
+                    <span className="text-xs text-[var(--text-muted)]">
+                      One set of each, then rest
+                    </span>
                   </div>
-                )}
-              </Fragment>
-            );
-          })}
+                  {run.map((se, j) => card(se, true, j === run.length - 1))}
+                </div>
+              );
+            });
+          })()}
         </div>
         {!fetching && (
           <AddExercisePicker

@@ -11,7 +11,7 @@ Braindump from on-device testing. Each item gets discussed/scoped before impleme
 - [x] 5. Per-exercise rest timer — editable rest slide-up; rest persists back to routine on finish (next run pulls it); "Skip rest day" on Home reveals next workout to start
 - [x] 6. Data getting lost when minimizing workout (persist set edits on blur + focus-guarded resync)
 - [x] 7. Fix drag and drop
-- [ ] 8. Fix exercise details slide up
+- [x] 8. Fix exercise details slide up — verified working on device
 - [x] 9. Close timer when it ends + send a notification to iPhone (via Web Push; Live Activities not possible on PWA) — auto-close + local notification + queued web-push in `timer-store.ts`
 - [x] 10. Timer backdrop — dimmed scrim in `RestTimerBar.tsx`
 - [x] 11. ~~Verify Triplit sync is actually working~~ — obsolete: Triplit removed; data now syncs via Supabase Postgres + React Query (IndexedDB offline cache + mutation queue)
@@ -19,7 +19,7 @@ Braindump from on-device testing. Each item gets discussed/scoped before impleme
 - [x] 13. Home icon bar
 - [x] 14. Some buttons are too close to the edge (safe-area / edge padding) — resolved: existing edge gutters (`px-4`/`px-5` pages + cards, 12–16px floating overlays) verified adequate on iPhone. Horizontal safe-area insets are moot — the app is iPhone-only and portrait-locked, so `safe-area-inset-left/right` are always 0. No code change needed.
 - [x] 15. Weight & reps editing — tap cell opens slide-up sheet with [−] [typeable value] [+], select-all on focus, −/＋ steps (reps 1, weight 2.5kg/5lb), commit on Done/close
-- [ ] 16. Superset button is missing — DB field + routine-editor toggle exist; in-workout menu action still stubbed ("coming soon")
+- [x] 16. Superset — routine-editor toggle creates groups; in-workout view now renders a superset as one bounded unit (accent "Superset · one set of each, then rest" header, members stacked tight). Rest fires only after the LAST member (`startsRest` gates `startTimer` in `SetRow.tsx`); non-resting members show "no rest →" instead of a rest pill. Fixed the missing bottom spacing (group wrapper owns the gap). In-workout "make superset" menu action still stubbed (created via routine editor).
 - [ ] 17. Bar weight + plate breakdown (barbell only) — per-side plate breakdown shipped (`PlatesPanel.tsx`); still missing the global bar-weight setting in Settings (bar hard-coded 20 kg / 45 lb)
   - Typed weight = TOTAL lifted incl. bar; min = bar weight; store the true total.
   - Global bar weight in Settings (default 45 lb / 20 kg), applied to barbell-category exercises only (auto-detected from equipment); others type normally.
@@ -29,5 +29,5 @@ Braindump from on-device testing. Each item gets discussed/scoped before impleme
 - [x] 18. Always scroll to current exercise — snaps back to the current exercise after a rest, on reopen, once on load, and after editing (`workout/[id]/page.tsx`, `SetRow.tsx`)
 - [x] 19. Complete summary not computing properly — verified on device (renders + populates) and audited: volume/sets/duration/PRs/top-set traced through `summary/page.tsx` → `sessionVolume` + `fromKg` (canonical kg, linear unit conversion) and confirmed correct. Underlying pure fns covered in `calc.test.ts`. Accuracy confirmed.
 - [x] 20. Share not working — verified working on device (native share + PNG/clipboard fallback).
-- [ ] 21. Progress page is wrong — history/progress page implemented and computing (`history/page.tsx`); re-test on device to confirm
+- [x] 21. Progress page is wrong — verified working on device (history/progress computes correctly in `history/page.tsx`)
 - [x] 22. "Done" status on the Home Screen — implemented in `page.tsx`: a `completedToday` check (today's scheduled routine has a finished session ending after midnight) flips the hero into a "Today · done / Crushed it 💪" state with a "See your summary" link, plus two actions: "Train {nextName} ›" (starts the next scheduled workout) and "Start quick workout ›". The program card also shows block progress ("Day N of {block}" + completed-workout count + bar).
