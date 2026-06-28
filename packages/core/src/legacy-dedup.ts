@@ -52,6 +52,9 @@ export const LEGACY_OVERRIDES: Record<string, string> = {
   ex_reverse_pec_deck: "reverse-machine-flyes", // no auto-match (machine rear-delt fly)
   ex_db_skullcrusher: "lying-dumbbell-tricep-extension", // no auto-match
   ex_sumo_deadlift: "sumo-deadlift", // no auto-match (primary-muscle veto)
+  // 0-ref leftovers — no history, removed for a clean single library.
+  ex_deadlift: "barbell-deadlift", // "Conventional Deadlift" → "Barbell Deadlift"
+  ex_bulgarian_split_squat: "split-squat-with-dumbbells", // nearest import (no exact Bulgarian)
 };
 
 const STOPWORDS = new Set(["the", "a", "with", "and", "of", "for"]);
