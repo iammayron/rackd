@@ -35,27 +35,72 @@ export interface LegacyMatch {
 }
 
 /**
- * Hand-reviewed legacy `ex_*` id → imported exercise id (slug). Populated after
- * eyeballing a `--dry-run` report; an entry here is treated as ground truth and
- * overrides auto-matching. Use this for legacy rows that auto-match weakly or
- * land on the wrong variant. Leave a legacy id out entirely to keep it as-is.
+ * Authoritative legacy `ex_*` id → imported exercise id (slug). The original
+ * hand-written seed (44 `ex_*` rows) is fully superseded by the free-exercise-db
+ * import; every legacy id maps to its rich equivalent here. Used two ways:
+ *   1. `dedup-legacy-exercises` treats these as ground-truth overrides when
+ *      repointing history off the bare legacy rows.
+ *   2. `@rackd/db`'s built-in program templates resolve their exercise ids
+ *      through this map, so the catalog references real imports (the legacy
+ *      rows no longer exist).
+ * All targets verified to exist in free-exercise-db. Where the auto-matcher
+ * would pick a wrong variant (flat→incline bench, pull-up→band-assisted,
+ * leg-ext→single-leg), the curated target wins.
  */
-export const LEGACY_OVERRIDES: Record<string, string> = {
-  // Referenced legacy rows the auto-matcher under-scored (plural/word-order) or
-  // sent to the wrong variant. Targets verified against free-exercise-db.
-  ex_squat: "barbell-squat", // "Barbell Back Squat" → "Barbell Squat"
-  ex_seated_row: "seated-cable-rows", // plural
+export const LEGACY_EXERCISE_MAP: Record<string, string> = {
+  // Chest / push
+  ex_bench_press: "barbell-bench-press-medium-grip",
+  ex_db_bench_press: "dumbbell-bench-press",
+  ex_incline_db_press: "incline-dumbbell-press",
+  ex_cable_chest_fly: "cable-crossover", // not a cable PRESS
+  ex_ohp: "barbell-shoulder-press",
+  ex_db_shoulder_press: "dumbbell-shoulder-press",
+  ex_lateral_raise: "side-lateral-raise",
+  ex_cable_lateral_raise: "cable-seated-lateral-raise",
+  ex_reverse_pec_deck: "reverse-machine-flyes",
+  ex_face_pull: "face-pull",
+  // Triceps
+  ex_tricep_pushdown: "triceps-pushdown",
+  ex_bb_overhead_tricep_ext: "standing-overhead-barbell-triceps-extension",
+  ex_overhead_cable_tricep_ext: "cable-rope-overhead-triceps-extension",
+  ex_db_skullcrusher: "lying-dumbbell-tricep-extension",
+  // Back / pull
+  ex_pullup: "pullups", // not band-assisted
+  ex_lat_pulldown: "wide-grip-lat-pulldown",
+  ex_bb_row: "bent-over-barbell-row",
+  ex_seated_row: "seated-cable-rows",
   ex_single_arm_db_row: "one-arm-dumbbell-row",
   ex_straight_arm_pulldown: "straight-arm-pulldown",
-  ex_leg_curl: "lying-leg-curls", // was wrongly matched to the SEATED leg curl
-  ex_cable_chest_fly: "cable-crossover", // was wrongly matched to a cable PRESS
-  ex_reverse_pec_deck: "reverse-machine-flyes", // no auto-match (machine rear-delt fly)
-  ex_db_skullcrusher: "lying-dumbbell-tricep-extension", // no auto-match
-  ex_sumo_deadlift: "sumo-deadlift", // no auto-match (primary-muscle veto)
-  // 0-ref leftovers — no history, removed for a clean single library.
-  ex_deadlift: "barbell-deadlift", // "Conventional Deadlift" → "Barbell Deadlift"
-  ex_bulgarian_split_squat: "split-squat-with-dumbbells", // nearest import (no exact Bulgarian)
+  ex_deadlift: "barbell-deadlift",
+  ex_sumo_deadlift: "sumo-deadlift",
+  ex_rdl: "romanian-deadlift",
+  // Biceps
+  ex_bb_curl: "barbell-curl",
+  ex_db_curl: "dumbbell-bicep-curl",
+  ex_hammer_curl: "hammer-curls",
+  ex_incline_db_curl: "incline-dumbbell-curl",
+  ex_cable_curl: "standing-biceps-cable-curl",
+  // Legs
+  ex_squat: "barbell-squat", // "Barbell Back Squat"
+  ex_front_squat: "front-barbell-squat",
+  ex_hack_squat: "hack-squat",
+  ex_bulgarian_split_squat: "split-squat-with-dumbbells", // nearest import
+  ex_leg_press: "leg-press",
+  ex_leg_ext: "leg-extensions", // not single-leg
+  ex_leg_curl: "lying-leg-curls", // not the SEATED curl
+  ex_hip_thrust: "barbell-hip-thrust",
+  ex_calf_raise: "standing-calf-raises",
+  ex_seated_calf_raise: "seated-calf-raise",
+  // Core
+  ex_plank: "plank",
+  ex_hanging_leg_raise: "hanging-leg-raise",
 };
+
+/**
+ * The dedup script's override table is exactly the authoritative map — every
+ * legacy id has a curated target, so matches are deterministic.
+ */
+export const LEGACY_OVERRIDES: Record<string, string> = LEGACY_EXERCISE_MAP;
 
 const STOPWORDS = new Set(["the", "a", "with", "and", "of", "for"]);
 

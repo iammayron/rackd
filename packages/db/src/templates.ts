@@ -1,3 +1,4 @@
+import { LEGACY_EXERCISE_MAP } from "@rackd/core";
 import {
   createProgram,
   createRoutine,
@@ -29,8 +30,16 @@ export interface ProgramTemplate {
   days: TemplateDay[];
 }
 
-const e = (exerciseId: string, sets: number, reps: number, rest?: number): TemplateExercise => ({
-  exerciseId,
+// The templates are authored against the readable legacy `ex_*` ids; the
+// hand-written seed they referenced is gone, so resolve each to its rich
+// free-exercise-db import (LEGACY_EXERCISE_MAP). Unmapped ids pass through.
+const e = (
+  exerciseId: string,
+  sets: number,
+  reps: number,
+  rest?: number,
+): TemplateExercise => ({
+  exerciseId: LEGACY_EXERCISE_MAP[exerciseId] ?? exerciseId,
   sets,
   reps,
   rest,
@@ -40,7 +49,8 @@ export const PROGRAM_TEMPLATES: ProgramTemplate[] = [
   {
     id: "tpl_ppl6",
     name: "6-Day PPL",
-    description: "Hypertrophy · failure-based · solo. Push/Pull/Legs run twice a week + Sunday rest. Reps shown are the bottom of each working range; 60s rest unless heavier compounds.",
+    description:
+      "Hypertrophy · failure-based · solo. Push/Pull/Legs run twice a week + Sunday rest. Reps shown are the bottom of each working range; 60s rest unless heavier compounds.",
     days: [
       {
         name: "Push 1",
@@ -151,15 +161,30 @@ export const PROGRAM_TEMPLATES: ProgramTemplate[] = [
     days: [
       {
         name: "Full Body A",
-        exercises: [e("ex_squat", 3, 5), e("ex_bench_press", 3, 5), e("ex_bb_row", 3, 8), e("ex_plank", 3, 30)],
+        exercises: [
+          e("ex_squat", 3, 5),
+          e("ex_bench_press", 3, 5),
+          e("ex_bb_row", 3, 8),
+          e("ex_plank", 3, 30),
+        ],
       },
       {
         name: "Full Body B",
-        exercises: [e("ex_deadlift", 3, 5), e("ex_ohp", 3, 5), e("ex_lat_pulldown", 3, 10), e("ex_hanging_leg_raise", 3, 12)],
+        exercises: [
+          e("ex_deadlift", 3, 5),
+          e("ex_ohp", 3, 5),
+          e("ex_lat_pulldown", 3, 10),
+          e("ex_hanging_leg_raise", 3, 12),
+        ],
       },
       {
         name: "Full Body C",
-        exercises: [e("ex_front_squat", 3, 6), e("ex_incline_db_press", 3, 8), e("ex_seated_row", 3, 10), e("ex_calf_raise", 3, 15)],
+        exercises: [
+          e("ex_front_squat", 3, 6),
+          e("ex_incline_db_press", 3, 8),
+          e("ex_seated_row", 3, 10),
+          e("ex_calf_raise", 3, 15),
+        ],
       },
     ],
   },
