@@ -40,7 +40,19 @@ export interface LegacyMatch {
  * overrides auto-matching. Use this for legacy rows that auto-match weakly or
  * land on the wrong variant. Leave a legacy id out entirely to keep it as-is.
  */
-export const LEGACY_OVERRIDES: Record<string, string> = {};
+export const LEGACY_OVERRIDES: Record<string, string> = {
+  // Referenced legacy rows the auto-matcher under-scored (plural/word-order) or
+  // sent to the wrong variant. Targets verified against free-exercise-db.
+  ex_squat: "barbell-squat", // "Barbell Back Squat" → "Barbell Squat"
+  ex_seated_row: "seated-cable-rows", // plural
+  ex_single_arm_db_row: "one-arm-dumbbell-row",
+  ex_straight_arm_pulldown: "straight-arm-pulldown",
+  ex_leg_curl: "lying-leg-curls", // was wrongly matched to the SEATED leg curl
+  ex_cable_chest_fly: "cable-crossover", // was wrongly matched to a cable PRESS
+  ex_reverse_pec_deck: "reverse-machine-flyes", // no auto-match (machine rear-delt fly)
+  ex_db_skullcrusher: "lying-dumbbell-tricep-extension", // no auto-match
+  ex_sumo_deadlift: "sumo-deadlift", // no auto-match (primary-muscle veto)
+};
 
 const STOPWORDS = new Set(["the", "a", "with", "and", "of", "for"]);
 
