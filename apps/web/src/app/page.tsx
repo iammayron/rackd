@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -223,6 +223,14 @@ export default function Home() {
   const [selected, setSelected] = useState<string[]>([]);
   const [starting, setStarting] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
+  const quickRef = useRef<HTMLElement>(null);
+  // The quick-workout picker renders below the fold (after This Week / Recent
+  // Sessions), so scroll it into view when it opens — otherwise tapping "Start
+  // quick workout" looks like it did nothing.
+  useEffect(() => {
+    if (quickOpen)
+      quickRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [quickOpen]);
   const [skipRevealed, setSkipRevealed] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
 
@@ -493,8 +501,9 @@ export default function Home() {
             </div>
             {heroEstimate && (
               <div className="mt-1.5 text-sm font-semibold text-white/85 tabular-nums">
-                {heroEstimate.count} exercise{heroEstimate.count === 1 ? "" : "s"}{" "}
-                · ~{heroEstimate.minutes} min
+                {heroEstimate.count} exercise
+                {heroEstimate.count === 1 ? "" : "s"} · ~{heroEstimate.minutes}{" "}
+                min
               </div>
             )}
             <Button
@@ -579,7 +588,7 @@ export default function Home() {
 
         {/* Quick ad-hoc workout — pick exercises to start a session with no routine */}
         {quickOpen && (
-          <section className="mt-2">
+          <section ref={quickRef} className="mt-2 scroll-mt-4">
             <h2 className={`${EYEBROW} mb-1`}>Quick workout</h2>
             <p className="mb-3 text-sm text-[var(--text-muted)]">
               Pick exercises to start an ad-hoc session.

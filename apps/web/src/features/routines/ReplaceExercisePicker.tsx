@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query";
-import { ExerciseThumb } from "@/components/ExerciseMedia";
+import { ExerciseThumb, ExerciseMediaModal } from "@/components/ExerciseMedia";
 import { BottomSheet } from "@/components/BottomSheet";
 
 interface ExerciseRow {
@@ -13,6 +13,11 @@ interface ExerciseRow {
   primaryMuscle: string;
   equipment: string;
   thumbnailUrl?: string;
+  // Present on the library rows; used to preview before swapping.
+  secondaryMuscles?: string[];
+  instructions?: string;
+  clipUrl?: string;
+  clipUrlWebm?: string;
 }
 
 const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
@@ -49,14 +54,18 @@ export function ReplaceExercisePicker({
     onOpenChange?.(v);
   };
   const [search, setSearch] = useState("");
+  const [previewEx, setPreviewEx] = useState<ExerciseRow | null>(null);
 
   const current = exercises.find((e) => e.id === currentExerciseId);
 
   const { similar, all } = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const matchName = (e: ExerciseRow) => !q || e.name.toLowerCase().includes(q);
+    const matchName = (e: ExerciseRow) =>
+      !q || e.name.toLowerCase().includes(q);
     const isSimilar = (e: ExerciseRow) =>
-      !!current && e.id !== currentExerciseId && e.primaryMuscle === current.primaryMuscle;
+      !!current &&
+      e.id !== currentExerciseId &&
+      e.primaryMuscle === current.primaryMuscle;
     return {
       similar: exercises.filter((e) => isSimilar(e) && matchName(e)),
       all: exercises.filter(
@@ -68,6 +77,7 @@ export function ReplaceExercisePicker({
   function close() {
     setOpen(false);
     setSearch("");
+    setPreviewEx(null);
   }
 
   function pick(id: string) {
@@ -83,8 +93,8 @@ export function ReplaceExercisePicker({
       <li>
         <button
           type="button"
-          onClick={() => pick(ex.id)}
-          aria-label={`Replace with ${ex.name}`}
+          onClick={() => setPreviewEx(ex)}
+          aria-label={`Preview ${ex.name}`}
           className="w-full text-left flex items-center gap-3 p-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
         >
           <ExerciseThumb ex={ex} size={44} />
@@ -95,7 +105,7 @@ export function ReplaceExercisePicker({
             </span>
           </span>
           <span className="ms-2 shrink-0 text-sm font-semibold text-[var(--accent)]">
-            Swap
+            Preview ›
           </span>
         </button>
       </li>
@@ -125,7 +135,9 @@ export function ReplaceExercisePicker({
       <BottomSheet open={open} onClose={close}>
         <div className="sticky top-0 z-10 -mx-4 px-4 pb-3 bg-[var(--bg)]">
           <div className="flex items-center gap-3">
-            <h2 className="flex-1 text-[17px] font-extrabold">Replace exercise</h2>
+            <h2 className="flex-1 text-[17px] font-extrabold">
+              Replace exercise
+            </h2>
             <button
               type="button"
               onClick={close}
@@ -140,7 +152,9 @@ export function ReplaceExercisePicker({
             <div className="mt-3 flex items-center gap-2 text-sm text-[var(--text-muted)]">
               <span>Replacing</span>
               <ExerciseThumb ex={current} size={26} />
-              <span className="font-semibold text-[var(--text)]">{current.name}</span>
+              <span className="font-semibold text-[var(--text)]">
+                {current.name}
+              </span>
             </div>
           )}
 
@@ -191,6 +205,17 @@ export function ReplaceExercisePicker({
           </>
         )}
       </BottomSheet>
+
+      {previewEx && (
+        <ExerciseMediaModal
+          ex={previewEx}
+          onClose={() => setPreviewEx(null)}
+          action={{
+            label: `Swap to ${previewEx.name}`,
+            onClick: () => pick(previewEx.id),
+          }}
+        />
+      )}
     </>
   );
 }

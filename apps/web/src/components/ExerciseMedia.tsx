@@ -44,10 +44,18 @@ export function ExerciseThumb({
   onClick?: () => void;
 }) {
   const initial = ex.name.charAt(0).toUpperCase();
-  const style: React.CSSProperties = { width: size, height: size, minWidth: size };
+  const style: React.CSSProperties = {
+    width: size,
+    height: size,
+    minWidth: size,
+  };
   const inner = ex.thumbnailUrl ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={ex.thumbnailUrl} alt={ex.name} className="w-full h-full object-cover" />
+    <img
+      src={ex.thumbnailUrl}
+      alt={ex.name}
+      className="w-full h-full object-cover"
+    />
   ) : (
     <div
       className="w-full h-full flex items-center justify-center font-bold text-white"
@@ -56,9 +64,20 @@ export function ExerciseThumb({
       {initial}
     </div>
   );
-  if (!onClick) return <div className="rk-squircle" style={style}>{inner}</div>;
+  if (!onClick)
+    return (
+      <div className="rk-squircle" style={style}>
+        {inner}
+      </div>
+    );
   return (
-    <button type="button" onClick={onClick} aria-label={`${ex.name} details`} className="rk-squircle" style={style}>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`${ex.name} details`}
+      className="rk-squircle"
+      style={style}
+    >
       {inner}
     </button>
   );
@@ -70,16 +89,33 @@ function muscleList(m?: string[] | Set<string>): string[] {
 }
 
 /** Detail modal: looping clip when clipUrl is set, else big fallback + instructions. */
-export function ExerciseMediaModal({ ex, onClose }: { ex: ExerciseMediaData; onClose: () => void }) {
+export function ExerciseMediaModal({
+  ex,
+  onClose,
+  action,
+}: {
+  ex: ExerciseMediaData;
+  onClose: () => void;
+  /** Optional primary action rendered as a full-width button at the bottom. */
+  action?: { label: string; onClick: () => void };
+}) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60"
+      onClick={onClose}
+    >
       <div
         className="w-full max-w-sm bg-[var(--surface)] border border-[var(--border)] rounded-t-[var(--radius-lg)] sm:rounded-[var(--radius-lg)] p-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center mb-3">
           <h2 className="flex-1 text-lg font-bold">{ex.name}</h2>
-          <button type="button" onClick={onClose} aria-label="Close" className="text-lg text-[var(--text-muted)]">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-lg text-[var(--text-muted)]"
+          >
             ×
           </button>
         </div>
@@ -94,7 +130,9 @@ export function ExerciseMediaModal({ ex, onClose }: { ex: ExerciseMediaData; onC
               playsInline
               poster={ex.thumbnailUrl}
             >
-              {ex.clipUrlWebm && <source src={ex.clipUrlWebm} type="video/webm" />}
+              {ex.clipUrlWebm && (
+                <source src={ex.clipUrlWebm} type="video/webm" />
+              )}
               <source src={ex.clipUrl} type="video/mp4" />
             </video>
           ) : (
@@ -120,7 +158,19 @@ export function ExerciseMediaModal({ ex, onClose }: { ex: ExerciseMediaData; onC
             ))}
         </div>
 
-        {ex.instructions && <p className="text-sm text-[var(--text)]">{ex.instructions}</p>}
+        {ex.instructions && (
+          <p className="text-sm text-[var(--text)]">{ex.instructions}</p>
+        )}
+
+        {action && (
+          <button
+            type="button"
+            onClick={action.onClick}
+            className="mt-4 w-full min-h-11 rounded-[var(--radius)] bg-[var(--accent)] text-white font-bold focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+          >
+            {action.label}
+          </button>
+        )}
       </div>
     </div>
   );
