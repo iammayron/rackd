@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ import {
   estimateSessionMinutes,
 } from "@rackd/core";
 import { Card, Button, Badge, Avatar, Input, SelectableRow } from "@rackd/ui";
+import { BottomSheet } from "@/components/BottomSheet";
 import { api } from "@/lib/api";
 import { queryClient, qk } from "@/lib/query";
 import { Nav } from "@/components/Nav";
@@ -223,14 +224,12 @@ export default function Home() {
   const [selected, setSelected] = useState<string[]>([]);
   const [starting, setStarting] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
-  const quickRef = useRef<HTMLElement>(null);
-  // The quick-workout picker renders below the fold (after This Week / Recent
-  // Sessions), so scroll it into view when it opens — otherwise tapping "Start
-  // quick workout" looks like it did nothing.
-  useEffect(() => {
-    if (quickOpen)
-      quickRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [quickOpen]);
+  // Close the quick-workout sheet and reset its picker state for next time.
+  function closeQuick() {
+    setQuickOpen(false);
+    setSelected([]);
+    setSearch("");
+  }
   const [skipRevealed, setSkipRevealed] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
 
@@ -586,51 +585,48 @@ export default function Home() {
         <ThisWeekCard />
         <RecentSessionsCard />
 
-        {/* Quick ad-hoc workout — pick exercises to start a session with no routine */}
-        {quickOpen && (
-          <section ref={quickRef} className="mt-2 scroll-mt-4">
-            <h2 className={`${EYEBROW} mb-1`}>Quick workout</h2>
-            <p className="mb-3 text-sm text-[var(--text-muted)]">
-              Pick exercises to start an ad-hoc session.
-            </p>
+      </main>
+      <Nav />
 
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search exercises…"
-              style={{ marginBottom: 12 }}
-            />
+      {/* Quick ad-hoc workout — pick exercises to start a session with no routine */}
+      <BottomSheet
+        open={quickOpen}
+        onClose={closeQuick}
+        title="Quick workout"
+        subtitle={selected.length > 0 ? `${selected.length} selected` : undefined}
+      >
+        <p className="mb-3 text-sm text-[var(--text-muted)]">
+          Pick exercises to start an ad-hoc session.
+        </p>
 
-            <ul className="list-none p-0 m-0 flex flex-col gap-2">
-              {filtered.map((ex) => (
-                <li key={ex.id}>
-                  <SelectableRow
-                    title={ex.name}
-                    meta={`${ex.primaryMuscle} · ${ex.equipment}`}
-                    selected={selected.includes(ex.id)}
-                    onClick={() => toggle(ex.id)}
-                  />
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search exercises…"
+          style={{ marginBottom: 12 }}
+        />
+
+        <ul className="list-none p-0 m-0 flex flex-col gap-2">
+          {filtered.map((ex) => (
+            <li key={ex.id}>
+              <SelectableRow
+                title={ex.name}
+                meta={`${ex.primaryMuscle} · ${ex.equipment}`}
+                selected={selected.includes(ex.id)}
+                onClick={() => toggle(ex.id)}
+              />
+            </li>
+          ))}
+        </ul>
 
         {selected.length > 0 && (
-          <div className="fixed left-1/2 -translate-x-1/2 bottom-[calc(84px+var(--safe-bottom))] w-[min(440px,calc(100%-32px))] z-30">
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              onClick={start}
-              disabled={starting}
-            >
+          <div className="sticky bottom-0 -mx-4 mt-2 px-4 pt-3 pb-1 bg-gradient-to-t from-[var(--bg)] via-[var(--bg)] to-transparent">
+            <Button variant="primary" size="lg" fullWidth onClick={start} disabled={starting}>
               {starting ? "Starting…" : `Start workout (${selected.length})`}
             </Button>
           </div>
         )}
-      </main>
-      <Nav />
+      </BottomSheet>
 
       <ActivateProgramSheet
         open={activateOpen}
