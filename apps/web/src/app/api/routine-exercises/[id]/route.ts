@@ -7,11 +7,15 @@ import {
   setRoutineExerciseSuperset,
   updateRoutineExercise,
 } from "@rackd/db";
+import { BAR_WEIGHTS } from "@rackd/core";
 import { withUser } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
 const { routineExercises } = schema;
+
+const isBarType = (v: unknown): v is keyof typeof BAR_WEIGHTS =>
+  typeof v === "string" && v in BAR_WEIGHTS;
 
 /** PUT /api/routine-exercises/[id] — patch rest/superset/order of an owned slot. */
 export const PUT = withUser(async (ownerId, req, ctx) => {
@@ -28,6 +32,11 @@ export const PUT = withUser(async (ownerId, req, ctx) => {
   if ("restSec" in body) await updateRoutineExercise(id, { restSec: body.restSec });
   if ("supersetGroup" in body) await setRoutineExerciseSuperset(id, body.supersetGroup);
   if ("order" in body) await setRoutineExerciseOrder(id, body.order);
+  if ("barType" in body) {
+    if (!isBarType(body.barType))
+      return Response.json({ error: "Invalid barType" }, { status: 400 });
+    await updateRoutineExercise(id, { barType: body.barType });
+  }
   return Response.json({ ok: true });
 });
 

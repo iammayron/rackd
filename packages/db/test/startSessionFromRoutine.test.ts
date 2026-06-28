@@ -53,6 +53,27 @@ describe("startSessionFromRoutine (deep-copy plan → live session)", () => {
     expect(se!.restSec).toBe(90);
   });
 
+  it("carries barType onto session exercises and defaults to standard", async () => {
+    const routine = await createRoutine({ ownerId: OWNER_A, name: "R" });
+    const def = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_squat", order: 1 });
+    const ez = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_bench", order: 2 });
+    await updateRoutineExercise(ez.id, { barType: "ezbar" });
+
+    // updateRoutineExercise persisted the override on the plan…
+    const [planEz] = await db
+      .select()
+      .from(t.routineExercises)
+      .where(eq(t.routineExercises.id, ez.id));
+    expect(planEz!.barType).toBe("ezbar");
+    expect(def.barType).toBe("standard"); // column default on insert
+
+    // …and it copies through to the live session.
+    const session = await startSessionFromRoutine({ routineId: routine.id, ownerId: OWNER_A, now: 1000 });
+    const ses = await sessionExercises(session.id);
+    expect(ses.find((s) => s.exerciseId === "ex_squat")!.barType).toBe("standard");
+    expect(ses.find((s) => s.exerciseId === "ex_bench")!.barType).toBe("ezbar");
+  });
+
   it("copies routineSets to setLogs with targets, completed=false", async () => {
     const routine = await createRoutine({ ownerId: OWNER_A, name: "R" });
     const re = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_bench", order: 1 });

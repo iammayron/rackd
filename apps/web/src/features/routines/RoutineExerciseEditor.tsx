@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { BAR_LABELS, BAR_WEIGHTS } from "@rackd/core";
+import type { BarType } from "@rackd/core";
 import { Badge, mmss } from "@rackd/ui";
 import { api } from "@/lib/api";
 import { queryClient, qk } from "@/lib/query";
@@ -24,6 +26,7 @@ interface RoutineExerciseRow {
   order: number;
   exerciseId: string;
   restSec: number;
+  barType?: BarType;
   exercise?: ExerciseMediaData | null;
 }
 
@@ -102,6 +105,16 @@ export function RoutineExerciseEditor({
   const ex = routineExercise.exercise;
   const subtitleRaw = ex?.primaryMuscle || ex?.equipment;
   const subtitle = subtitleRaw ? cap(subtitleRaw) : undefined;
+  const isBarbell = ex?.equipment === "barbell";
+  const barType = routineExercise.barType ?? "standard";
+
+  async function onBarTypeChange(next: BarType) {
+    await api(`/api/routine-exercises/${routineExercise.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ barType: next }),
+    });
+    invalidate();
+  }
 
   const openExercise = useExerciseDetail((s) => s.open);
   function goDetails() {
@@ -216,6 +229,24 @@ export function RoutineExerciseEditor({
         onClose={() => setShowRest(false)}
       />
 
+      {isBarbell && (
+        <label className="flex items-center gap-2 pb-2 text-sm text-[var(--text-muted)]">
+          <span className="shrink-0">Bar</span>
+          <select
+            value={barType}
+            onChange={(e) => onBarTypeChange(e.target.value as BarType)}
+            aria-label="Bar type"
+            className="min-h-9 flex-1 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface-2)] px-2 text-sm text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+          >
+            {(Object.keys(BAR_LABELS) as BarType[]).map((b) => (
+              <option key={b} value={b}>
+                {BAR_LABELS[b]} · {BAR_WEIGHTS[b][unit]} {unit}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
       <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] pb-1">
         <span className="w-6 shrink-0">#</span>
         <span className="w-16 shrink-0">prev</span>
@@ -243,7 +274,12 @@ export function RoutineExerciseEditor({
         + Add set
       </button>
 
-      <PlatesPanel topWeight={sets.reduce((m, s) => Math.max(m, s.targetWeight ?? 0), 0)} />
+      {isBarbell && (
+        <PlatesPanel
+          topWeight={sets.reduce((m, s) => Math.max(m, s.targetWeight ?? 0), 0)}
+          barType={barType}
+        />
+      )}
     </section>
   );
 }

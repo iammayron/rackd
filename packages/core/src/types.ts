@@ -30,6 +30,14 @@ export type Equipment =
   | "band"
   | "other";
 
+/**
+ * Bar used for a barbell exercise. Drives plate math + warmup ramp.
+ * Weights are per-display-unit (see `BAR_WEIGHTS` in calc.ts) so kg/lb
+ * users get the clean standard numbers (20 kg / 45 lb), not a single
+ * stored kg that rounds badly in the other unit.
+ */
+export type BarType = "standard" | "womens" | "ezbar" | "trap" | "safety";
+
 export type ExerciseCategory =
   | "barbell"
   | "dumbbell"
@@ -267,6 +275,8 @@ export interface RoutineExercise {
   supersetGroup?: number;
   restSec: number;
   notes?: string;
+  /** Bar used for plate math; only meaningful for barbell exercises. */
+  barType?: BarType;
 }
 
 export interface WorkoutSession {
@@ -289,6 +299,8 @@ export interface SessionExercise {
   order: number;
   supersetGroup?: number;
   restSec: number;
+  /** Bar used for plate math; copied from the routine at session start. */
+  barType?: BarType;
 }
 
 export interface SetLog extends SetShape {
