@@ -62,6 +62,7 @@ export function RoutineExerciseEditor({
   onToggleNext,
   dragging,
   onDragHandleDown,
+  existingIds,
 }: {
   routineExercise: RoutineExerciseRow;
   inGroup: boolean;
@@ -69,6 +70,8 @@ export function RoutineExerciseEditor({
   onToggleNext: () => void;
   dragging?: boolean;
   onDragHandleDown?: (e: PointerEvent) => void;
+  /** Every exercise id in the routine — so Replace can't swap in a duplicate. */
+  existingIds?: string[];
 }) {
   const { unit, display } = useUnit();
   const [showRest, setShowRest] = useState(false);
@@ -205,6 +208,7 @@ export function RoutineExerciseEditor({
 
       <ReplaceExercisePicker
         currentExerciseId={routineExercise.exerciseId}
+        existingIds={existingIds}
         onReplace={async (newId) => {
           await api(`/api/routine-exercises/${routineExercise.id}/replace`, {
             method: "POST",

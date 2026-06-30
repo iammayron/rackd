@@ -455,6 +455,7 @@ export default function WorkoutPage() {
                   startsRest={startsRest}
                   dragging={dragId === se.id}
                   onDragHandleDown={(e) => startDrag(se.id, e)}
+                  existingIds={sessionExercises.map((e) => e.exerciseId)}
                 />
               );
             };

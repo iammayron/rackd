@@ -53,6 +53,7 @@ export function ExerciseCard({
   startsRest = true,
   dragging = false,
   onDragHandleDown,
+  existingIds,
 }: {
   sessionExercise: SessionExerciseRow;
   index: number;
@@ -63,6 +64,8 @@ export function ExerciseCard({
   startsRest?: boolean;
   dragging?: boolean;
   onDragHandleDown?: (e: PointerEvent) => void;
+  /** Every exercise id in the session — so Replace can't swap in a duplicate. */
+  existingIds?: string[];
 }) {
   const toast = useToast();
   const { unit, display } = useUnit();
@@ -281,6 +284,7 @@ export function ExerciseCard({
 
       <ReplaceExercisePicker
         currentExerciseId={sessionExercise.exerciseId}
+        existingIds={existingIds}
         onReplace={async (newId) => {
           await api(`/api/session-exercises/${sessionExercise.id}/replace`, {
             method: "POST",
