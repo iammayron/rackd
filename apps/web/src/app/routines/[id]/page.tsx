@@ -309,6 +309,7 @@ function RoutineEditor() {
                 onToggleNext={() => toggleSupersetNext(i)}
                 dragging={dragId === re.id}
                 onDragHandleDown={(e) => startDrag(re.id, e)}
+                existingIds={exercises.map((e) => e.exerciseId)}
               />
               {linkedNext(i) && (
                 <div aria-hidden="true" className="flex justify-center mb-1">

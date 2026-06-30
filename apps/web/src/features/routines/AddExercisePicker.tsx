@@ -6,6 +6,8 @@ import { Button } from "@rackd/ui";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query";
 import { ExerciseThumb } from "@/components/ExerciseMedia";
+import { ExerciseFilters } from "@/components/ExerciseFilters";
+import { ExerciseDetailPreview } from "@/features/exercise/ExerciseDetailPreview";
 import { BottomSheet } from "@/components/BottomSheet";
 
 interface ExerciseRow {
@@ -19,19 +21,19 @@ interface ExerciseRow {
 const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
 /**
- * "+ Add exercise" trigger that opens a bottom sheet with search. Multi-add:
- * stays open after a pick and flashes the chosen row, calling onPick(exerciseId)
- * each time. Used by the routine editor and active workout. (Sibling of
- * {@link ReplaceExercisePicker}, which is single-pick.) Renders inside the
- * shared {@link BottomSheet} so it sits above the keyboard and clears the
- * status-bar safe area instead of taking over the whole screen.
+ * "+ Add exercise" trigger that opens a bottom sheet with search + muscle and
+ * equipment filters. Multi-add: stays open after a pick and flashes the chosen
+ * row, calling onPick(exerciseId) each time. Exercises already in the
+ * routine/workout (`existingIds`) are hidden, not listed. Tapping a row's
+ * thumbnail opens the full {@link ExerciseDetailPreview}. (Sibling of
+ * {@link ReplaceExercisePicker}, which is single-pick.)
  */
 export function AddExercisePicker({
   onPick,
   existingIds = [],
 }: {
   onPick: (exerciseId: string) => void;
-  /** Exercise ids already in the routine/workout — shown as "Added", not pickable. */
+  /** Exercise ids already in the routine/workout — hidden from the list. */
   existingIds?: string[];
 }) {
   const existing = useMemo(() => new Set(existingIds), [existingIds]);
@@ -42,19 +44,32 @@ export function AddExercisePicker({
   });
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [muscle, setMuscle] = useState<string | null>(null);
+  const [equipment, setEquipment] = useState<string | null>(null);
   const [added, setAdded] = useState<string | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return exercises;
     return exercises.filter(
-      (e) => e.name.toLowerCase().includes(q) || e.primaryMuscle.includes(q),
+      (e) =>
+        !existing.has(e.id) &&
+        (!muscle || e.primaryMuscle === muscle) &&
+        (!equipment || e.equipment === equipment) &&
+        (!q || e.name.toLowerCase().includes(q) || e.primaryMuscle.includes(q)),
     );
-  }, [exercises, search]);
+  }, [exercises, search, muscle, equipment, existing]);
+
+  const previewName = previewId
+    ? exercises.find((e) => e.id === previewId)?.name
+    : undefined;
 
   function close() {
     setOpen(false);
     setSearch("");
+    setMuscle(null);
+    setEquipment(null);
+    setPreviewId(null);
   }
 
   function pick(id: string) {
@@ -107,41 +122,48 @@ export function AddExercisePicker({
               placeholder="Search exercises…"
               className="mt-3 w-full min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-[var(--radius)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             />
+
+            <ExerciseFilters
+              exercises={exercises}
+              muscle={muscle}
+              equipment={equipment}
+              onMuscle={setMuscle}
+              onEquipment={setEquipment}
+            />
           </>
         }
       >
         {filtered.length === 0 ? (
           <p className="text-sm text-[var(--text-muted)] py-4">
-            {search.trim()
-              ? `Nothing in the library matches “${search.trim()}”.`
-              : "No exercises in the library yet."}
+            {search.trim() || muscle || equipment
+              ? "Nothing in the library matches those filters."
+              : "Every library exercise is already in this list."}
           </p>
         ) : (
           <ul className="list-none p-0 m-0 flex flex-col gap-2">
             {filtered.map((ex) => {
               const on = added === ex.id;
-              const already = existing.has(ex.id);
               const subtitle = ex.equipment
                 ? `${cap(ex.primaryMuscle)} · ${cap(ex.equipment)}`
                 : cap(ex.primaryMuscle);
               return (
-                <li key={ex.id}>
+                <li
+                  key={ex.id}
+                  className={`flex items-center gap-3 p-3 rounded-[var(--radius)] border ${
+                    on
+                      ? "bg-[var(--success)] text-[#06231a] border-[var(--success)]"
+                      : "bg-[var(--surface)] text-[var(--text)] border-[var(--border)]"
+                  }`}
+                >
+                  <ExerciseThumb ex={ex} size={44} onClick={() => setPreviewId(ex.id)} />
                   <button
                     type="button"
-                    onClick={() => !already && pick(ex.id)}
-                    disabled={already}
-                    aria-label={already ? `${ex.name} already added` : `Add ${ex.name}`}
-                    className={`w-full text-left flex items-center gap-3 p-3 rounded-[var(--radius)] border focus:outline-none focus:ring-2 focus:ring-[var(--accent)] ${
-                      on
-                        ? "bg-[var(--success)] text-[#06231a] border-[var(--success)]"
-                        : "bg-[var(--surface)] text-[var(--text)] border-[var(--border)]"
-                    } ${already ? "opacity-55" : ""}`}
+                    onClick={() => pick(ex.id)}
+                    aria-label={`Add ${ex.name}`}
+                    className="min-w-0 flex-1 flex items-center text-left gap-3 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] rounded-[var(--radius-sm)]"
                   >
-                    <ExerciseThumb ex={ex} size={44} />
                     <span className="min-w-0 flex-1">
-                      <span className="block font-bold truncate">
-                        {ex.name}
-                      </span>
+                      <span className="block font-bold truncate">{ex.name}</span>
                       <span
                         className={`block text-sm truncate ${on ? "text-[#06231a]" : "text-[var(--text-muted)]"}`}
                       >
@@ -150,10 +172,10 @@ export function AddExercisePicker({
                     </span>
                     <span
                       className={`ms-2 shrink-0 text-sm font-semibold ${
-                        on ? "text-[#06231a]" : already ? "text-[var(--text-muted)]" : "text-[var(--accent)]"
+                        on ? "text-[#06231a]" : "text-[var(--accent)]"
                       }`}
                     >
-                      {already ? "Added ✓" : on ? "Added ✓" : "Add"}
+                      {on ? "Added ✓" : "Add"}
                     </span>
                   </button>
                 </li>
@@ -162,6 +184,21 @@ export function AddExercisePicker({
           </ul>
         )}
       </BottomSheet>
+
+      {previewId && (
+        <ExerciseDetailPreview
+          id={previewId}
+          onClose={() => setPreviewId(null)}
+          onSelectExercise={setPreviewId}
+          action={{
+            label: previewName ? `Add ${previewName}` : "Add",
+            onClick: () => {
+              pick(previewId);
+              setPreviewId(null);
+            },
+          }}
+        />
+      )}
     </>
   );
 }

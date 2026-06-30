@@ -4,7 +4,9 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query";
-import { ExerciseThumb, ExerciseMediaModal } from "@/components/ExerciseMedia";
+import { ExerciseThumb } from "@/components/ExerciseMedia";
+import { ExerciseFilters } from "@/components/ExerciseFilters";
+import { ExerciseDetailPreview } from "@/features/exercise/ExerciseDetailPreview";
 import { BottomSheet } from "@/components/BottomSheet";
 
 interface ExerciseRow {
@@ -13,11 +15,6 @@ interface ExerciseRow {
   primaryMuscle: string;
   equipment: string;
   thumbnailUrl?: string;
-  // Present on the library rows; used to preview before swapping.
-  secondaryMuscles?: string[];
-  instructions?: string;
-  clipUrl?: string;
-  clipUrlWebm?: string;
 }
 
 const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
@@ -25,19 +22,24 @@ const cap = (s: string) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 /**
  * "Replace" trigger that opens a bottom sheet listing the library, split into
  * two groups: "Similar" (same primaryMuscle as the current exercise) and "All
- * exercises" (the rest). A live, case-insensitive name search filters both
- * groups. Picking a replacement closes the sheet and calls onReplace(newId).
- * Single-pick (unlike AddExercisePicker).
+ * exercises" (the rest). Search + muscle/equipment filters narrow both groups.
+ * Exercises already in the plan (`existingIds`, plus the current one) are
+ * hidden so you can't replace with a duplicate. Tapping a row opens the full
+ * {@link ExerciseDetailPreview}; its action swaps and closes. Single-pick
+ * (unlike AddExercisePicker).
  */
 export function ReplaceExercisePicker({
   currentExerciseId,
   onReplace,
+  existingIds = [],
   /** Controlled open state. When provided, the component renders no built-in trigger. */
   open: openProp,
   onOpenChange,
 }: {
   currentExerciseId: string;
   onReplace: (exerciseId: string) => void;
+  /** Exercise ids already in the plan — hidden so a replacement can't duplicate. */
+  existingIds?: string[];
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }) {
@@ -54,30 +56,43 @@ export function ReplaceExercisePicker({
     onOpenChange?.(v);
   };
   const [search, setSearch] = useState("");
-  const [previewEx, setPreviewEx] = useState<ExerciseRow | null>(null);
+  const [muscle, setMuscle] = useState<string | null>(null);
+  const [equipment, setEquipment] = useState<string | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
 
   const current = exercises.find((e) => e.id === currentExerciseId);
+  // The current exercise plus everything else already in the plan: none of these
+  // are valid replacements (picking one would duplicate or no-op).
+  const excluded = useMemo(
+    () => new Set([currentExerciseId, ...existingIds]),
+    [currentExerciseId, existingIds],
+  );
 
   const { similar, all } = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const matchName = (e: ExerciseRow) =>
-      !q || e.name.toLowerCase().includes(q);
+    const matches = (e: ExerciseRow) =>
+      !excluded.has(e.id) &&
+      (!muscle || e.primaryMuscle === muscle) &&
+      (!equipment || e.equipment === equipment) &&
+      (!q || e.name.toLowerCase().includes(q));
     const isSimilar = (e: ExerciseRow) =>
-      !!current &&
-      e.id !== currentExerciseId &&
-      e.primaryMuscle === current.primaryMuscle;
+      !!current && e.primaryMuscle === current.primaryMuscle;
     return {
-      similar: exercises.filter((e) => isSimilar(e) && matchName(e)),
-      all: exercises.filter(
-        (e) => e.id !== currentExerciseId && !isSimilar(e) && matchName(e),
-      ),
+      similar: exercises.filter((e) => matches(e) && isSimilar(e)),
+      all: exercises.filter((e) => matches(e) && !isSimilar(e)),
     };
-  }, [exercises, search, current, currentExerciseId]);
+  }, [exercises, search, muscle, equipment, current, excluded]);
+
+  const previewName = previewId
+    ? exercises.find((e) => e.id === previewId)?.name
+    : undefined;
 
   function close() {
     setOpen(false);
     setSearch("");
-    setPreviewEx(null);
+    setMuscle(null);
+    setEquipment(null);
+    setPreviewId(null);
   }
 
   function pick(id: string) {
@@ -93,7 +108,7 @@ export function ReplaceExercisePicker({
       <li>
         <button
           type="button"
-          onClick={() => setPreviewEx(ex)}
+          onClick={() => setPreviewId(ex.id)}
           aria-label={`Preview ${ex.name}`}
           className="w-full text-left flex items-center gap-3 p-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
         >
@@ -172,14 +187,22 @@ export function ReplaceExercisePicker({
               placeholder="Search the library…"
               className="mt-3 w-full min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-[var(--radius)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
             />
+
+            <ExerciseFilters
+              exercises={exercises}
+              muscle={muscle}
+              equipment={equipment}
+              onMuscle={setMuscle}
+              onEquipment={setEquipment}
+            />
           </>
         }
       >
         {similar.length === 0 && all.length === 0 ? (
           <p className="text-sm text-[var(--text-muted)] py-4">
-            {search.trim()
-              ? `Nothing in the library matches “${search.trim()}”.`
-              : "No exercises in the library yet."}
+            {search.trim() || muscle || equipment
+              ? "Nothing in the library matches those filters."
+              : "No other exercises to swap in."}
           </p>
         ) : (
           <>
@@ -210,13 +233,14 @@ export function ReplaceExercisePicker({
         )}
       </BottomSheet>
 
-      {previewEx && (
-        <ExerciseMediaModal
-          ex={previewEx}
-          onClose={() => setPreviewEx(null)}
+      {previewId && (
+        <ExerciseDetailPreview
+          id={previewId}
+          onClose={() => setPreviewId(null)}
+          onSelectExercise={setPreviewId}
           action={{
-            label: `Swap to ${previewEx.name}`,
-            onClick: () => pick(previewEx.id),
+            label: previewName ? `Swap to ${previewName}` : "Swap",
+            onClick: () => pick(previewId),
           }}
         />
       )}
