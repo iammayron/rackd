@@ -23,12 +23,21 @@ export function BottomSheet({
   title,
   /** Optional secondary text shown next to the title. */
   subtitle,
+  /**
+   * Optional non-scrolling header (title, search, close…) pinned below the drag
+   * handle and above the scroll area. Use this instead of a `sticky` header
+   * inside `children` — a sticky header sits *inside* the scrollport, so the
+   * first row can peek through the padding strip above it. This block is a
+   * sibling of the scroll area, so content is always clipped beneath it.
+   */
+  header,
   children,
 }: {
   open: boolean;
   onClose: () => void;
   title?: string;
   subtitle?: string;
+  header?: ReactNode;
   children: ReactNode;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -171,6 +180,8 @@ export function BottomSheet({
             </div>
           )}
         </div>
+
+        {header && <div className="shrink-0 px-4 pb-3">{header}</div>}
 
         <div
           ref={scrollRef}

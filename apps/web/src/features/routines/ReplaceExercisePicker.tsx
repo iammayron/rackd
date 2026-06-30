@@ -132,45 +132,49 @@ export function ReplaceExercisePicker({
         </button>
       )}
 
-      <BottomSheet open={open} onClose={close}>
-        <div className="sticky top-0 z-10 -mx-4 px-4 pb-3 bg-[var(--bg)]">
-          <div className="flex items-center gap-3">
-            <h2 className="flex-1 text-[17px] font-extrabold">
-              Replace exercise
-            </h2>
-            <button
-              type="button"
-              onClick={close}
-              aria-label="Close"
-              className="flex items-center justify-center w-9 h-9 rounded-full bg-[var(--surface-2)] text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-            >
-              ✕
-            </button>
-          </div>
-
-          {current && (
-            <div className="mt-3 flex items-center gap-2 text-sm text-[var(--text-muted)]">
-              <span>Replacing</span>
-              <ExerciseThumb ex={current} size={26} />
-              <span className="font-semibold text-[var(--text)]">
-                {current.name}
-              </span>
+      <BottomSheet
+        open={open}
+        onClose={close}
+        header={
+          <>
+            <div className="flex items-center gap-3">
+              <h2 className="flex-1 text-[17px] font-extrabold">
+                Replace exercise
+              </h2>
+              <button
+                type="button"
+                onClick={close}
+                aria-label="Close"
+                className="flex items-center justify-center w-9 h-9 rounded-full bg-[var(--surface-2)] text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+              >
+                ✕
+              </button>
             </div>
-          )}
 
-          <label className="sr-only" htmlFor="replace-search">
-            Search the library
-          </label>
-          <input
-            id="replace-search"
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search the library…"
-            className="mt-3 w-full min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-[var(--radius)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-          />
-        </div>
+            {current && (
+              <div className="mt-3 flex items-center gap-2 text-sm text-[var(--text-muted)]">
+                <span>Replacing</span>
+                <ExerciseThumb ex={current} size={26} />
+                <span className="font-semibold text-[var(--text)]">
+                  {current.name}
+                </span>
+              </div>
+            )}
 
+            <label className="sr-only" htmlFor="replace-search">
+              Search the library
+            </label>
+            <input
+              id="replace-search"
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search the library…"
+              className="mt-3 w-full min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-[var(--radius)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+            />
+          </>
+        }
+      >
         {similar.length === 0 && all.length === 0 ? (
           <p className="text-sm text-[var(--text-muted)] py-4">
             {search.trim()
