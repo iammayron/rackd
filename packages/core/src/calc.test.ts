@@ -18,9 +18,9 @@ import {
   LAYOFF_RESTART_DAYS,
   diffSessionVsRoutine,
   programWeekProgress,
-  programCurrentWeek,
   programDayKinds,
-  programRotationDayKinds,
+  rotationBlockProgress,
+  workoutsSinceLayoff,
   sessionCountsForProgram,
   estimateSessionMinutes,
   BAR_WEIGHTS,
@@ -796,216 +796,6 @@ describe("programDayKinds", () => {
   });
 });
 
-describe("programRotationDayKinds", () => {
-  const fill = (n: number, k: ProgramDayKind): ProgramDayKind[] => Array<ProgramDayKind>(n).fill(k);
-  // 6-day PPL + 1 rest = a 7-slot cycle.
-  const ppl = [false, false, false, false, false, false, true];
-
-  it("fills one slot per completed workout, consuming rest slots passed on the way", () => {
-    const kinds = programRotationDayKinds({
-      blockWeeks: 1,
-      restByOrder: [false, false, true],
-      completedWorkouts: 2,
-    });
-    expect(kinds).toEqual(["done", "done", "rest", "future", "future", "future", "future"]);
-  });
-
-  it("advances with training, not the calendar", () => {
-    // The regression: activated 26 days ago but only 5 workouts logged. The
-    // calendar bar read "Week 4 of 4"; the block is really 5 slots in.
-    const kinds = programRotationDayKinds({
-      blockWeeks: 4,
-      restByOrder: ppl,
-      completedWorkouts: 5,
-    });
-    expect(kinds).toEqual([...fill(5, "done"), ...fill(23, "future")]);
-    const progress = programWeekProgress(4, kinds);
-    expect(progress.filledDays).toBe(5);
-    expect(progress.weekDone).toEqual([false, false, false, false]);
-    expect(Math.floor(progress.filledDays / 7) + 1).toBe(1);
-  });
-
-  it("ignites a week the moment its last workout lands", () => {
-    // Trailing rest is consumed, so 6 workouts fill all 7 notches of week 1
-    // rather than leaving it at 6/7 until week 2 starts.
-    const kinds = programRotationDayKinds({
-      blockWeeks: 4,
-      restByOrder: ppl,
-      completedWorkouts: 6,
-    });
-    expect(kinds).toEqual([...fill(6, "done"), "rest", ...fill(21, "future")]);
-    const progress = programWeekProgress(4, kinds);
-    expect(progress.filledDays).toBe(7);
-    expect(progress.weekDone[0]).toBe(true);
-  });
-
-  it("halts at the next workout slot, leaving later rest slots empty", () => {
-    const kinds = programRotationDayKinds({
-      blockWeeks: 2,
-      restByOrder: [false, false, true],
-      completedWorkouts: 7,
-    });
-    expect(kinds).toEqual([
-      "done",
-      "done",
-      "rest",
-      "done",
-      "done",
-      "rest",
-      "done",
-      "done",
-      "rest",
-      "done",
-      "future",
-      "future",
-      "future",
-      "future",
-    ]);
-    const progress = programWeekProgress(2, kinds);
-    expect(progress.filledDays).toBe(10);
-    expect(progress.weekDone).toEqual([true, false]);
-  });
-
-  it("consumes a leading rest slot on the way to the first workout", () => {
-    const kinds = programRotationDayKinds({
-      blockWeeks: 1,
-      restByOrder: [true, false, false],
-      completedWorkouts: 1,
-    });
-    expect(kinds).toEqual(["rest", "done", "future", "future", "future", "future", "future"]);
-  });
-
-  it("leaves the block empty before the first workout, even when the cycle opens with rest", () => {
-    // Otherwise activating a rest-first program would hand out a free notch.
-    expect(
-      programRotationDayKinds({
-        blockWeeks: 1,
-        restByOrder: [true, false],
-        completedWorkouts: 0,
-      }),
-    ).toEqual(fill(7, "future"));
-  });
-
-  it("completes the block exactly when the block's workouts are done", () => {
-    // 4 weeks × 7 slots over the PPL cycle = 24 workouts + 4 rests. The final
-    // slot is a rest — it must still fill, or the block never reaches 100%.
-    const kinds = programRotationDayKinds({
-      blockWeeks: 4,
-      restByOrder: ppl,
-      completedWorkouts: 24,
-    });
-    const cycle: ProgramDayKind[] = [...fill(6, "done"), "rest"];
-    expect(kinds).toEqual([...cycle, ...cycle, ...cycle, ...cycle]);
-    const progress = programWeekProgress(4, kinds);
-    expect(progress.filledDays).toBe(28);
-    expect(progress.completedWeeks).toBe(4);
-  });
-
-  it("clamps when more workouts are logged than the block has slots", () => {
-    const kinds = programRotationDayKinds({
-      blockWeeks: 1,
-      restByOrder: [false],
-      completedWorkouts: 99,
-    });
-    expect(kinds).toEqual(fill(7, "done"));
-    expect(programWeekProgress(1, kinds).filledDays).toBe(7);
-  });
-
-  it("never fills an all-rest rotation", () => {
-    // `programDayKinds` calls this all-"rest" (i.e. complete) by calendar
-    // reasoning; a training-driven bar must not complete an untrainable block.
-    expect(
-      programRotationDayKinds({
-        blockWeeks: 1,
-        restByOrder: [true, true],
-        completedWorkouts: 5,
-      }),
-    ).toEqual(fill(7, "future"));
-  });
-
-  it("treats an empty rotation as no progress", () => {
-    expect(
-      programRotationDayKinds({
-        blockWeeks: 1,
-        restByOrder: [],
-        completedWorkouts: 3,
-      }),
-    ).toEqual(fill(7, "future"));
-  });
-
-  it("returns an empty array for a zero-week or negative block", () => {
-    const args = { restByOrder: ppl, completedWorkouts: 9 };
-    expect(programRotationDayKinds({ ...args, blockWeeks: 0 })).toEqual([]);
-    expect(programRotationDayKinds({ ...args, blockWeeks: -3 })).toEqual([]);
-  });
-
-  it("floors a fractional block length", () => {
-    expect(
-      programRotationDayKinds({
-        blockWeeks: 2.9,
-        restByOrder: [false],
-        completedWorkouts: 20,
-      }),
-    ).toEqual(fill(14, "done"));
-  });
-
-  it("guards a negative or fractional workout count", () => {
-    expect(
-      programRotationDayKinds({
-        blockWeeks: 1,
-        restByOrder: ppl,
-        completedWorkouts: -2,
-      }),
-    ).toEqual(fill(7, "future"));
-    expect(
-      programRotationDayKinds({
-        blockWeeks: 1,
-        restByOrder: ppl,
-        completedWorkouts: 2.7,
-      }),
-    ).toEqual([...fill(2, "done"), ...fill(5, "future")]);
-  });
-
-  it("consumed slots always form a prefix (what currentWeek relies on)", () => {
-    // [completedWorkouts, expected prefix length]. Stated, not derived from the
-    // output — and unconditional, so a mutant that fills the whole block fails
-    // instead of quietly skipping every assertion.
-    const cases: Array<[number, number]> = [
-      [0, 0],
-      [1, 1],
-      [2, 2],
-      [5, 5],
-      [9, 10], // 9 workouts + the rest slot earned after the 6th
-      [24, 28], // the whole block
-    ];
-    for (const [completedWorkouts, prefix] of cases) {
-      const kinds = programRotationDayKinds({
-        blockWeeks: 4,
-        restByOrder: ppl,
-        completedWorkouts,
-      });
-      expect(kinds.slice(prefix).every((k) => k === "future")).toBe(true);
-      expect(kinds.slice(0, prefix).some((k) => k === "future")).toBe(false);
-      expect(programWeekProgress(4, kinds).filledDays).toBe(prefix);
-    }
-  });
-
-  it("consumes a run of consecutive trailing rests, not just the first", () => {
-    // 5-on/2-off — a common shape, and the case a "halt after one trailing
-    // rest" regression gets wrong: week 1 stalls at 6/7 and never ignites.
-    const fiveTwo = [false, false, false, false, false, true, true];
-    const kinds = programRotationDayKinds({
-      blockWeeks: 4,
-      restByOrder: fiveTwo,
-      completedWorkouts: 5,
-    });
-    expect(kinds).toEqual([...fill(5, "done"), "rest", "rest", ...fill(21, "future")]);
-    const progress = programWeekProgress(4, kinds);
-    expect(progress.filledDays).toBe(7);
-    expect(progress.weekDone[0]).toBe(true);
-  });
-});
-
 describe("daysAway", () => {
   it("returns the day-index gap", () => {
     expect(daysAway(100, 112)).toBe(12);
@@ -1079,22 +869,129 @@ describe("firstWorkoutSlot", () => {
   });
 });
 
-describe("programCurrentWeek", () => {
-  it("stays on week 1 until a week of notches is filled", () => {
-    expect(programCurrentWeek(4, 0)).toBe(1);
-    expect(programCurrentWeek(4, 6)).toBe(1);
+describe("rotationBlockProgress", () => {
+  // The reported program: 6-day PPL, no Rest slots, 4-cycle block.
+  const ppl = { blockWeeks: 4, cycleWorkouts: 6 };
+
+  it("counts a segment as one full pass through the rotation, not seven days", () => {
+    // The regression: 28 came from blockWeeks*7, which put every divider
+    // mid-cycle for a 6-day rotation. A segment is now a cycle.
+    const p = rotationBlockProgress({ ...ppl, completedWorkouts: 0 });
+    expect(p.cycleWorkouts).toBe(6);
+    expect(p.totalWorkouts).toBe(24);
+    expect(p.weekFill).toHaveLength(4);
   });
-  it("advances a week every 7 filled notches", () => {
-    expect(programCurrentWeek(4, 7)).toBe(2);
-    expect(programCurrentWeek(4, 14)).toBe(3);
+
+  it("reports the workouts done in this run", () => {
+    // Two workouts back after a layoff → "Week 1 of 4 · 2 of 24".
+    const p = rotationBlockProgress({ ...ppl, completedWorkouts: 2 });
+    expect(p.completedWorkouts).toBe(2);
+    expect(p.currentWeek).toBe(1);
+    expect(p.weekFill[0]).toBeCloseTo(2 / 6, 10);
+    expect(p.weekDone).toEqual([false, false, false, false]);
   });
-  it("clamps a complete block to its last week rather than N+1", () => {
-    // The seam this exists to pin: the raw formula yields 5 → "Week 5 of 4".
-    expect(programCurrentWeek(4, 28)).toBe(4);
-    expect(programCurrentWeek(4, 99)).toBe(4);
+
+  it("ignites a segment exactly when its cycle is finished", () => {
+    const p = rotationBlockProgress({ ...ppl, completedWorkouts: 6 });
+    expect(p.weekDone).toEqual([true, false, false, false]);
+    expect(p.weekFill[0]).toBe(1);
+    expect(p.currentWeek).toBe(2);
   });
-  it("is 0 for a zero-week block", () => {
-    expect(programCurrentWeek(0, 0)).toBe(0);
+
+  it("fills later segments in order", () => {
+    const p = rotationBlockProgress({ ...ppl, completedWorkouts: 15 });
+    expect(p.weekDone).toEqual([true, true, false, false]);
+    expect(p.weekFill[2]).toBeCloseTo(3 / 6, 10);
+    expect(p.weekFill[3]).toBe(0);
+    expect(p.currentWeek).toBe(3);
+  });
+
+  it("completes the block on the last workout of the last cycle", () => {
+    const p = rotationBlockProgress({ ...ppl, completedWorkouts: 24 });
+    expect(p.completedWorkouts).toBe(24);
+    expect(p.weekDone).toEqual([true, true, true, true]);
+    expect(p.completedCycles).toBe(4);
+    // Clamped: a finished block reads "4 of 4", never "5 of 4".
+    expect(p.currentWeek).toBe(4);
+  });
+
+  it("clamps beyond the block instead of overflowing", () => {
+    const p = rotationBlockProgress({ ...ppl, completedWorkouts: 99 });
+    expect(p.completedWorkouts).toBe(24);
+    expect(p.currentWeek).toBe(4);
+    expect(p.weekFill.every((f) => f === 1)).toBe(true);
+  });
+
+  it("handles a cycle length that isn't six", () => {
+    const p = rotationBlockProgress({ blockWeeks: 3, cycleWorkouts: 4, completedWorkouts: 5 });
+    expect(p.totalWorkouts).toBe(12);
+    expect(p.weekDone).toEqual([true, false, false]);
+    expect(p.weekFill[1]).toBeCloseTo(1 / 4, 10);
+    expect(p.currentWeek).toBe(2);
+  });
+
+  it("never completes a rotation with no workout days", () => {
+    const p = rotationBlockProgress({ blockWeeks: 4, cycleWorkouts: 0, completedWorkouts: 9 });
+    expect(p.totalWorkouts).toBe(0);
+    expect(p.completedWorkouts).toBe(0);
+    expect(p.weekDone).toEqual([false, false, false, false]);
+  });
+
+  it("returns an empty block for zero or negative block lengths", () => {
+    for (const blockWeeks of [0, -3]) {
+      const p = rotationBlockProgress({ blockWeeks, cycleWorkouts: 6, completedWorkouts: 4 });
+      expect(p.totalWorkouts).toBe(0);
+      expect(p.weekFill).toEqual([]);
+      expect(p.currentWeek).toBe(0);
+    }
+  });
+
+  it("guards fractional and negative input", () => {
+    expect(rotationBlockProgress({ ...ppl, completedWorkouts: -5 }).completedWorkouts).toBe(0);
+    expect(rotationBlockProgress({ ...ppl, completedWorkouts: 2.9 }).completedWorkouts).toBe(2);
+    expect(
+      rotationBlockProgress({ blockWeeks: 2.7, cycleWorkouts: 3.9, completedWorkouts: 0 }),
+    ).toMatchObject({ blockWeeks: 2, cycleWorkouts: 3, totalWorkouts: 6 });
+  });
+});
+
+describe("workoutsSinceLayoff", () => {
+  const T = LAYOFF_RESTART_DAYS;
+
+  it("counts an unbroken run", () => {
+    expect(workoutsSinceLayoff([100, 101, 103], 103)).toBe(3);
+  });
+
+  it("drops everything before the last layoff", () => {
+    // Five workouts, then a long gap, then two. Only the two count — the
+    // rotation restarted at day 1, so the block restarts with it.
+    const days = [10, 11, 12, 13, 14, 14 + T + 2, 14 + T + 3];
+    expect(workoutsSinceLayoff(days, 14 + T + 3)).toBe(2);
+  });
+
+  it("is empty mid-layoff, matching the dashboard's 'starting the cycle over'", () => {
+    expect(workoutsSinceLayoff([100, 101], 101 + T)).toBe(0);
+  });
+
+  it("keeps a gap that is one day short of the threshold", () => {
+    expect(workoutsSinceLayoff([100, 100 + T - 1], 100 + T - 1)).toBe(2);
+  });
+
+  it("counts two workouts logged on the same day", () => {
+    expect(workoutsSinceLayoff([100, 100, 101], 101)).toBe(3);
+  });
+
+  it("is zero with no workouts", () => {
+    expect(workoutsSinceLayoff([], 100)).toBe(0);
+  });
+
+  it("does not care about input order", () => {
+    expect(workoutsSinceLayoff([103, 100, 101], 103)).toBe(3);
+  });
+
+  it("counts only the newest run when several layoffs happened", () => {
+    const days = [1, 2, 2 + T + 1, 2 + T + 2, 2 + 2 * T + 5];
+    expect(workoutsSinceLayoff(days, 2 + 2 * T + 5)).toBe(1);
   });
 });
 

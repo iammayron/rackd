@@ -3,11 +3,11 @@
 import { Fragment, useMemo } from "react";
 import { dayIndex } from "@/lib/day";
 import {
-  programCurrentWeek,
   programDayKinds,
-  programRotationDayKinds,
   programWeekProgress,
+  rotationBlockProgress,
   sessionCountsForProgram,
+  workoutsSinceLayoff,
 } from "@rackd/core";
 
 interface ProgramLike {
@@ -33,13 +33,20 @@ interface SessionLike {
 
 /**
  * The active program's progress card body. With a `blockWeeks` length set it
- * renders a week-segmented bar (one segment per week, a divider dot between
- * weeks that turns to 🔥 once that week's 7 notches are filled). Each completed
- * workout and each rest fills a notch. What a notch *is* differs by mode:
- * weekly programs are pinned to weekdays, so notches are calendar days and a
- * skipped workout leaves a gap; rotation programs ignore the calendar, so
- * notches are rotation slots that only advance when you train. Programs with no
- * block length fall back to the simple "Day X of N" rotation bar.
+ * renders a segmented bar, a divider dot between segments that turns to 🔥 once
+ * that segment is complete. What a segment *is* differs by mode, because the two
+ * schedules mean different things:
+ *
+ *  - **weekly**: days are pinned to weekdays, so a segment is a calendar week of
+ *    7 notches. A completed workout or a rest day fills one; a skipped workout
+ *    leaves a gap.
+ *  - **rotation**: the calendar is irrelevant, so a segment is one full pass
+ *    through the rotation and a notch is a workout. Rest slots aren't counted —
+ *    in a rotation a rest is a position you pass through, not something you
+ *    complete. Progress only moves when you train, and it restarts with the
+ *    rotation after a layoff.
+ *
+ * Programs with no block length fall back to the simple "Day X of N" bar.
  */
 export function ProgramProgress({
   program,
@@ -72,26 +79,34 @@ export function ProgramProgress({
     const mode = program.scheduleMode ?? "rotation";
 
     if (mode === "rotation") {
-      // A rotation cycles irrespective of the calendar, so its block can't be
-      // measured in elapsed days — it's blockWeeks*7 rotation *slots* consumed
-      // by training. No anchor, no day offsets. `activatedAt` survives only as
-      // the block's start cutoff, so re-activating a program doesn't inherit the
-      // previous block's workouts (and legacy sessions matched by routine id
-      // don't count from before the program existed).
+      // A rotation ignores the calendar, so its block is measured in workouts,
+      // one segment per full pass through the rotation. `activatedAt` bounds the
+      // block so re-activating doesn't inherit the previous one's workouts, and
+      // `workoutsSinceLayoff` drops everything before the last long gap — the
+      // rotation restarts at day 1 after a layoff, so the block restarts with it
+      // rather than crediting workouts from before a month off.
+      const cycleWorkouts = programDays.filter((d) => d.routineId).length;
+      if (cycleWorkouts === 0) return null;
       const blockStart = program.activatedAt ?? 0;
-      const dayKinds = programRotationDayKinds({
+      const completedWorkouts = workoutsSinceLayoff(
+        programSessions
+          .filter((s) => s.endedAt != null && s.endedAt >= blockStart)
+          .map((s) => dayIndex(s.endedAt!)),
+        dayIndex(Date.now()),
+      );
+      const progress = rotationBlockProgress({
         blockWeeks,
-        restByOrder: [...programDays].sort((a, b) => a.order - b.order).map((d) => !d.routineId),
-        completedWorkouts: programSessions.filter(
-          (s) => s.endedAt != null && s.endedAt >= blockStart,
-        ).length,
+        cycleWorkouts,
+        completedWorkouts,
       });
-      const progress = programWeekProgress(blockWeeks, dayKinds);
-      // Consumed slots are a contiguous prefix, so filledDays *is* the position.
       return {
-        ...progress,
-        currentWeek: programCurrentWeek(blockWeeks, progress.filledDays),
-        unit: "slots" as const,
+        blockWeeks: progress.blockWeeks,
+        currentWeek: progress.currentWeek,
+        filledDays: progress.completedWorkouts,
+        totalDays: progress.totalWorkouts,
+        weekFill: progress.weekFill,
+        weekDone: progress.weekDone,
+        unit: "workouts" as const,
       };
     }
 
