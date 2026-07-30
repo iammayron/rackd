@@ -15,6 +15,7 @@ Gym workout tracker (plan routines, run workouts, rest timer, history). PWA web 
 - `pnpm test` — run tests (vitest in `@rackd/core`)
 - `pnpm --filter @rackd/core test` — fast core logic tests
 - `pnpm build` — production build
+- `pnpm format` / `pnpm format:check` — Prettier write / verify
 - `pnpm --filter @rackd/db db:generate` / `db:push` — generate/apply Drizzle migrations against `DATABASE_URL`
 - `pnpm --filter @rackd/db ingest:all` — fetch + seed the free-exercise-db exercise library into Postgres (run once)
 
@@ -48,7 +49,9 @@ Claude Code helpers (`.claude/`): slash commands `/add-endpoint` (scaffold an ow
 - `apps/push` polls Postgres (`getPendingPushes()`) to deliver scheduled web-push
   notifications (needs `DATABASE_URL` + VAPID env). No Triplit anywhere.
 
-No formatter/linter is wired yet — the format hook auto-detects and no-ops until one is added. Don't reference a `lint`/`format` script until it actually exists.
+**Formatting is Prettier** (pinned root `prettier` devDependency; config in `.prettierrc.json` — only `printWidth: 100`, chosen as the least-churn fit for the existing code, everything else Prettier's default). The format hook (`.claude/hooks/format.sh`) formats each edited file, preferring `node_modules/.bin/prettier` so a differently-versioned global install can't restyle the repo. Generated output (`packages/db/drizzle/`, build dirs, the Serwist service worker) is in `.prettierignore`.
+
+The repo has **not** had a one-time `pnpm format` pass yet, so most files aren't Prettier-clean: editing one reformats the whole file and mixes cosmetic churn into your diff. Either strip it (revert the file, re-apply just your change) or land the repo-wide pass first. No linter is wired — don't reference a `lint` script until it exists.
 
 ## Architecture
 

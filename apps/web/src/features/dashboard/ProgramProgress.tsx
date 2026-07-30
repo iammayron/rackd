@@ -1,8 +1,11 @@
 "use client";
 
 import { Fragment, useMemo } from "react";
+import { dayIndex } from "@/lib/day";
 import {
+  programCurrentWeek,
   programDayKinds,
+  programRotationDayKinds,
   programWeekProgress,
   sessionCountsForProgram,
 } from "@rackd/core";
@@ -28,20 +31,15 @@ interface SessionLike {
   endedAt?: number | null;
 }
 
-const DAY_MS = 86_400_000;
-
-/** Local-midnight day index for an epoch ms — consecutive days differ by 1. */
-export function dayIndex(ms: number): number {
-  return Math.floor(new Date(ms).setHours(0, 0, 0, 0) / DAY_MS);
-}
-
 /**
  * The active program's progress card body. With a `blockWeeks` length set it
  * renders a week-segmented bar (one segment per week, a divider dot between
- * weeks that turns to 🔥 once that week's 7 day-notches are filled). Each
- * completed workout and each rest day fills a notch; a scheduled workout you
- * skipped leaves a gap. Programs with no block length fall back to the simple
- * "Day X of N" rotation bar.
+ * weeks that turns to 🔥 once that week's 7 notches are filled). Each completed
+ * workout and each rest fills a notch. What a notch *is* differs by mode:
+ * weekly programs are pinned to weekdays, so notches are calendar days and a
+ * skipped workout leaves a gap; rotation programs ignore the calendar, so
+ * notches are rotation slots that only advance when you train. Programs with no
+ * block length fall back to the simple "Day X of N" rotation bar.
  */
 export function ProgramProgress({
   program,
@@ -76,10 +74,40 @@ export function ProgramProgress({
   // --- Week-block bar (blockWeeks set) -------------------------------------
   const week = useMemo(() => {
     if (blockWeeks <= 0) return null;
+    const programSessions = finished.filter(belongsToProgram);
+    const mode = program.scheduleMode ?? "rotation";
+
+    if (mode === "rotation") {
+      // A rotation cycles irrespective of the calendar, so its block can't be
+      // measured in elapsed days — it's blockWeeks*7 rotation *slots* consumed
+      // by training. No anchor, no day offsets. `activatedAt` survives only as
+      // the block's start cutoff, so re-activating a program doesn't inherit the
+      // previous block's workouts (and legacy sessions matched by routine id
+      // don't count from before the program existed).
+      const blockStart = program.activatedAt ?? 0;
+      const dayKinds = programRotationDayKinds({
+        blockWeeks,
+        restByOrder: [...programDays]
+          .sort((a, b) => a.order - b.order)
+          .map((d) => !d.routineId),
+        completedWorkouts: programSessions.filter(
+          (s) => s.endedAt != null && s.endedAt >= blockStart,
+        ).length,
+      });
+      const progress = programWeekProgress(blockWeeks, dayKinds);
+      // Consumed slots are a contiguous prefix, so filledDays *is* the position.
+      return {
+        ...progress,
+        currentWeek: programCurrentWeek(blockWeeks, progress.filledDays),
+        unit: "slots" as const,
+      };
+    }
+
+    // Weekly mode really is calendar-based — days are pinned to weekdays — so
+    // the bar anchors on activation and classifies each elapsed calendar day.
     const now = Date.now();
     // Anchor day 1: program activation, falling back to the first logged
     // workout, then today, so pre-existing programs still render sensibly.
-    const programSessions = finished.filter(belongsToProgram);
     const anchorMs =
       program.activatedAt ??
       (programSessions.length
@@ -93,29 +121,17 @@ export function ProgramProgress({
       .filter((s) => s.endedAt != null)
       .map((s) => dayIndex(s.endedAt!) - anchorDay);
 
-    // Reduce the schedule to "which days are rest" for the core classifier.
-    const mode = program.scheduleMode ?? "rotation";
-    const schedule =
-      mode === "weekly"
-        ? {
-            mode: "weekly" as const,
-            workoutWeekdays: programDays
-              .filter((d) => d.routineId && d.weekday != null)
-              .map((d) => d.weekday!),
-          }
-        : {
-            mode: "rotation" as const,
-            restByOrder: [...programDays]
-              .sort((a, b) => a.order - b.order)
-              .map((d) => !d.routineId),
-          };
-
     const dayKinds = programDayKinds({
       blockWeeks,
       anchorWeekday: new Date(anchorMs).getDay(),
       todayOffset,
       completedOffsets,
-      schedule,
+      schedule: {
+        mode: "weekly",
+        workoutWeekdays: programDays
+          .filter((d) => d.routineId && d.weekday != null)
+          .map((d) => d.weekday!),
+      },
     });
 
     const progress = programWeekProgress(blockWeeks, dayKinds);
@@ -123,7 +139,7 @@ export function ProgramProgress({
       Math.max(Math.floor(todayOffset / 7) + 1, 1),
       blockWeeks,
     );
-    return { ...progress, currentWeek };
+    return { ...progress, currentWeek, unit: "days" as const };
   }, [blockWeeks, finished, program, programDays, belongsToProgram]);
 
   // --- Legacy rotation bar (no block length) -------------------------------
@@ -149,7 +165,7 @@ export function ProgramProgress({
             Week {week.currentWeek} of {week.blockWeeks}
           </span>
           <span>
-            {week.filledDays} of {week.totalDays} days
+            {week.filledDays} of {week.totalDays} {week.unit}
           </span>
         </div>
         <div

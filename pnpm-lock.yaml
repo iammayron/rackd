@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      prettier:
+        specifier: 3.8.1
+        version: 3.8.1
       turbo:
         specifier: ^2.3.3
         version: 2.9.18
@@ -2108,6 +2111,11 @@ packages:
     resolution: {integrity: sha512-lDdP5VzJDwVdWFDOUHKtkvWGxnsKt1o7Q9Sla19MMX03Lzzp4Pxwxs+TndcFZaNiSchYSDgSnjCsm7olV5JV3g==}
     hasBin: true
 
+  prettier@3.8.1:
+    resolution: {integrity: sha512-UOnG6LftzbdaHZcKoPFtOcCKztrQ57WkHDeRD9t/PTQtmT0NHSeWWepj6pS0z/N7+08BHFDQVUrfmfMRcZwbMg==}
+    engines: {node: '>=14'}
+    hasBin: true
+
   pretty-bytes@6.1.1:
     resolution: {integrity: sha512-mQUvGU6aUFQ+rNvTIAcZuWGRT9a6f6Yrg9bHs4ImKF+HZCEK+plBvnAZYSIQztknZF2qnzNtr6F8s0+IuptdlQ==}
     engines: {node: ^14.13.1 || >=16.0.0}
@@ -3983,6 +3991,8 @@ snapshots:
       dropzone: 6.0.0-beta.2
       nouislider: 15.8.1
       vanilla-calendar-pro: 3.1.0
+
+  prettier@3.8.1: {}
 
   pretty-bytes@6.1.1: {}
 

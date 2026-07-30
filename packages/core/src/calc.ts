@@ -305,6 +305,48 @@ export function advanceRotation(cursor: number, dayCount: number): number {
 }
 
 /**
+ * Days away from a program, or null when there's nothing to measure from (a
+ * program never trained is not a layoff). Day indices in — same
+ * Date-in-the-caller split as `currentStreak`/`weekStartIndex`.
+ */
+export function daysAway(
+  lastActivityIndex: number | null | undefined,
+  todayIndex: number,
+): number | null {
+  if (lastActivityIndex == null) return null;
+  return Math.max(0, todayIndex - lastActivityIndex);
+}
+
+/**
+ * How many days away restarts a rotation at day 1. A rotation cycles by
+ * finish/skip and never by the calendar, so without this a fortnight off leaves
+ * the same workout queued — and "next in the rotation" stops being the right
+ * pick once the layoff has rested every muscle group equally.
+ */
+export const LAYOFF_RESTART_DAYS = 5;
+
+/**
+ * Whether a layoff is long enough to restart the rotation at day 1. `null` days
+ * away (never trained) is never a restart. Owns the threshold comparison so the
+ * boundary is pinned by a test rather than living inline in the dashboard.
+ */
+export function shouldRestartRotation(away: number | null): boolean {
+  return away != null && away >= LAYOFF_RESTART_DAYS;
+}
+
+/**
+ * Cursor that restarts a rotation at its first *workout*: the index (in `order`
+ * sequence) of the earliest non-rest day, or 0 when every day is a rest slot.
+ * A literal cursor 0 would land on a Rest slot for any rotation that opens with
+ * one — showing "Rest day" to someone who just came back from a layoff.
+ */
+export function firstWorkoutSlot(days: readonly ScheduleDay[]): number {
+  const ordered = [...days].sort((a, b) => a.order - b.order);
+  const i = ordered.findIndex((d) => !isRestDay(d));
+  return i === -1 ? 0 : i;
+}
+
+/**
  * Save-back diff (#3): compare what was performed in a session against the
  * routine's prescription, to decide whether finishing should offer to push the
  * changes back. Pure — the caller flattens the routine tree (routineExercises +
@@ -435,8 +477,11 @@ export function programWeekProgress(
  *  - "weekly": `workoutWeekdays` lists the weekdays (0=Sun … 6=Sat) that have a
  *    routine; every other weekday is rest.
  *  - "rotation": `restByOrder[k]` is true when the k-th ordered day is a rest
- *    slot. The rotation is assumed to advance one slot per calendar day from the
- *    anchor (cursor 0 on day 0); an empty rotation is all-rest.
+ *    slot, interpreted as one slot per calendar day from the anchor (cursor 0 on
+ *    day 0); an empty rotation is all-rest. That assumption does NOT hold for a
+ *    real rotation — it cycles on finish/skip and ignores the calendar entirely —
+ *    so the dashboard uses `programRotationDayKinds` instead. This arm remains
+ *    only for a genuine per-calendar-day view.
  */
 export type ProgramSchedule =
   | { mode: "weekly"; workoutWeekdays: readonly number[] }
@@ -483,6 +528,75 @@ export function programDayKinds(args: {
     else if (isRest(i)) out.push("rest");
     else if (i < todayOffset) out.push("missed");
     else out.push("pending");
+  }
+  return out;
+}
+
+/**
+ * Which week of the block a filled-notch count lands in, 1-based and clamped to
+ * the block so a complete block reads "week N of N" rather than "N+1 of N".
+ * Only meaningful when filled notches form a contiguous prefix — i.e. for
+ * `programRotationDayKinds`, whose walk guarantees it.
+ */
+export function programCurrentWeek(
+  blockWeeks: number,
+  filledDays: number,
+): number {
+  const weeks = Math.max(0, Math.floor(blockWeeks));
+  if (weeks === 0) return 0;
+  return Math.min(Math.max(Math.floor(filledDays / 7) + 1, 1), weeks);
+}
+
+/**
+ * Rotation-mode counterpart to `programDayKinds` — the input to
+ * `programWeekProgress` for a program that ignores the calendar.
+ *
+ * A rotation cycles its ordered days irrespective of dates, so its block can't
+ * be measured in elapsed days: someone who activated 26 days ago but trained 5
+ * times is 5 slots in, not 26. Here the block is `blockWeeks * 7` rotation
+ * *slots* and the bar advances with training only. `restByOrder[k]` is true when
+ * the k-th ordered day is a rest slot, cycling across the block (slot i →
+ * `restByOrder[i % len]`); `completedWorkouts` is how many program workouts have
+ * been finished in this block (two in one day consume two slots).
+ *
+ * Walk from slot 0: each workout slot consumes one completed workout → "done";
+ * rest slots passed on the way are consumed too and fill a notch (matching the
+ * calendar bar); the walk halts at the first workout slot with nothing left to
+ * spend. Rest slots that trail the last completed workout are consumed as well —
+ * that rest is what the workout earned, so a week ignites the moment its final
+ * workout lands, and a block whose last slot is a rest can still reach 100%.
+ * Everything past the walk is "future". No "pending"/"missed": without a
+ * calendar no slot is ever late.
+ *
+ * Nothing is consumed before the first completed workout (an untrained block is
+ * empty even when the cycle opens with a rest slot), and a rotation with no
+ * workout slot at all never fills — a training-driven bar must not complete a
+ * block that was never trained. Both are deliberate divergences from
+ * `programDayKinds`, whose all-rest/empty handling was calendar reasoning.
+ */
+export function programRotationDayKinds(args: {
+  blockWeeks: number;
+  restByOrder: readonly boolean[];
+  completedWorkouts: number;
+}): ProgramDayKind[] {
+  const { restByOrder } = args;
+  const totalSlots = Math.max(0, Math.floor(args.blockWeeks)) * 7;
+  const out: ProgramDayKind[] =
+    Array<ProgramDayKind>(totalSlots).fill("future");
+  const len = restByOrder.length;
+  let credits = Math.max(0, Math.floor(args.completedWorkouts));
+  // Untrained, or no workout slot to attribute training to. The second guard is
+  // also what stops the walk below from marking an all-rest block complete.
+  if (credits === 0 || len === 0 || !restByOrder.includes(false)) return out;
+
+  for (let i = 0; i < totalSlots; i++) {
+    if (restByOrder[i % len]!) {
+      out[i] = "rest";
+      continue;
+    }
+    if (credits === 0) break; // next workout not done yet — the walk ends here
+    out[i] = "done";
+    credits--;
   }
   return out;
 }

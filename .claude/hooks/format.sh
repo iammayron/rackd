@@ -12,9 +12,16 @@ file="$(printf '%s' "$input" | node -e 'let s="";process.stdin.on("data",d=>s+=d
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
+# Repo-local formatter first: the version is pinned in package.json, so a
+# differently-versioned global install can't restyle the codebase behind our
+# backs. Falls back to a global/npx one only when the project has none.
+repo_root="${CLAUDE_PROJECT_DIR:-.}"
+local_prettier="$repo_root/node_modules/.bin/prettier"
+
 case "$file" in
   *.ts|*.tsx|*.js|*.jsx|*.mjs|*.cjs|*.json|*.css|*.scss|*.html|*.md|*.mdx|*.yaml|*.yml)
     if have biome; then biome format --write "$file" >/dev/null 2>&1 || true
+    elif [ -x "$local_prettier" ]; then "$local_prettier" --write "$file" >/dev/null 2>&1 || true
     elif have prettier; then prettier --write "$file" >/dev/null 2>&1 || true
     else npx --no-install prettier --write "$file" >/dev/null 2>&1 || true
     fi

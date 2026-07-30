@@ -1289,12 +1289,15 @@ export async function setProgramSchedule(
     scheduleMode?: "rotation" | "weekly";
     rotationCursor?: number;
     blockWeeks?: number;
+    rotationTouchedAt?: number;
   },
 ) {
   const set: Record<string, unknown> = {};
   if (patch.scheduleMode !== undefined) set.scheduleMode = patch.scheduleMode;
   if (patch.rotationCursor !== undefined)
     set.rotationCursor = patch.rotationCursor;
+  if (patch.rotationTouchedAt !== undefined)
+    set.rotationTouchedAt = patch.rotationTouchedAt;
   if ("blockWeeks" in patch)
     set.blockWeeks = patch.blockWeeks ? patch.blockWeeks : null;
   if (Object.keys(set).length === 0) return;
