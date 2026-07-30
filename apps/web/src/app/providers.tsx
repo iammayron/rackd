@@ -8,6 +8,7 @@ import { flushQueue } from "@/lib/offline-queue";
 import { hydrateUnit, useSyncUnitFromProfile } from "@/lib/units-store";
 import { LoginScreen } from "@/components/LoginScreen";
 import { ToastProvider } from "@/components/toast/ToastProvider";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { InstallWall, useIsInstalled } from "@/components/InstallWall";
 import { ExerciseDetailSheet } from "@/features/exercise/ExerciseDetailSheet";
 
@@ -54,11 +55,13 @@ function Gate({ children }: { children: React.ReactNode }) {
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <Gate>{children}</Gate>
-        </AuthProvider>
-      </QueryClientProvider>
+      <ConfirmProvider>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <Gate>{children}</Gate>
+          </AuthProvider>
+        </QueryClientProvider>
+      </ConfirmProvider>
     </ToastProvider>
   );
 }

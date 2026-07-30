@@ -55,7 +55,7 @@ function RoutineEditor() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { confirm, dialog: confirmDialog } = useConfirm();
+  const confirm = useConfirm();
   const routineId = params.id;
   // Set when the editor was opened from a program (drives the "IN PROGRAM" row
   // and where Save/Back return to). Absent when editing straight from the
@@ -346,8 +346,6 @@ function RoutineEditor() {
           </button>
         </section>
       </main>
-
-      {confirmDialog}
     </div>
   );
 }

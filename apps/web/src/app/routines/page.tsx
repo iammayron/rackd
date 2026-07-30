@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Card, Button } from "@rackd/ui";
 import { api } from "@/lib/api";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { queryClient, qk } from "@/lib/query";
 import { Nav } from "@/components/Nav";
 
@@ -17,6 +18,7 @@ interface RoutineRow {
 
 export default function RoutinesPage() {
   const router = useRouter();
+  const confirm = useConfirm();
   const { data: routines = [] } = useQuery({
     queryKey: qk.routines,
     queryFn: () => api<RoutineRow[]>("/api/routines"),
@@ -42,7 +44,14 @@ export default function RoutinesPage() {
     router.push(`/workout/${s.id}`);
   }
 
-  async function remove(id: string) {
+  async function remove(id: string, name: string) {
+    // The detail page already confirms this exact deletion — the list must not
+    // be the cheap way to lose a routine and every exercise/set in it.
+    const ok = await confirm({
+      title: `Delete "${name}"?`,
+      message: "Its exercises and sets are deleted. Logged workouts are kept.",
+    });
+    if (!ok) return;
     await api(`/api/routines/${id}`, { method: "DELETE" });
     queryClient.invalidateQueries({ queryKey: qk.routines });
   }
@@ -81,7 +90,7 @@ export default function RoutinesPage() {
                 </Button>
                 <button
                   type="button"
-                  onClick={() => remove(r.id)}
+                  onClick={() => void remove(r.id, r.name)}
                   aria-label="Delete routine"
                   className="min-h-10 w-9 bg-transparent border-none text-lg text-[var(--text-muted)]"
                 >

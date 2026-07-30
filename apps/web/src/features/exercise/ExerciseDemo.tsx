@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useBodyScrollLock } from "@/lib/scroll-lock";
 
 /**
  * Looping exercise demo from the source's start/end photos (free-exercise-db
@@ -33,18 +34,17 @@ export function ExerciseDemo({
     return () => clearInterval(t);
   }, [frames.length, holdMs]);
 
-  // Esc to close + lock background scroll while the lightbox is open.
+  // Esc to close. Background scroll is locked through the shared counter — this
+  // lightbox opens from inside a sheet that already holds a lock, and a
+  // hand-rolled save/restore here would hand the page back while the sheet is
+  // still up.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
+    return () => window.removeEventListener("keydown", onKey);
   }, [open]);
+  useBodyScrollLock(open);
 
   const layers = (fit: "cover" | "contain") =>
     frames.map((url, i) => (

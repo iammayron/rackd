@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { queryClient, qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
 import { useTimerStore } from "./timer-store";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { RpeSheet, rpeColor } from "./RpeSheet";
 import { SetValueSheet } from "./SetValueSheet";
 
@@ -45,6 +46,7 @@ export function SetRow({
   /** Called after a set is successfully marked complete (not on un-complete). */
   onCompleted?: (set: SetRowData) => void;
 }) {
+  const confirm = useConfirm();
   const startTimer = useTimerStore((s) => s.start);
   const { unit, display, toKg } = useUnit();
   const [weight, setWeight] = useState(
@@ -163,14 +165,37 @@ export function SetRow({
     const next = !data.completed;
     const kg = weight ? toKg(Number(weight)) : 0;
     const repCount = Number(reps) || 0;
+
+    // Only write weight/reps when they actually changed. Edits already persist
+    // through commitWeight/commitReps, so re-sending them here is redundant —
+    // and harmful: the local value is seeded from `display(kg)`, which rounds to
+    // one decimal, so kg → display → kg is lossy in lb (42.5 kg shows as 93.7 lb
+    // and converts back to 42.5019). Ticking a set would silently drift its
+    // stored weight, leaving sets that read identically on screen holding
+    // different numbers — which is what kept the "copy to remaining sets?"
+    // prompt firing for sets the lifter had already matched up.
+    const weightChanged = display(kg) !== display(data.weight);
+    const repsChanged = repCount !== data.reps;
+    const effectiveKg = weightChanged ? kg : data.weight;
+    const effectiveReps = repsChanged ? repCount : data.reps;
+
     await api(`/api/set-logs/${data.id}`, {
       method: "PUT",
-      body: JSON.stringify({ weight: kg, reps: repCount, completed: next }),
+      body: JSON.stringify({
+        completed: next,
+        ...(weightChanged ? { weight: kg } : {}),
+        ...(repsChanged ? { reps: repCount } : {}),
+      }),
     });
     queryClient.invalidateQueries({ queryKey: qk.session(sessionId) });
     if (next && startsRest) startTimer(restSec);
     if (next)
-      onCompleted?.({ ...data, weight: kg, reps: repCount, completed: true });
+      onCompleted?.({
+        ...data,
+        weight: effectiveKg,
+        reps: effectiveReps,
+        completed: true,
+      });
   }
 
   return (
@@ -289,6 +314,18 @@ export function SetRow({
       <button
         type="button"
         onClick={async () => {
+          // An untouched, empty row has nothing to lose — deleting a set you
+          // just added by mistake shouldn't cost two taps mid-workout. Once
+          // it carries numbers or a tick, confirm before it's gone.
+          const hasData = data.completed || data.weight > 0 || data.reps > 0;
+          if (hasData) {
+            const ok = await confirm({
+              title: `Remove set ${data.order}?`,
+              message: "The weight, reps and effort logged on it are deleted.",
+              confirmLabel: "Remove set",
+            });
+            if (!ok) return;
+          }
           await api(`/api/set-logs/${data.id}`, { method: "DELETE" });
           queryClient.invalidateQueries({ queryKey: qk.session(sessionId) });
         }}

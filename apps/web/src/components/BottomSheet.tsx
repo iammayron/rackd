@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent, ReactNode } from "react";
+import { useBodyScrollLock } from "@/lib/scroll-lock";
 
 /**
  * Generic bottom sheet: slides up from the bottom over a dim backdrop. Owns the
@@ -98,6 +99,12 @@ export function BottomSheet({
     if (open) setDragY(0);
   }, [open]);
 
+  // A sheet is `aria-modal` — the page behind it must not scroll. Beyond the
+  // obvious UX, scrolling the document under a position:fixed overlay is what
+  // drifts it out of place on iOS, where the visual viewport moves independently
+  // of the layout viewport the overlay is pinned to.
+  useBodyScrollLock(open);
+
   if (!open) return null;
 
   // Drag-down to dismiss. From the handle it always drags; from the scrolling
@@ -142,7 +149,13 @@ export function BottomSheet({
   const dragging = dragY > 0 || dragStart.current != null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center">
+    // `h-[100dvh]` rather than `inset-0`: on iOS a fixed element's bottom
+    // resolves against the *large* viewport (browser chrome hidden), so
+    // `items-end` would anchor the panel below the fold — pushing its top up
+    // under the status bar and clipping the content. The dynamic viewport unit
+    // tracks what is actually visible. Every other full-height surface in the
+    // app already uses dvh; this was the one holdout.
+    <div className="fixed inset-x-0 top-0 h-[100dvh] z-[100] flex items-end justify-center">
       <div
         onClick={onClose}
         aria-hidden="true"
@@ -154,7 +167,7 @@ export function BottomSheet({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="rk-squircle-corners relative w-[min(440px,100%)] max-h-[88vh] flex flex-col overflow-hidden bg-[var(--bg)] rounded-t-[var(--radius-lg)] shadow-[var(--shadow-lg)] outline-none rk-sheet-up"
+        className="rk-squircle-corners relative w-[min(440px,100%)] max-h-[88dvh] flex flex-col overflow-hidden bg-[var(--bg)] rounded-t-[var(--radius-lg)] shadow-[var(--shadow-lg)] outline-none rk-sheet-up"
         style={{
           marginBottom: kbInset || undefined,
           transform: dragY ? `translateY(${dragY}px)` : undefined,
