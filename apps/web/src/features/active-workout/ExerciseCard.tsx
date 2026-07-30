@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import { queryClient, qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
 import { useToast } from "@/components/toast/ToastProvider";
+import { useConfirm } from "@/components/ConfirmDialog";
 import {
   ExerciseThumb,
   type ExerciseMediaData,
@@ -68,6 +69,7 @@ export function ExerciseCard({
   existingIds?: string[];
 }) {
   const toast = useToast();
+  const confirm = useConfirm();
   const { unit, display } = useUnit();
   const [showRest, setShowRest] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -272,6 +274,19 @@ export function ExerciseCard({
           onViewDetails={goDetails}
           onSuperset={() => toast.info("Supersets are coming soon")}
           onRemove={async () => {
+            // Highest-stakes destructive action in the app: the API cascades,
+            // so every set already logged against this exercise goes with it.
+            const logged = (sessionExercise.sets ?? []).filter(
+              (x) => x.completed,
+            ).length;
+            const ok = await confirm({
+              title: `Remove ${sessionExercise.exercise?.name ?? "this exercise"}?`,
+              message: logged
+                ? `${logged} completed ${logged === 1 ? "set" : "sets"} logged for it will be deleted too.`
+                : "It will be removed from this workout.",
+              confirmLabel: "Remove exercise",
+            });
+            if (!ok) return;
             await api(`/api/session-exercises/${sessionExercise.id}`, {
               method: "DELETE",
             });

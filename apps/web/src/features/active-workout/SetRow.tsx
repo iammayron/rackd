@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { queryClient, qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
 import { useTimerStore } from "./timer-store";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { RpeSheet, rpeColor } from "./RpeSheet";
 import { SetValueSheet } from "./SetValueSheet";
 
@@ -45,6 +46,7 @@ export function SetRow({
   /** Called after a set is successfully marked complete (not on un-complete). */
   onCompleted?: (set: SetRowData) => void;
 }) {
+  const confirm = useConfirm();
   const startTimer = useTimerStore((s) => s.start);
   const { unit, display, toKg } = useUnit();
   const [weight, setWeight] = useState(
@@ -289,6 +291,18 @@ export function SetRow({
       <button
         type="button"
         onClick={async () => {
+          // An untouched, empty row has nothing to lose — deleting a set you
+          // just added by mistake shouldn't cost two taps mid-workout. Once
+          // it carries numbers or a tick, confirm before it's gone.
+          const hasData = data.completed || data.weight > 0 || data.reps > 0;
+          if (hasData) {
+            const ok = await confirm({
+              title: `Remove set ${data.order}?`,
+              message: "The weight, reps and effort logged on it are deleted.",
+              confirmLabel: "Remove set",
+            });
+            if (!ok) return;
+          }
           await api(`/api/set-logs/${data.id}`, { method: "DELETE" });
           queryClient.invalidateQueries({ queryKey: qk.session(sessionId) });
         }}

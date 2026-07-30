@@ -84,7 +84,7 @@ function computeCurrentId(exs: SessionExerciseRow[]): string | null {
 export default function WorkoutPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { confirm, dialog: confirmDialog } = useConfirm();
+  const confirm = useConfirm();
   const sessionId = params.id;
 
   const { data: session, isLoading: fetching } = useQuery({
@@ -528,8 +528,6 @@ export default function WorkoutPage() {
           onSave={onSaveBack}
         />
       )}
-
-      {confirmDialog}
     </div>
   );
 }

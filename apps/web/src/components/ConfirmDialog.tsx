@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useRef, useState } from "react";
 import { BottomSheet } from "@/components/BottomSheet";
 
 interface ConfirmOptions {
@@ -60,20 +60,33 @@ export function ConfirmDialog({
 }
 
 /**
- * Ergonomic confirm: `const { confirm, dialog } = useConfirm();` then
- * `if (await confirm({ title, message })) { …destructive… }`. Render `{dialog}`
- * once in the component tree. Resolves true on confirm, false on cancel/dismiss.
+ * App-wide confirmation. Mount `<ConfirmProvider>` once near the root, then any
+ * client component can do:
+ *
+ *   const confirm = useConfirm();
+ *   if (await confirm({ title, message })) { …destructive… }
+ *
+ * A single dialog is shared by the whole tree, so per-row components (every
+ * SetRow, every ExerciseCard) can ask for confirmation without each mounting a
+ * sheet of their own. Resolves true on confirm, false on cancel/dismiss.
  */
-export function useConfirm() {
+type ConfirmFn = (opts: ConfirmOptions) => Promise<boolean>;
+
+const ConfirmContext = createContext<ConfirmFn | null>(null);
+
+export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<ConfirmOptions & { open: boolean }>({
     open: false,
     title: "",
   });
   const resolverRef = useRef<((value: boolean) => void) | null>(null);
 
-  const confirm = useCallback(
-    (opts: ConfirmOptions) =>
+  const confirm = useCallback<ConfirmFn>(
+    (opts) =>
       new Promise<boolean>((resolve) => {
+        // A second request while one is open would strand the first promise —
+        // settle it as cancelled so no caller is left awaiting forever.
+        resolverRef.current?.(false);
         resolverRef.current = resolve;
         setState({ ...opts, open: true });
       }),
@@ -86,17 +99,24 @@ export function useConfirm() {
     setState((s) => ({ ...s, open: false }));
   }, []);
 
-  const dialog = (
-    <ConfirmDialog
-      open={state.open}
-      title={state.title}
-      message={state.message}
-      confirmLabel={state.confirmLabel}
-      cancelLabel={state.cancelLabel}
-      onConfirm={() => settle(true)}
-      onCancel={() => settle(false)}
-    />
+  return (
+    <ConfirmContext.Provider value={confirm}>
+      {children}
+      <ConfirmDialog
+        open={state.open}
+        title={state.title}
+        message={state.message}
+        confirmLabel={state.confirmLabel}
+        cancelLabel={state.cancelLabel}
+        onConfirm={() => settle(true)}
+        onCancel={() => settle(false)}
+      />
+    </ConfirmContext.Provider>
   );
+}
 
-  return { confirm, dialog };
+export function useConfirm(): ConfirmFn {
+  const ctx = useContext(ConfirmContext);
+  if (!ctx) throw new Error("useConfirm must be used within <ConfirmProvider>");
+  return ctx;
 }

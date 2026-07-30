@@ -7,6 +7,7 @@ import { BAR_LABELS, BAR_WEIGHTS } from "@rackd/core";
 import type { BarType } from "@rackd/core";
 import { Badge, mmss } from "@rackd/ui";
 import { api } from "@/lib/api";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { queryClient, qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
 import { ExerciseThumb, type ExerciseMediaData } from "@/components/ExerciseMedia";
@@ -73,6 +74,7 @@ export function RoutineExerciseEditor({
   /** Every exercise id in the routine — so Replace can't swap in a duplicate. */
   existingIds?: string[];
 }) {
+  const confirm = useConfirm();
   const { unit, display } = useUnit();
   const [showRest, setShowRest] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -200,6 +202,13 @@ export function RoutineExerciseEditor({
           onViewDetails={goDetails}
           onSuperset={onToggleNext}
           onRemove={async () => {
+            // Deleting the routine exercise cascades its prescribed sets.
+            const ok = await confirm({
+              title: `Remove ${routineExercise.exercise?.name ?? "this exercise"}?`,
+              message: "Its prescribed sets are removed from this routine.",
+              confirmLabel: "Remove exercise",
+            });
+            if (!ok) return;
             await api(`/api/routine-exercises/${routineExercise.id}`, { method: "DELETE" });
             invalidate();
           }}
@@ -306,6 +315,7 @@ function RoutineSetRow({
   routineId: string;
   prevLabel?: string;
 }) {
+  const confirm = useConfirm();
   const { unit, display, toKg } = useUnit();
   const [weight, setWeight] = useState(data.targetWeight ? String(display(data.targetWeight)) : "");
   const [reps, setReps] = useState(String(data.targetReps || ""));
@@ -402,6 +412,12 @@ function RoutineSetRow({
       <button
         type="button"
         onClick={async () => {
+          const ok = await confirm({
+            title: "Remove this set?",
+            message: "Its target weight and reps are removed from the routine.",
+            confirmLabel: "Remove set",
+          });
+          if (!ok) return;
           await api(`/api/routine-sets/${data.id}`, { method: "DELETE" });
           queryClient.invalidateQueries({ queryKey: qk.routine(routineId) });
         }}

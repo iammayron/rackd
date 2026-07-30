@@ -93,7 +93,7 @@ export default function ProgramEditorPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const toast = useToast();
-  const { confirm, dialog: confirmDialog } = useConfirm();
+  const confirm = useConfirm();
   const programId = params.id;
 
   const { data: programDetail } = useQuery({
@@ -408,7 +408,13 @@ export default function ProgramEditorPage() {
   }
 
   /** Remove a program day, then refresh this program's detail. */
-  async function removeDay(dayId: string) {
+  async function removeDay(dayId: string, label?: string) {
+    const ok = await confirm({
+      title: label ? `Remove ${label}?` : "Remove this day?",
+      message: "The day is removed from this program. The routine itself is kept.",
+      confirmLabel: "Remove day",
+    });
+    if (!ok) return;
     await api(`/api/program-days/${dayId}`, { method: "DELETE" });
     queryClient.invalidateQueries({ queryKey: qk.program(programId) });
   }
@@ -695,7 +701,12 @@ export default function ProgramEditorPage() {
                   routineName={d.routineId ? routineById.get(d.routineId)?.name : undefined}
                   dragging={draggingId === d.id}
                   onOpen={() => setOpenDayId(d.id)}
-                  onRemove={() => void removeDay(d.id)}
+                  onRemove={() =>
+                    void removeDay(
+                      d.id,
+                      d.routineId ? routineById.get(d.routineId)?.name : undefined,
+                    )
+                  }
                   onGripPointerDown={(e) => startDrag(e, d.id)}
                   onGripPointerMove={moveDrag}
                   onGripPointerUp={endDrag}
@@ -1038,8 +1049,6 @@ export default function ProgramEditorPage() {
           </button>
         </div>
       </BottomSheet>
-
-      {confirmDialog}
     </div>
   );
 }
