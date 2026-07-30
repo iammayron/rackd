@@ -8,16 +8,20 @@ import { api } from "@/lib/api";
 import { qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
 import { BottomSheet } from "@/components/BottomSheet";
-import {
-  buildShareCardData,
-  type ShareSessionTree,
-  type SharePrRow,
-} from "./buildShareCardData";
+import { buildShareCardData, type ShareSessionTree, type SharePrRow } from "./buildShareCardData";
 
 /** iOS-style share glyph (tray + up arrow). */
 function ShareIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-6 w-6"
+    >
       <path d="M12 15V3" />
       <path d="m8 7 4-4 4 4" />
       <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
@@ -28,7 +32,15 @@ function ShareIcon() {
 /** Download glyph (down arrow into a tray). */
 function DownloadIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-6 w-6"
+    >
       <path d="M12 3v12" />
       <path d="m8 11 4 4 4-4" />
       <path d="M5 21h14" />
@@ -100,10 +112,7 @@ export function ShareWorkoutSheet({
     enabled: open,
   });
 
-  const prs = useMemo(
-    () => allPrs.filter((pr) => pr.sessionId === sessionId),
-    [allPrs, sessionId],
-  );
+  const prs = useMemo(() => allPrs.filter((pr) => pr.sessionId === sessionId), [allPrs, sessionId]);
   const { cardData, shareText } = useMemo(() => {
     const appUrl = typeof window !== "undefined" ? window.location.origin : undefined;
     return buildShareCardData(session, prs, { display, unit, appUrl });
@@ -195,7 +204,12 @@ export function ShareWorkoutSheet({
         {msg && <p className="mb-2 text-center text-sm text-[var(--text-muted)]">{msg}</p>}
 
         <div className="flex justify-center gap-10">
-          <ShareAction label="Save image" icon={<DownloadIcon />} onClick={saveImage} disabled={busy} />
+          <ShareAction
+            label="Save image"
+            icon={<DownloadIcon />}
+            onClick={saveImage}
+            disabled={busy}
+          />
           <ShareAction label="Share" icon={<ShareIcon />} onClick={share} primary disabled={busy} />
         </div>
       </div>

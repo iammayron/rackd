@@ -14,14 +14,14 @@ Classify the request before doing any work:
 
 Convert natural language into the generator's small, explicit input set:
 
-| Input | Required | Notes |
-|------|----------|-------|
-| `name` | yes | kebab-case theme name |
-| `hue` or `primaryColor` | yes | use `primaryColor` only when user gave a brand hex |
-| `style` | no | `vibrant` by default, `soft` for muted/pastel/desaturated requests |
-| `useCustomDarkGray` | no | true only when user explicitly wants matching/cohesive dark neutrals |
-| `tailwindGray` | no | choose `stone`, `neutral`, `zinc`, `slate`, or `gray` based on brand warmth |
-| `fontSans` / `fontSerif` / `fontMono` | no | include only when requested |
+| Input                                 | Required | Notes                                                                       |
+| ------------------------------------- | -------- | --------------------------------------------------------------------------- |
+| `name`                                | yes      | kebab-case theme name                                                       |
+| `hue` or `primaryColor`               | yes      | use `primaryColor` only when user gave a brand hex                          |
+| `style`                               | no       | `vibrant` by default, `soft` for muted/pastel/desaturated requests          |
+| `useCustomDarkGray`                   | no       | true only when user explicitly wants matching/cohesive dark neutrals        |
+| `tailwindGray`                        | no       | choose `stone`, `neutral`, `zinc`, `slate`, or `gray` based on brand warmth |
+| `fontSans` / `fontSerif` / `fontMono` | no       | include only when requested                                                 |
 
 Use `docs/palette-guidance.md` for hue ranges, mood mapping, contrast heuristics, and gray-family decisions.
 
@@ -29,14 +29,14 @@ Use `docs/palette-guidance.md` for hue ranges, mood mapping, contrast heuristics
 
 Use the user's language to infer the palette direction:
 
-| User language | Default interpretation |
-|--------------|------------------------|
-| warm sunset, cozy, inviting | orange/amber primary, warm neutrals, medium contrast |
-| professional, clean, SaaS | blue/indigo primary, slate or zinc neutrals |
-| playful, candy, youthful | pink/purple/cyan primary, higher contrast |
-| earthy, organic, calm | green/teal primary, stone neutrals |
-| soft, muted, ash, dusty | `style: soft` |
-| matching dark mode, cohesive dark, unified neutrals | `useCustomDarkGray: true` |
+| User language                                       | Default interpretation                               |
+| --------------------------------------------------- | ---------------------------------------------------- |
+| warm sunset, cozy, inviting                         | orange/amber primary, warm neutrals, medium contrast |
+| professional, clean, SaaS                           | blue/indigo primary, slate or zinc neutrals          |
+| playful, candy, youthful                            | pink/purple/cyan primary, higher contrast            |
+| earthy, organic, calm                               | green/teal primary, stone neutrals                   |
+| soft, muted, ash, dusty                             | `style: soft`                                        |
+| matching dark mode, cohesive dark, unified neutrals | `useCustomDarkGray: true`                            |
 
 When the request is vague:
 
@@ -45,6 +45,7 @@ When the request is vague:
 3. Prefer a consistent system over a flashy but uneven palette.
 
 Foreground rule:
+
 - When mapping text or icon colors onto the primary brand color, choose the foreground by contrast against the generated primary states, not by hue bucket alone.
 - Treat `--foreground-inverse` separately from primary foregrounds. In Preline it is reused on hardcoded vivid utility backgrounds such as red badges, so dark mode should keep it readable on saturated colors instead of tinting it into a dark neutral.
 - Treat chart tokens as decorative UI tokens, not just data-series tokens. Dark mode must override any chart shades that would become too dark for gradient text, badges, or chart accents on dark surfaces.
@@ -124,6 +125,7 @@ Dark-mode neutrals depend on user intent:
 - Default path: keep light mode custom and use a Tailwind gray family in dark mode.
 
 Primary foreground decision:
+
 - Use the generated brand shades to determine whether white or dark text is more readable on the primary color in each mode.
 - In dark mode, prefer a deeper primary step with white text when that profile remains readable; only fall back to lighter primary steps with dark text when white would fail.
 
@@ -152,5 +154,5 @@ Match the response to the mode:
 Enable snippet:
 
 ```html
-<html data-theme="theme-<theme-name>">
+<html data-theme="theme-<theme-name>"></html>
 ```

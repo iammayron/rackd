@@ -25,15 +25,7 @@ const PLATES = {
 } as const;
 const STEP = { kg: 2.5, lb: 5 } as const;
 
-function PlateChips({
-  value,
-  unit,
-  bar,
-}: {
-  value: number;
-  unit: "kg" | "lb";
-  bar: number;
-}) {
+function PlateChips({ value, unit, bar }: { value: number; unit: "kg" | "lb"; bar: number }) {
   const { perSide, leftover } = plateBreakdown(value, bar, [...PLATES[unit]]);
   if (perSide.length === 0) {
     return <span className="text-sm text-[var(--text-muted)]">bar only</span>;
@@ -45,7 +37,10 @@ function PlateChips({
           key={i}
           title={`${p} ${unit}`}
           className="rounded px-1.5 py-px text-sm font-bold"
-          style={{ background: PLATE_COLOR[p] ?? "var(--surface-2)", color: p === 5 ? "#06231a" : "#fff" }}
+          style={{
+            background: PLATE_COLOR[p] ?? "var(--surface-2)",
+            color: p === 5 ? "#06231a" : "#fff",
+          }}
         >
           {p}
         </span>
@@ -87,7 +82,9 @@ export function PlatesPanel({
       {open && (
         <div className="bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-sm)] p-3">
           {top <= 0 ? (
-            <p className="text-sm text-[var(--text-muted)]">Enter a working weight to see plates.</p>
+            <p className="text-sm text-[var(--text-muted)]">
+              Enter a working weight to see plates.
+            </p>
           ) : (
             <>
               <div className="flex items-center gap-3 mb-2">

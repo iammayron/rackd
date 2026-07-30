@@ -30,9 +30,7 @@ const imported = (over: Partial<MatchExercise> = {}): MatchExercise => ({
 describe("normalizeExerciseName", () => {
   it("lowercases, strips punctuation, collapses whitespace", () => {
     expect(normalizeExerciseName("Push-Up")).toBe("push up");
-    expect(normalizeExerciseName("  Barbell   Bench  Press ")).toBe(
-      "barbell bench press",
-    );
+    expect(normalizeExerciseName("  Barbell   Bench  Press ")).toBe("barbell bench press");
   });
 });
 
@@ -46,18 +44,13 @@ describe("scoreMatch", () => {
   });
 
   it("scores a superset-name variant at least 0.85", () => {
-    const s = scoreMatch(
-      legacy(),
-      imported({ name: "Barbell Bench Press - Medium Grip" }),
-    );
+    const s = scoreMatch(legacy(), imported({ name: "Barbell Bench Press - Medium Grip" }));
     expect(s).toBeGreaterThanOrEqual(0.85);
     expect(s).toBeLessThan(1);
   });
 
   it("gives a low score to a same-muscle but different movement", () => {
-    expect(
-      scoreMatch(legacy(), imported({ name: "Cable Chest Fly" })),
-    ).toBeLessThan(0.5);
+    expect(scoreMatch(legacy(), imported({ name: "Cable Chest Fly" }))).toBeLessThan(0.5);
   });
 });
 

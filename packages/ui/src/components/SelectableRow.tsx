@@ -2,7 +2,10 @@
 
 import * as React from "react";
 
-export interface SelectableRowProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "title"> {
+export interface SelectableRowProps extends Omit<
+  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  "title"
+> {
   title: React.ReactNode;
   /** Trailing meta (muscle · equipment). */
   meta?: React.ReactNode;
@@ -15,7 +18,14 @@ export interface SelectableRowProps extends Omit<React.ButtonHTMLAttributes<HTML
  * Selected = coral fill. Shows a title with optional trailing meta (muscle ·
  * equipment). 44px+ tap target, full width.
  */
-export function SelectableRow({ title, meta, selected = false, onClick, style, ...rest }: SelectableRowProps) {
+export function SelectableRow({
+  title,
+  meta,
+  selected = false,
+  onClick,
+  style,
+  ...rest
+}: SelectableRowProps) {
   return (
     <button
       type="button"

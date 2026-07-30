@@ -34,13 +34,33 @@ const TABLES = [
 
 /** Fixed exercise library available to every test (stable ids). */
 export const SEED_EX = [
-  { id: "ex_bench", name: "Bench Press", primaryMuscle: "chest", equipment: "barbell", category: "barbell" },
-  { id: "ex_squat", name: "Back Squat", primaryMuscle: "quads", equipment: "barbell", category: "barbell" },
-  { id: "ex_row", name: "Barbell Row", primaryMuscle: "back", equipment: "barbell", category: "barbell" },
+  {
+    id: "ex_bench",
+    name: "Bench Press",
+    primaryMuscle: "chest",
+    equipment: "barbell",
+    category: "barbell",
+  },
+  {
+    id: "ex_squat",
+    name: "Back Squat",
+    primaryMuscle: "quads",
+    equipment: "barbell",
+    category: "barbell",
+  },
+  {
+    id: "ex_row",
+    name: "Barbell Row",
+    primaryMuscle: "back",
+    equipment: "barbell",
+    category: "barbell",
+  },
 ] as const;
 
 beforeEach(async () => {
-  await db.execute(sql.raw(`TRUNCATE TABLE ${TABLES.map((t) => `"${t}"`).join(", ")} RESTART IDENTITY CASCADE`));
+  await db.execute(
+    sql.raw(`TRUNCATE TABLE ${TABLES.map((t) => `"${t}"`).join(", ")} RESTART IDENTITY CASCADE`),
+  );
   await db.insert(exercises).values(
     SEED_EX.map((e) => ({
       id: e.id,

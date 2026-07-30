@@ -18,7 +18,9 @@ export function PrelineInit() {
       if (!active) return;
       // next frame: ensure the route's DOM is painted before enhancing
       requestAnimationFrame(() => {
-        (window as unknown as { HSStaticMethods?: { autoInit: () => void } }).HSStaticMethods?.autoInit();
+        (
+          window as unknown as { HSStaticMethods?: { autoInit: () => void } }
+        ).HSStaticMethods?.autoInit();
       });
     })();
     return () => {

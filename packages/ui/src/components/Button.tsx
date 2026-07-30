@@ -40,10 +40,23 @@ export function Button({
   const s = sizes[size] ?? sizes.md;
 
   const variants: Record<ButtonVariant, React.CSSProperties> = {
-    primary: { background: "var(--accent)", color: "var(--text-on-accent)", border: "1px solid transparent", boxShadow: "var(--shadow-sm)" },
-    secondary: { background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)" },
+    primary: {
+      background: "var(--accent)",
+      color: "var(--text-on-accent)",
+      border: "1px solid transparent",
+      boxShadow: "var(--shadow-sm)",
+    },
+    secondary: {
+      background: "var(--surface)",
+      color: "var(--text)",
+      border: "1px solid var(--border)",
+    },
     ghost: { background: "transparent", color: "var(--accent)", border: "1px solid transparent" },
-    success: { background: "var(--success)", color: "var(--success-ink)", border: "1px solid transparent" },
+    success: {
+      background: "var(--success)",
+      color: "var(--success-ink)",
+      border: "1px solid transparent",
+    },
     danger: { background: "var(--danger)", color: "#fff", border: "1px solid transparent" },
   };
   const v = variants[variant] ?? variants.primary;

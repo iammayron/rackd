@@ -53,12 +53,7 @@ export function ProgramProgress({
   const blockWeeks = program.blockWeeks ?? 0;
 
   const programRoutineIds = useMemo(
-    () =>
-      new Set(
-        programDays
-          .map((d) => d.routineId)
-          .filter((id): id is string => Boolean(id)),
-      ),
+    () => new Set(programDays.map((d) => d.routineId).filter((id): id is string => Boolean(id))),
     [programDays],
   );
 
@@ -66,8 +61,7 @@ export function ProgramProgress({
   // start, survives routine forks/re-points), falling back to the routine match
   // for legacy sessions. Pure logic lives in @rackd/core, unit-tested there.
   const belongsToProgram = useMemo(
-    () => (s: SessionLike) =>
-      sessionCountsForProgram(s, program.id, programRoutineIds),
+    () => (s: SessionLike) => sessionCountsForProgram(s, program.id, programRoutineIds),
     [program.id, programRoutineIds],
   );
 
@@ -87,9 +81,7 @@ export function ProgramProgress({
       const blockStart = program.activatedAt ?? 0;
       const dayKinds = programRotationDayKinds({
         blockWeeks,
-        restByOrder: [...programDays]
-          .sort((a, b) => a.order - b.order)
-          .map((d) => !d.routineId),
+        restByOrder: [...programDays].sort((a, b) => a.order - b.order).map((d) => !d.routineId),
         completedWorkouts: programSessions.filter(
           (s) => s.endedAt != null && s.endedAt >= blockStart,
         ).length,
@@ -110,9 +102,7 @@ export function ProgramProgress({
     // workout, then today, so pre-existing programs still render sensibly.
     const anchorMs =
       program.activatedAt ??
-      (programSessions.length
-        ? Math.min(...programSessions.map((s) => s.startedAt))
-        : now);
+      (programSessions.length ? Math.min(...programSessions.map((s) => s.startedAt)) : now);
     const anchorDay = dayIndex(anchorMs);
     const todayOffset = dayIndex(now) - anchorDay;
 
@@ -134,10 +124,7 @@ export function ProgramProgress({
     });
 
     const progress = programWeekProgress(blockWeeks, dayKinds);
-    const currentWeek = Math.min(
-      Math.max(Math.floor(todayOffset / 7) + 1, 1),
-      blockWeeks,
-    );
+    const currentWeek = Math.min(Math.max(Math.floor(todayOffset / 7) + 1, 1), blockWeeks);
     return { ...progress, currentWeek, unit: "days" as const };
   }, [blockWeeks, finished, program, programDays, belongsToProgram]);
 
@@ -185,10 +172,7 @@ export function ProgramProgress({
               </div>
               {w < week.weekFill.length - 1 &&
                 (week.weekDone[w] ? (
-                  <span
-                    className="shrink-0 text-[11px] leading-none"
-                    aria-hidden="true"
-                  >
+                  <span className="shrink-0 text-[11px] leading-none" aria-hidden="true">
                     🔥
                   </span>
                 ) : (

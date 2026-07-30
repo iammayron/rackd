@@ -25,6 +25,7 @@ fly storage create --name rackd-photos --region iad
 ```
 
 This outputs credentials. Save them — you'll need them for secrets:
+
 - `AWS_ACCESS_KEY_ID` → use as `S3_ACCESS_KEY`
 - `AWS_SECRET_ACCESS_KEY` → use as `S3_SECRET_KEY`
 - `AWS_ENDPOINT_URL_S3` → use as `S3_ENDPOINT`
@@ -121,6 +122,7 @@ fly deploy --remote-only \
 ## 7. Set up GitHub Actions auto-deploy
 
 1. Generate a Fly API token:
+
    ```bash
    fly tokens create deploy -x 999999h
    ```
@@ -171,9 +173,9 @@ Open `https://rackd.fly.dev` in your browser. You should see the login screen (S
 
 ## Summary of accounts needed
 
-| Service | Purpose | Cost |
-|---------|---------|------|
-| [Fly.io](https://fly.io) | Compute + Tigris storage | ~$1–3/mo |
-| [Neon](https://neon.tech) | Postgres database | Free |
-| [Supabase](https://supabase.com) | Auth (JWT issuance) | Free |
-| **Total** | | **~$1–3/mo** |
+| Service                          | Purpose                  | Cost         |
+| -------------------------------- | ------------------------ | ------------ |
+| [Fly.io](https://fly.io)         | Compute + Tigris storage | ~$1–3/mo     |
+| [Neon](https://neon.tech)        | Postgres database        | Free         |
+| [Supabase](https://supabase.com) | Auth (JWT issuance)      | Free         |
+| **Total**                        |                          | **~$1–3/mo** |

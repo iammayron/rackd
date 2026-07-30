@@ -3,13 +3,7 @@ import { eq, and } from "drizzle-orm";
 import { estimate1RM } from "@rackd/core";
 import { db } from "../src/db";
 import * as t from "../src/schema";
-import {
-  detectAndRecordPRs,
-  startSession,
-  addSessionExercise,
-  logSet,
-  addSet,
-} from "../src/index";
+import { detectAndRecordPRs, startSession, addSessionExercise, logSet, addSet } from "../src/index";
 import { makeSessionWithSets, OWNER_A } from "./factories";
 
 const round1rm = (w: number, reps: number) => Math.round(estimate1RM(w, reps));
@@ -21,8 +15,7 @@ const prs = (exerciseId: string, type: "1rm" | "weight") =>
     .from(t.personalRecords)
     .where(and(eq(t.personalRecords.exerciseId, exerciseId), eq(t.personalRecords.type, type)));
 
-const setRow = (id: string) =>
-  db.select().from(t.setLogs).where(eq(t.setLogs.id, id)).limit(1);
+const setRow = (id: string) => db.select().from(t.setLogs).where(eq(t.setLogs.id, id)).limit(1);
 
 describe("detectAndRecordPRs (real Postgres)", () => {
   it("records a new 1RM PR when no prior ledger row exists; value = round(estimate1RM(best set))", async () => {
@@ -207,7 +200,11 @@ describe("detectAndRecordPRs (real Postgres)", () => {
 
   it("only COMPLETED sets count: an uncompleted heavier set is ignored", async () => {
     const session = await startSession({ ownerId: OWNER_A, name: "W", now: 9000 });
-    const se = await addSessionExercise({ sessionId: session.id, exerciseId: "ex_bench", order: 1 });
+    const se = await addSessionExercise({
+      sessionId: session.id,
+      exerciseId: "ex_bench",
+      order: 1,
+    });
     // Completed: 100x5.
     const done = await logSet({ sessionExerciseId: se.id, order: 1, weight: 100, reps: 5 });
     // Uncompleted: 300x5 (would dominate both ledgers if counted).
@@ -227,7 +224,11 @@ describe("detectAndRecordPRs (real Postgres)", () => {
 
   it("an exercise with no completed sets is skipped entirely", async () => {
     const session = await startSession({ ownerId: OWNER_A, name: "W", now: 9500 });
-    const se = await addSessionExercise({ sessionId: session.id, exerciseId: "ex_squat", order: 1 });
+    const se = await addSessionExercise({
+      sessionId: session.id,
+      exerciseId: "ex_squat",
+      order: 1,
+    });
     await addSet({ sessionExerciseId: se.id, order: 1, weight: 200, reps: 5 }); // uncompleted
 
     const found = await detectAndRecordPRs({ sessionId: session.id, ownerId: OWNER_A, now: 9500 });
@@ -252,8 +253,16 @@ describe("detectAndRecordPRs (real Postgres)", () => {
 
   it("records PRs per-exercise across multiple session exercises", async () => {
     const session = await startSession({ ownerId: OWNER_A, name: "W", now: 11000 });
-    const benchSe = await addSessionExercise({ sessionId: session.id, exerciseId: "ex_bench", order: 1 });
-    const squatSe = await addSessionExercise({ sessionId: session.id, exerciseId: "ex_squat", order: 2 });
+    const benchSe = await addSessionExercise({
+      sessionId: session.id,
+      exerciseId: "ex_bench",
+      order: 1,
+    });
+    const squatSe = await addSessionExercise({
+      sessionId: session.id,
+      exerciseId: "ex_squat",
+      order: 2,
+    });
     await logSet({ sessionExerciseId: benchSe.id, order: 1, weight: 100, reps: 5 });
     await logSet({ sessionExerciseId: squatSe.id, order: 1, weight: 140, reps: 5 });
 

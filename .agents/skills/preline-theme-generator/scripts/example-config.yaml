@@ -7,10 +7,10 @@ name: <theme-name>
 brand:
   # Option 1: Use hue (0-360)
   hue: 200
-  
+
   # Option 2: Use hex color
   # primaryColor: "#2F6BFF"
-  
+
   # vibrant (default) or soft
   style: vibrant
 

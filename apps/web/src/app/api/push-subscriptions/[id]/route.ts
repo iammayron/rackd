@@ -9,7 +9,11 @@ const { pushSubscriptions } = schema;
 /** DELETE /api/push-subscriptions/[id] — remove a stored subscription the caller owns. */
 export const DELETE = withUser(async (ownerId, _req, ctx) => {
   const { id } = await ctx.params;
-  const [row] = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.id, id)).limit(1);
+  const [row] = await db
+    .select()
+    .from(pushSubscriptions)
+    .where(eq(pushSubscriptions.id, id))
+    .limit(1);
   if (!row) return Response.json({ error: "Not found" }, { status: 404 });
   if (row.ownerId !== ownerId) return Response.json({ error: "Forbidden" }, { status: 403 });
   await deletePushSubscription(id);

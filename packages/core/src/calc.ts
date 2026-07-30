@@ -34,9 +34,7 @@ export function estimate1RM(weight: number, reps: number): number {
 
 /** Total volume (weight x reps) for completed sets. */
 export function sessionVolume(sets: SetLog[]): number {
-  return sets
-    .filter((s) => s.completed)
-    .reduce((sum, s) => sum + s.weight * s.reps, 0);
+  return sets.filter((s) => s.completed).reduce((sum, s) => sum + s.weight * s.reps, 0);
 }
 
 /** One exercise's contribution to a duration estimate: working sets + their rest. */
@@ -109,11 +107,7 @@ export interface WarmupSet {
  * Standard warmup ramp toward a working weight. Rounds to the nearest
  * `step` (plate granularity). Empty-bar set only when it's lighter than 40%.
  */
-export function warmupSets(
-  workingWeight: number,
-  barWeight = 20,
-  step = 2.5,
-): WarmupSet[] {
+export function warmupSets(workingWeight: number, barWeight = 20, step = 2.5): WarmupSet[] {
   if (workingWeight <= barWeight) return [];
   const round = (w: number) => Math.max(barWeight, Math.round(w / step) * step);
   const ramp: Array<{ pct: number; reps: number }> = [
@@ -505,8 +499,7 @@ export function programDayKinds(args: {
   completedOffsets: readonly number[];
   schedule: ProgramSchedule;
 }): ProgramDayKind[] {
-  const { blockWeeks, anchorWeekday, todayOffset, completedOffsets, schedule } =
-    args;
+  const { blockWeeks, anchorWeekday, todayOffset, completedOffsets, schedule } = args;
   const totalDays = Math.max(0, Math.floor(blockWeeks)) * 7;
   const done = new Set(completedOffsets);
   const isRest = (i: number): boolean => {
@@ -531,10 +524,7 @@ export function programDayKinds(args: {
  * Only meaningful when filled notches form a contiguous prefix — i.e. for
  * `programRotationDayKinds`, whose walk guarantees it.
  */
-export function programCurrentWeek(
-  blockWeeks: number,
-  filledDays: number,
-): number {
+export function programCurrentWeek(blockWeeks: number, filledDays: number): number {
   const weeks = Math.max(0, Math.floor(blockWeeks));
   if (weeks === 0) return 0;
   return Math.min(Math.max(Math.floor(filledDays / 7) + 1, 1), weeks);
@@ -574,8 +564,7 @@ export function programRotationDayKinds(args: {
 }): ProgramDayKind[] {
   const { restByOrder } = args;
   const totalSlots = Math.max(0, Math.floor(args.blockWeeks)) * 7;
-  const out: ProgramDayKind[] =
-    Array<ProgramDayKind>(totalSlots).fill("future");
+  const out: ProgramDayKind[] = Array<ProgramDayKind>(totalSlots).fill("future");
   const len = restByOrder.length;
   let credits = Math.max(0, Math.floor(args.completedWorkouts));
   // Untrained, or no workout slot to attribute training to. The second guard is

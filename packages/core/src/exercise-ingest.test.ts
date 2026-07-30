@@ -19,9 +19,7 @@ describe("slugify", () => {
     expect(slugify("3/4 Sit-Up")).toBe("3-4-sit-up");
   });
   it("lowercases and turns underscores into hyphens", () => {
-    expect(slugify("Alternate_Incline_Dumbbell_Curl")).toBe(
-      "alternate-incline-dumbbell-curl",
-    );
+    expect(slugify("Alternate_Incline_Dumbbell_Curl")).toBe("alternate-incline-dumbbell-curl");
   });
   it("trims leading and trailing hyphens", () => {
     expect(slugify("  --Barbell Row!--  ")).toBe("barbell-row");

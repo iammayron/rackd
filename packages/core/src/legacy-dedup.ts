@@ -135,14 +135,9 @@ function jaccard(a: string[], b: string[]): number {
  * that is a strict superset of the legacy name's tokens (e.g. "Barbell Bench
  * Press - Medium Grip" ⊇ "Barbell Bench Press") scores at least 0.85.
  */
-export function scoreMatch(
-  legacy: MatchExercise,
-  candidate: MatchExercise,
-): number {
+export function scoreMatch(legacy: MatchExercise, candidate: MatchExercise): number {
   if (legacy.primaryMuscle !== candidate.primaryMuscle) return 0;
-  if (
-    normalizeExerciseName(legacy.name) === normalizeExerciseName(candidate.name)
-  ) {
+  if (normalizeExerciseName(legacy.name) === normalizeExerciseName(candidate.name)) {
     return 1;
   }
   const lt = tokens(legacy.name);
@@ -222,8 +217,6 @@ export function matchLegacyExercise(
 export function isApplicable(match: LegacyMatch): boolean {
   return (
     match.targetId !== null &&
-    (match.via === "override" ||
-      match.confidence === "exact" ||
-      match.confidence === "strong")
+    (match.via === "override" || match.confidence === "exact" || match.confidence === "strong")
   );
 }

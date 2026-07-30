@@ -33,6 +33,7 @@ src/assets/vendor/preline/skills/theme-generator/scripts/generate-theme.js
 ```
 
 Script capabilities:
+
 - Generates complete theme with all tokens (220+)
 - Chart tokens with hex values (Apexcharts compatible)
 - Map tokens (jsvectormap compatible)

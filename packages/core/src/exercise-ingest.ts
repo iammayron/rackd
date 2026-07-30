@@ -45,22 +45,134 @@ export const FREE_EXERCISE_IMAGE_BASE =
  * `recoveryHours` is the fatigue-engine baseline (bigger muscles recover slower).
  */
 export const MUSCLE_TAXONOMY: Muscle[] = [
-  { id: "chest", name: "Chest", canonicalGroup: "chest", region: "upper", svgRegion: "chest", recoveryHours: 48 },
-  { id: "lats", name: "Lats", canonicalGroup: "back", region: "upper", svgRegion: "upper-back", recoveryHours: 72 },
-  { id: "middle_back", name: "Middle back", canonicalGroup: "back", region: "upper", svgRegion: "upper-back", recoveryHours: 72 },
-  { id: "lower_back", name: "Lower back", canonicalGroup: "back", region: "core", svgRegion: "lower-back", recoveryHours: 72 },
-  { id: "traps", name: "Traps", canonicalGroup: "traps", region: "upper", svgRegion: "trapezius", recoveryHours: 48 },
-  { id: "shoulders", name: "Shoulders", canonicalGroup: "shoulders", region: "upper", svgRegion: "front-deltoids", recoveryHours: 48 },
-  { id: "biceps", name: "Biceps", canonicalGroup: "biceps", region: "upper", svgRegion: "biceps", recoveryHours: 48 },
-  { id: "triceps", name: "Triceps", canonicalGroup: "triceps", region: "upper", svgRegion: "triceps", recoveryHours: 48 },
-  { id: "forearms", name: "Forearms", canonicalGroup: "forearms", region: "upper", svgRegion: "forearm", recoveryHours: 24 },
-  { id: "abdominals", name: "Abdominals", canonicalGroup: "abs", region: "core", svgRegion: "abs", recoveryHours: 24 },
-  { id: "quadriceps", name: "Quadriceps", canonicalGroup: "quads", region: "lower", svgRegion: "quadriceps", recoveryHours: 72 },
-  { id: "hamstrings", name: "Hamstrings", canonicalGroup: "hamstrings", region: "lower", svgRegion: "hamstring", recoveryHours: 72 },
-  { id: "glutes", name: "Glutes", canonicalGroup: "glutes", region: "lower", svgRegion: "gluteal", recoveryHours: 72 },
-  { id: "calves", name: "Calves", canonicalGroup: "calves", region: "lower", svgRegion: "calves", recoveryHours: 48 },
-  { id: "abductors", name: "Abductors", canonicalGroup: "glutes", region: "lower", svgRegion: "gluteal", recoveryHours: 48 },
-  { id: "adductors", name: "Adductors", canonicalGroup: "quads", region: "lower", svgRegion: "adductor", recoveryHours: 48 },
+  {
+    id: "chest",
+    name: "Chest",
+    canonicalGroup: "chest",
+    region: "upper",
+    svgRegion: "chest",
+    recoveryHours: 48,
+  },
+  {
+    id: "lats",
+    name: "Lats",
+    canonicalGroup: "back",
+    region: "upper",
+    svgRegion: "upper-back",
+    recoveryHours: 72,
+  },
+  {
+    id: "middle_back",
+    name: "Middle back",
+    canonicalGroup: "back",
+    region: "upper",
+    svgRegion: "upper-back",
+    recoveryHours: 72,
+  },
+  {
+    id: "lower_back",
+    name: "Lower back",
+    canonicalGroup: "back",
+    region: "core",
+    svgRegion: "lower-back",
+    recoveryHours: 72,
+  },
+  {
+    id: "traps",
+    name: "Traps",
+    canonicalGroup: "traps",
+    region: "upper",
+    svgRegion: "trapezius",
+    recoveryHours: 48,
+  },
+  {
+    id: "shoulders",
+    name: "Shoulders",
+    canonicalGroup: "shoulders",
+    region: "upper",
+    svgRegion: "front-deltoids",
+    recoveryHours: 48,
+  },
+  {
+    id: "biceps",
+    name: "Biceps",
+    canonicalGroup: "biceps",
+    region: "upper",
+    svgRegion: "biceps",
+    recoveryHours: 48,
+  },
+  {
+    id: "triceps",
+    name: "Triceps",
+    canonicalGroup: "triceps",
+    region: "upper",
+    svgRegion: "triceps",
+    recoveryHours: 48,
+  },
+  {
+    id: "forearms",
+    name: "Forearms",
+    canonicalGroup: "forearms",
+    region: "upper",
+    svgRegion: "forearm",
+    recoveryHours: 24,
+  },
+  {
+    id: "abdominals",
+    name: "Abdominals",
+    canonicalGroup: "abs",
+    region: "core",
+    svgRegion: "abs",
+    recoveryHours: 24,
+  },
+  {
+    id: "quadriceps",
+    name: "Quadriceps",
+    canonicalGroup: "quads",
+    region: "lower",
+    svgRegion: "quadriceps",
+    recoveryHours: 72,
+  },
+  {
+    id: "hamstrings",
+    name: "Hamstrings",
+    canonicalGroup: "hamstrings",
+    region: "lower",
+    svgRegion: "hamstring",
+    recoveryHours: 72,
+  },
+  {
+    id: "glutes",
+    name: "Glutes",
+    canonicalGroup: "glutes",
+    region: "lower",
+    svgRegion: "gluteal",
+    recoveryHours: 72,
+  },
+  {
+    id: "calves",
+    name: "Calves",
+    canonicalGroup: "calves",
+    region: "lower",
+    svgRegion: "calves",
+    recoveryHours: 48,
+  },
+  {
+    id: "abductors",
+    name: "Abductors",
+    canonicalGroup: "glutes",
+    region: "lower",
+    svgRegion: "gluteal",
+    recoveryHours: 48,
+  },
+  {
+    id: "adductors",
+    name: "Adductors",
+    canonicalGroup: "quads",
+    region: "lower",
+    svgRegion: "adductor",
+    recoveryHours: 48,
+  },
   { id: "neck", name: "Neck", canonicalGroup: "traps", region: "upper", recoveryHours: 24 },
 ];
 
@@ -125,10 +237,7 @@ export function canonicalGroupOf(muscleId: string): MuscleGroup | undefined {
 }
 
 /** Coarse exercise category, derived from canonical equipment (mirrors the seed). */
-export function deriveCategory(
-  equipment: Equipment,
-  sourceCategory?: string,
-): ExerciseCategory {
+export function deriveCategory(equipment: Equipment, sourceCategory?: string): ExerciseCategory {
   if (sourceCategory?.trim().toLowerCase() === "cardio") return "cardio";
   switch (equipment) {
     case "barbell":
@@ -262,8 +371,7 @@ export function normalizeFreeExercise(rec: FreeExerciseRecord): {
     .map((i) => canonicalGroupOf(i.muscleId))
     .filter((g): g is MuscleGroup => Boolean(g));
 
-  const primaryMuscle: MuscleGroup =
-    primaryGroups[0] ?? secondaryGroups[0] ?? "fullbody";
+  const primaryMuscle: MuscleGroup = primaryGroups[0] ?? secondaryGroups[0] ?? "fullbody";
   // Coarse secondary groups, de-duped and minus the primary.
   const secondaryMuscles = Array.from(
     new Set([...primaryGroups.slice(1), ...secondaryGroups]),

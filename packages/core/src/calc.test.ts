@@ -277,7 +277,12 @@ describe("todaysRoutine", () => {
 
 describe("suggestReplacements", () => {
   const bench = { id: "a", name: "Bench Press", primaryMuscle: "chest", equipment: "barbell" };
-  const dbPress = { id: "b", name: "Dumbbell Press", primaryMuscle: "chest", equipment: "dumbbell" };
+  const dbPress = {
+    id: "b",
+    name: "Dumbbell Press",
+    primaryMuscle: "chest",
+    equipment: "dumbbell",
+  };
   const fly = { id: "c", name: "Cable Fly", primaryMuscle: "chest", equipment: "cable" };
   const row = { id: "d", name: "Barbell Row", primaryMuscle: "back", equipment: "barbell" };
   const squat = { id: "e", name: "Squat", primaryMuscle: "legs", equipment: "machine" };
@@ -300,18 +305,54 @@ describe("suggestReplacements", () => {
   });
 
   it("boosts a shared movement pattern above equipment-only", () => {
-    const target = { id: "t", name: "Barbell Row", primaryMuscle: "back", equipment: "barbell", movementPattern: "pull" };
-    const pulldown = { id: "p", name: "Lat Pulldown", primaryMuscle: "back", equipment: "cable", movementPattern: "pull" };
-    const benchBb = { id: "b", name: "Bench Press", primaryMuscle: "chest", equipment: "barbell", movementPattern: "push" };
+    const target = {
+      id: "t",
+      name: "Barbell Row",
+      primaryMuscle: "back",
+      equipment: "barbell",
+      movementPattern: "pull",
+    };
+    const pulldown = {
+      id: "p",
+      name: "Lat Pulldown",
+      primaryMuscle: "back",
+      equipment: "cable",
+      movementPattern: "pull",
+    };
+    const benchBb = {
+      id: "b",
+      name: "Bench Press",
+      primaryMuscle: "chest",
+      equipment: "barbell",
+      movementPattern: "push",
+    };
     const ranked = suggestReplacements([pulldown, benchBb], target).map((e) => e.id);
     // pulldown: primary(2)+pattern(2)=4; bench: equipment(1) → pulldown first
     expect(ranked[0]).toBe("p");
   });
 
   it("rewards shared secondary muscles", () => {
-    const target = { id: "t", name: "Pull-Up", primaryMuscle: "back", equipment: "bodyweight", secondaryMuscles: ["biceps"] };
-    const chin = { id: "c", name: "Chin-Up", primaryMuscle: "back", equipment: "bodyweight", secondaryMuscles: ["biceps"] };
-    const rack = { id: "r", name: "Rack Pull", primaryMuscle: "back", equipment: "barbell", secondaryMuscles: ["traps"] };
+    const target = {
+      id: "t",
+      name: "Pull-Up",
+      primaryMuscle: "back",
+      equipment: "bodyweight",
+      secondaryMuscles: ["biceps"],
+    };
+    const chin = {
+      id: "c",
+      name: "Chin-Up",
+      primaryMuscle: "back",
+      equipment: "bodyweight",
+      secondaryMuscles: ["biceps"],
+    };
+    const rack = {
+      id: "r",
+      name: "Rack Pull",
+      primaryMuscle: "back",
+      equipment: "barbell",
+      secondaryMuscles: ["traps"],
+    };
     // chin: primary(2)+equip(1)+secondary(1)=4; rack: primary(2) → chin first
     expect(suggestReplacements([rack, chin], target)[0]?.id).toBe("c");
   });
@@ -320,17 +361,53 @@ describe("suggestReplacements", () => {
     // Both share the primary muscle; one shares 3 secondaries, the other 2. The
     // cap makes the secondary bonus tie (2 each), so equipment breaks it: the
     // barbell match wins. If the cap were removed (3 > 2), `three` would win.
-    const target = { id: "t", name: "T", primaryMuscle: "back", equipment: "barbell", secondaryMuscles: ["biceps", "traps", "forearms"] };
-    const three = { id: "x3", name: "Three", primaryMuscle: "back", equipment: "cable", secondaryMuscles: ["biceps", "traps", "forearms"] };
-    const twoBarbell = { id: "x2", name: "Two", primaryMuscle: "back", equipment: "barbell", secondaryMuscles: ["biceps", "traps"] };
+    const target = {
+      id: "t",
+      name: "T",
+      primaryMuscle: "back",
+      equipment: "barbell",
+      secondaryMuscles: ["biceps", "traps", "forearms"],
+    };
+    const three = {
+      id: "x3",
+      name: "Three",
+      primaryMuscle: "back",
+      equipment: "cable",
+      secondaryMuscles: ["biceps", "traps", "forearms"],
+    };
+    const twoBarbell = {
+      id: "x2",
+      name: "Two",
+      primaryMuscle: "back",
+      equipment: "barbell",
+      secondaryMuscles: ["biceps", "traps"],
+    };
     // three: primary(2)+secondary(min(3,2)=2)=4; twoBarbell: primary(2)+equip(1)+secondary(2)=5
     expect(suggestReplacements([three, twoBarbell], target)[0]?.id).toBe("x2");
   });
 
   it("breaks a tie on shared mechanic", () => {
-    const target = { id: "t", name: "T", primaryMuscle: "chest", equipment: "barbell", mechanic: "compound" };
-    const compound = { id: "co", name: "Compound", primaryMuscle: "chest", equipment: "dumbbell", mechanic: "compound" };
-    const isolation = { id: "is", name: "Isolation", primaryMuscle: "chest", equipment: "dumbbell", mechanic: "isolation" };
+    const target = {
+      id: "t",
+      name: "T",
+      primaryMuscle: "chest",
+      equipment: "barbell",
+      mechanic: "compound",
+    };
+    const compound = {
+      id: "co",
+      name: "Compound",
+      primaryMuscle: "chest",
+      equipment: "dumbbell",
+      mechanic: "compound",
+    };
+    const isolation = {
+      id: "is",
+      name: "Isolation",
+      primaryMuscle: "chest",
+      equipment: "dumbbell",
+      mechanic: "isolation",
+    };
     // compound: primary(2)+mechanic(1)=3; isolation: primary(2)=2 → compound first
     expect(suggestReplacements([isolation, compound], target)[0]?.id).toBe("co");
   });
@@ -338,7 +415,13 @@ describe("suggestReplacements", () => {
   it("does not award pattern bonus when only one side defines it", () => {
     // target has a movementPattern, candidate has none → no +2; the candidate
     // that merely matches equipment must not be out-ranked by a phantom bonus.
-    const target = { id: "t", name: "Row", primaryMuscle: "back", equipment: "cable", movementPattern: "pull" };
+    const target = {
+      id: "t",
+      name: "Row",
+      primaryMuscle: "back",
+      equipment: "cable",
+      movementPattern: "pull",
+    };
     const noPattern = { id: "np", name: "No Pattern", primaryMuscle: "back", equipment: "cable" };
     // noPattern: primary(2)+equip(1)=3, pattern guarded off (undefined !== "pull")
     expect(suggestReplacements([noPattern], target)[0]?.id).toBe("np");
@@ -472,7 +555,13 @@ describe("advanceRotation", () => {
 
 describe("diffSessionVsRoutine", () => {
   const presc = [
-    { exerciseId: "a", sets: [{ weight: 100, reps: 8 }, { weight: 100, reps: 8 }] },
+    {
+      exerciseId: "a",
+      sets: [
+        { weight: 100, reps: 8 },
+        { weight: 100, reps: 8 },
+      ],
+    },
     { exerciseId: "b", sets: [{ weight: 50, reps: 10 }] },
   ];
 
@@ -485,7 +574,13 @@ describe("diffSessionVsRoutine", () => {
 
   it("flags numbersChanged when a weight differs", () => {
     const performed = [
-      { exerciseId: "a", sets: [{ weight: 102.5, reps: 8 }, { weight: 100, reps: 8 }] },
+      {
+        exerciseId: "a",
+        sets: [
+          { weight: 102.5, reps: 8 },
+          { weight: 100, reps: 8 },
+        ],
+      },
       { exerciseId: "b", sets: [{ weight: 50, reps: 10 }] },
     ];
     expect(diffSessionVsRoutine(presc, performed)).toEqual({
@@ -504,7 +599,13 @@ describe("diffSessionVsRoutine", () => {
 
   it("flags exercisesChanged on a swapped/added exercise (new exercise alone is not a number change)", () => {
     const performed = [
-      { exerciseId: "a", sets: [{ weight: 100, reps: 8 }, { weight: 100, reps: 8 }] },
+      {
+        exerciseId: "a",
+        sets: [
+          { weight: 100, reps: 8 },
+          { weight: 100, reps: 8 },
+        ],
+      },
       { exerciseId: "b", sets: [{ weight: 50, reps: 10 }] },
       { exerciseId: "c", sets: [{ weight: 30, reps: 12 }] },
     ];
@@ -532,9 +633,7 @@ describe("programWeekProgress", () => {
 
   it("ignites a week only when all 7 notches fill (done + rest)", () => {
     // Week 1: 4 workouts done + 3 rest = full → fire. Week 2: all future.
-    const week1: ProgramDayKind[] = [
-      "done", "rest", "done", "rest", "done", "rest", "done",
-    ];
+    const week1: ProgramDayKind[] = ["done", "rest", "done", "rest", "done", "rest", "done"];
     const r = programWeekProgress(2, [...week1, ...fill(7, "future")]);
     expect(r.totalDays).toBe(14);
     expect(r.filledDays).toBe(7);
@@ -544,9 +643,7 @@ describe("programWeekProgress", () => {
   });
 
   it("holds the fire when a workout is missed (gap stays empty)", () => {
-    const week1: ProgramDayKind[] = [
-      "done", "rest", "missed", "rest", "done", "rest", "done",
-    ];
+    const week1: ProgramDayKind[] = ["done", "rest", "missed", "rest", "done", "rest", "done"];
     const r = programWeekProgress(1, week1);
     expect(r.filledDays).toBe(6);
     expect(r.weekDone).toEqual([false]);
@@ -556,7 +653,13 @@ describe("programWeekProgress", () => {
 
   it("counts pending/missed/future as empty", () => {
     const r = programWeekProgress(1, [
-      "done", "pending", "future", "future", "future", "future", "future",
+      "done",
+      "pending",
+      "future",
+      "future",
+      "future",
+      "future",
+      "future",
     ]);
     expect(r.filledDays).toBe(1);
     expect(r.weekFill[0]).toBeCloseTo(1 / 7, 5);
@@ -592,7 +695,13 @@ describe("programWeekProgress", () => {
     // Week 1 full (7), week 2 has 3 filled — guards the `w * 7 + d` indexing.
     const dayKinds: ProgramDayKind[] = [
       ...fill(7, "rest"),
-      "done", "rest", "done", "missed", "pending", "future", "future",
+      "done",
+      "rest",
+      "done",
+      "missed",
+      "pending",
+      "future",
+      "future",
     ];
     const r = programWeekProgress(2, dayKinds);
     expect(r.filledDays).toBe(10);
@@ -634,9 +743,7 @@ describe("programDayKinds", () => {
       completedOffsets: [0, 2],
       schedule: { workoutWeekdays: [1, 3, 5] },
     });
-    expect(kinds).toEqual([
-      "done", "rest", "done", "rest", "future", "future", "future",
-    ]);
+    expect(kinds).toEqual(["done", "rest", "done", "rest", "future", "future", "future"]);
   });
 
   it("marks a past uncompleted workout as missed and today's as pending", () => {
@@ -648,9 +755,7 @@ describe("programDayKinds", () => {
       completedOffsets: [0],
       schedule: { workoutWeekdays: [1, 3, 5] },
     });
-    expect(kinds).toEqual([
-      "done", "rest", "missed", "rest", "pending", "future", "future",
-    ]);
+    expect(kinds).toEqual(["done", "rest", "missed", "rest", "pending", "future", "future"]);
   });
 
   it("wraps weekday math when the anchor is late in the week", () => {
@@ -662,9 +767,7 @@ describe("programDayKinds", () => {
       completedOffsets: [1],
       schedule: { workoutWeekdays: [0] },
     });
-    expect(kinds).toEqual([
-      "rest", "done", "rest", "rest", "rest", "rest", "rest",
-    ]);
+    expect(kinds).toEqual(["rest", "done", "rest", "rest", "rest", "rest", "rest"]);
   });
 
   it("counts a workout completed on a rest day as done", () => {
@@ -694,8 +797,7 @@ describe("programDayKinds", () => {
 });
 
 describe("programRotationDayKinds", () => {
-  const fill = (n: number, k: ProgramDayKind): ProgramDayKind[] =>
-    Array<ProgramDayKind>(n).fill(k);
+  const fill = (n: number, k: ProgramDayKind): ProgramDayKind[] => Array<ProgramDayKind>(n).fill(k);
   // 6-day PPL + 1 rest = a 7-slot cycle.
   const ppl = [false, false, false, false, false, false, true];
 
@@ -705,15 +807,7 @@ describe("programRotationDayKinds", () => {
       restByOrder: [false, false, true],
       completedWorkouts: 2,
     });
-    expect(kinds).toEqual([
-      "done",
-      "done",
-      "rest",
-      "future",
-      "future",
-      "future",
-      "future",
-    ]);
+    expect(kinds).toEqual(["done", "done", "rest", "future", "future", "future", "future"]);
   });
 
   it("advances with training, not the calendar", () => {
@@ -778,15 +872,7 @@ describe("programRotationDayKinds", () => {
       restByOrder: [true, false, false],
       completedWorkouts: 1,
     });
-    expect(kinds).toEqual([
-      "rest",
-      "done",
-      "future",
-      "future",
-      "future",
-      "future",
-      "future",
-    ]);
+    expect(kinds).toEqual(["rest", "done", "future", "future", "future", "future", "future"]);
   });
 
   it("leaves the block empty before the first workout, even when the cycle opens with rest", () => {
@@ -913,12 +999,7 @@ describe("programRotationDayKinds", () => {
       restByOrder: fiveTwo,
       completedWorkouts: 5,
     });
-    expect(kinds).toEqual([
-      ...fill(5, "done"),
-      "rest",
-      "rest",
-      ...fill(21, "future"),
-    ]);
+    expect(kinds).toEqual([...fill(5, "done"), "rest", "rest", ...fill(21, "future")]);
     const progress = programWeekProgress(4, kinds);
     expect(progress.filledDays).toBe(7);
     expect(progress.weekDone[0]).toBe(true);
@@ -972,13 +1053,7 @@ describe("firstWorkoutSlot", () => {
     ).toBe(0);
   });
   it("skips leading rest slots so a layoff restart lands on a workout", () => {
-    expect(
-      firstWorkoutSlot([
-        { order: 0 },
-        { order: 1 },
-        { order: 2, routineId: "push" },
-      ]),
-    ).toBe(2);
+    expect(firstWorkoutSlot([{ order: 0 }, { order: 1 }, { order: 2, routineId: "push" }])).toBe(2);
   });
   it("respects `order` rather than array position", () => {
     expect(
@@ -1086,11 +1161,7 @@ describe("sessionCountsForProgram", () => {
 
   it("rejects a legacy session against an empty routine set", () => {
     expect(
-      sessionCountsForProgram(
-        { programId: null, routineId: "rt_a" },
-        "prog_1",
-        new Set<string>(),
-      ),
+      sessionCountsForProgram({ programId: null, routineId: "rt_a" }, "prog_1", new Set<string>()),
     ).toBe(false);
   });
 });

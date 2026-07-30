@@ -7,6 +7,7 @@
 ## Overview
 
 Replace Triplit (local-first sync engine) with:
+
 - **Drizzle ORM** talking to Supabase Postgres
 - **Next.js API route handlers** for all data operations
 - **React Query** (`@tanstack/react-query`) for client-side data fetching
@@ -61,6 +62,7 @@ scheduledPushes      → scheduled_pushes
 ```
 
 All tables need:
+
 - `id` TEXT PRIMARY KEY (use `uuidv7()` from the app, not Postgres-generated)
 - `ownerId` TEXT NOT NULL (= Supabase `auth.users.id`)
 - Appropriate foreign keys with CASCADE deletes where parent-child
@@ -145,6 +147,7 @@ npx tsx packages/db/src/seed-pg.ts
 instead. Keep the same function names and return types where possible.
 
 Key changes:
+
 - `client.insert(collection, doc)` → `db.insert(table).values(doc)`
 - `client.update(collection, id, fn)` → `db.update(table).set(patch).where(eq(table.id, id))`
 - `client.delete(collection, id)` → `db.delete(table).where(eq(table.id, id))`
@@ -157,6 +160,7 @@ instance initialized from `DATABASE_URL`.
 ## Step 6: Create API route handlers
 
 All routes go in `apps/web/src/app/api/`. Every route:
+
 1. Validates the Supabase JWT from the `Authorization: Bearer <token>` header
 2. Extracts `ownerId` from the token's `sub` claim
 3. Adds `WHERE owner_id = ownerId` to every query (except public reads on exercises/sharedRoutines)
@@ -170,13 +174,15 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
 export async function getAuthUser(request: Request) {
   const token = request.headers.get("Authorization")?.replace("Bearer ", "");
   if (!token) return null;
-  const { data: { user } } = await supabase.auth.getUser(token);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser(token);
   return user;
 }
 ```
@@ -288,7 +294,7 @@ Example pattern:
 // Before (Triplit):
 const { results: routines } = useQuery(
   (client) => client.query("routines").Order("order", "ASC"),
-  [userId]
+  [userId],
 );
 
 // After (React Query):
@@ -373,16 +379,19 @@ cache to IndexedDB. This gives offline reads.
 ## Step 8: Update AuthProvider
 
 Remove:
+
 - `client.startSession(accessToken, true)` — no longer needed
 - `client.endSession()` — no longer needed
 - `seedExercises(client)` — seed is now a one-time server migration
 
 Keep:
+
 - Supabase `onAuthStateChange` listener
 - `signIn`, `signUp`, `signOut` functions
 - `user`, `loading` state
 
 Add:
+
 - React Query `QueryClientProvider` wrapping the app
 - Pass the Supabase access token to the API client
 
@@ -432,6 +441,7 @@ Then deploy and test the full flow in the browser.
 ## Files to modify (summary)
 
 ### New files
+
 - `packages/db/src/schema.ts` (rewrite)
 - `packages/db/src/index.ts` (rewrite)
 - `packages/db/src/db.ts` (new — Drizzle client)
@@ -443,6 +453,7 @@ Then deploy and test the full flow in the browser.
 - `apps/web/src/app/api/**` (~25 route files)
 
 ### Files to modify
+
 - `apps/web/src/lib/auth.tsx` — remove Triplit wiring
 - `apps/web/src/app/providers.tsx` — add QueryClientProvider
 - `apps/web/src/app/page.tsx` — React Query hooks
@@ -475,6 +486,7 @@ Then deploy and test the full flow in the browser.
 - `DEPLOY.md`
 
 ### Files to delete
+
 - `apps/sync/` (entire directory)
 - `apps/push/` (entire directory, or rewrite)
 - `apps/web/src/lib/triplit.ts`

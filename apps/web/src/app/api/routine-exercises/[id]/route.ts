@@ -20,11 +20,7 @@ const isBarType = (v: unknown): v is keyof typeof BAR_WEIGHTS =>
 /** PUT /api/routine-exercises/[id] — patch rest/superset/order of an owned slot. */
 export const PUT = withUser(async (ownerId, req, ctx) => {
   const { id } = await ctx.params;
-  const [re] = await db
-    .select()
-    .from(routineExercises)
-    .where(eq(routineExercises.id, id))
-    .limit(1);
+  const [re] = await db.select().from(routineExercises).where(eq(routineExercises.id, id)).limit(1);
   if (!re) return Response.json({ error: "Not found" }, { status: 404 });
   if (re.ownerId !== ownerId) return Response.json({ error: "Forbidden" }, { status: 403 });
 
@@ -43,11 +39,7 @@ export const PUT = withUser(async (ownerId, req, ctx) => {
 /** DELETE /api/routine-exercises/[id] — remove an owned slot and its sets. */
 export const DELETE = withUser(async (ownerId, _req, ctx) => {
   const { id } = await ctx.params;
-  const [re] = await db
-    .select()
-    .from(routineExercises)
-    .where(eq(routineExercises.id, id))
-    .limit(1);
+  const [re] = await db.select().from(routineExercises).where(eq(routineExercises.id, id)).limit(1);
   if (!re) return Response.json({ error: "Not found" }, { status: 404 });
   if (re.ownerId !== ownerId) return Response.json({ error: "Forbidden" }, { status: 403 });
 

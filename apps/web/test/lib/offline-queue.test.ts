@@ -35,7 +35,13 @@ afterEach(() => {
 });
 
 /** Insert a queued mutation directly into the store with a controlled createdAt. */
-function seed(entry: { id: string; url: string; method: string; body?: string; createdAt: number }) {
+function seed(entry: {
+  id: string;
+  url: string;
+  method: string;
+  body?: string;
+  createdAt: number;
+}) {
   store.set(`${PREFIX}${entry.id}`, entry);
 }
 
@@ -153,9 +159,7 @@ describe("flushQueue", () => {
     seed({ id: "c", url: "/api/3", method: "POST", body: "3", createdAt: 300 });
 
     const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
-    fetchMock
-      .mockResolvedValueOnce(okRes())
-      .mockRejectedValueOnce(new Error("offline"));
+    fetchMock.mockResolvedValueOnce(okRes()).mockRejectedValueOnce(new Error("offline"));
 
     const flushed = await flushQueue();
     expect(flushed).toBe(1);

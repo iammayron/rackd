@@ -10,10 +10,7 @@ import { queryClient, qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
 import { useToast } from "@/components/toast/ToastProvider";
 import { useConfirm } from "@/components/ConfirmDialog";
-import {
-  ExerciseThumb,
-  type ExerciseMediaData,
-} from "@/components/ExerciseMedia";
+import { ExerciseThumb, type ExerciseMediaData } from "@/components/ExerciseMedia";
 import { ReplaceExercisePicker } from "@/features/routines/ReplaceExercisePicker";
 import { useExerciseDetail } from "@/features/exercise/exercise-detail-store";
 import { SetRow, type SetRowData } from "./SetRow";
@@ -28,11 +25,7 @@ interface PrevSet {
 }
 
 const cap = (s: string) =>
-  !s
-    ? s
-    : s.toLowerCase() === "fullbody"
-      ? "Full body"
-      : s.charAt(0).toUpperCase() + s.slice(1);
+  !s ? s : s.toLowerCase() === "fullbody" ? "Full body" : s.charAt(0).toUpperCase() + s.slice(1);
 
 interface SessionExerciseRow {
   id: string;
@@ -76,9 +69,7 @@ export function ExerciseCard({
   const [showMenu, setShowMenu] = useState(false);
   const [showReplace, setShowReplace] = useState(false);
   // Sets come down from the session tree the page loads; keep them ordered.
-  const sets = [...(sessionExercise.sets ?? [])].sort(
-    (a, b) => a.order - b.order,
-  );
+  const sets = [...(sessionExercise.sets ?? [])].sort((a, b) => a.order - b.order);
 
   // "prev" = this exercise's last completed performance in a finished session.
   const [prev, setPrev] = useState<PrevSet[] | null>(null);
@@ -99,10 +90,7 @@ export function ExerciseCard({
   }
 
   // Heaviest set last time → progressive-overload target for this session.
-  const prevTop = prev?.reduce(
-    (b, s) => (s.weight > b.weight ? s : b),
-    prev[0]!,
-  );
+  const prevTop = prev?.reduce((b, s) => (s.weight > b.weight ? s : b), prev[0]!);
   const suggestedWeight = prevTop
     ? nextWeight(prevTop.weight, prevTop.reps, prevTop.reps)
     : undefined;
@@ -132,30 +120,25 @@ export function ExerciseCard({
   function onSetCompleted(set: SetRowData) {
     const targets = copyTargets(sets, set, display);
     if (targets.length === 0) return;
-    toast.info(
-      `Copy ${display(set.weight)} ${unit} × ${set.reps} to remaining sets?`,
-      {
-        action: {
-          label: "Copy",
-          onClick: async () => {
-            await Promise.all(
-              targets.map((t) =>
-                api(`/api/set-logs/${t.id}`, {
-                  method: "PUT",
-                  body: JSON.stringify({ weight: set.weight, reps: set.reps }),
-                }),
-              ),
-            );
-            queryClient.invalidateQueries({
-              queryKey: qk.session(sessionExercise.sessionId),
-            });
-            toast.success(
-              `Copied to ${targets.length} set${targets.length === 1 ? "" : "s"}`,
-            );
-          },
+    toast.info(`Copy ${display(set.weight)} ${unit} × ${set.reps} to remaining sets?`, {
+      action: {
+        label: "Copy",
+        onClick: async () => {
+          await Promise.all(
+            targets.map((t) =>
+              api(`/api/set-logs/${t.id}`, {
+                method: "PUT",
+                body: JSON.stringify({ weight: set.weight, reps: set.reps }),
+              }),
+            ),
+          );
+          queryClient.invalidateQueries({
+            queryKey: qk.session(sessionExercise.sessionId),
+          });
+          toast.success(`Copied to ${targets.length} set${targets.length === 1 ? "" : "s"}`);
         },
       },
-    );
+    });
   }
 
   async function onAddSet() {
@@ -200,11 +183,7 @@ export function ExerciseCard({
           </button>
         )}
         {sessionExercise.exercise && (
-          <ExerciseThumb
-            ex={sessionExercise.exercise}
-            size={40}
-            onClick={goDetails}
-          />
+          <ExerciseThumb ex={sessionExercise.exercise} size={40} onClick={goDetails} />
         )}
 
         <button
@@ -221,16 +200,12 @@ export function ExerciseCard({
             </span>
           </span>
           {subtitle && (
-            <span className="block text-sm text-[var(--text-muted)] truncate">
-              {subtitle}
-            </span>
+            <span className="block text-sm text-[var(--text-muted)] truncate">{subtitle}</span>
           )}
         </button>
 
         {inGroup && !startsRest && (
-          <span className="shrink-0 text-xs font-semibold text-[var(--text-muted)]">
-            no rest →
-          </span>
+          <span className="shrink-0 text-xs font-semibold text-[var(--text-muted)]">no rest →</span>
         )}
 
         {/* In a superset, only the last exercise rests, so the rest control
@@ -249,14 +224,7 @@ export function ExerciseCard({
               aria-hidden="true"
               className="text-[var(--text-muted)]"
             >
-              <circle
-                cx="12"
-                cy="13"
-                r="8"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
+              <circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" strokeWidth="2" />
               <path
                 d="M12 9v4l2.5 1.5M9 2h6"
                 fill="none"
@@ -278,9 +246,7 @@ export function ExerciseCard({
           onRemove={async () => {
             // Highest-stakes destructive action in the app: the API cascades,
             // so every set already logged against this exercise goes with it.
-            const logged = (sessionExercise.sets ?? []).filter(
-              (x) => x.completed,
-            ).length;
+            const logged = (sessionExercise.sets ?? []).filter((x) => x.completed).length;
             const ok = await confirm({
               title: `Remove ${sessionExercise.exercise?.name ?? "this exercise"}?`,
               message: logged
@@ -459,12 +425,7 @@ export function HeaderMenu({
             aria-label="Exercise options"
             className="absolute right-0 top-full mt-1 z-50 min-w-[220px] py-1 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-lg)] overflow-hidden"
           >
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => run(onReplace)}
-              className={item}
-            >
+            <button type="button" role="menuitem" onClick={() => run(onReplace)} className={item}>
               Replace exercise
             </button>
             <button
@@ -475,12 +436,7 @@ export function HeaderMenu({
             >
               View details
             </button>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => run(onSuperset)}
-              className={item}
-            >
+            <button type="button" role="menuitem" onClick={() => run(onSuperset)} className={item}>
               {/* TODO: #16 superset — stubbed until grouping logic lands */}
               Make superset with next
             </button>

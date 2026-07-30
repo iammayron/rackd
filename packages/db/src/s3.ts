@@ -77,12 +77,7 @@ export async function putObject(
   ].join("\n");
 
   const scope = `${dateStamp}/${cfg.region}/s3/aws4_request`;
-  const stringToSign = [
-    "AWS4-HMAC-SHA256",
-    amzDate,
-    scope,
-    hex(canonicalRequest),
-  ].join("\n");
+  const stringToSign = ["AWS4-HMAC-SHA256", amzDate, scope, hex(canonicalRequest)].join("\n");
 
   const kDate = hmac(`AWS4${cfg.secretKey}`, dateStamp);
   const kRegion = hmac(kDate, cfg.region);

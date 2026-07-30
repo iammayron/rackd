@@ -15,7 +15,13 @@ export interface ProgressBarProps extends React.HTMLAttributes<HTMLDivElement> {
  * Thin progress bar — weekly-volume goal, weight-to-goal, etc. Rounded track
  * (surface-2) with a coral fill. `tone="success"` for completed goals.
  */
-export function ProgressBar({ value = 0, tone = "accent", height = 8, style, ...rest }: ProgressBarProps) {
+export function ProgressBar({
+  value = 0,
+  tone = "accent",
+  height = 8,
+  style,
+  ...rest
+}: ProgressBarProps) {
   const pct = Math.max(0, Math.min(100, value));
   const fill = tone === "success" ? "var(--success)" : "var(--accent)";
   return (

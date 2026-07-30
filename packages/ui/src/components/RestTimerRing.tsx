@@ -85,11 +85,29 @@ export function RestTimerRing({
 
   return (
     <div
-      style={{ position: "relative", width: size, height: size, fontFamily: "var(--font-sans)", ...style }}
+      style={{
+        position: "relative",
+        width: size,
+        height: size,
+        fontFamily: "var(--font-sans)",
+        ...style,
+      }}
       {...rest}
     >
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: "rotate(-90deg)" }}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--surface-2)" strokeWidth={strokeWidth} />
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        style={{ transform: "rotate(-90deg)" }}
+      >
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="var(--surface-2)"
+          strokeWidth={strokeWidth}
+        />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -100,7 +118,9 @@ export function RestTimerRing({
           strokeLinecap="round"
           strokeDasharray={c}
           strokeDashoffset={c * (1 - frac)}
-          style={{ transition: "stroke-dashoffset 250ms linear, stroke var(--dur) var(--ease-out)" }}
+          style={{
+            transition: "stroke-dashoffset 250ms linear, stroke var(--dur) var(--ease-out)",
+          }}
         />
       </svg>
       {showLabel && (

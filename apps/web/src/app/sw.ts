@@ -1,11 +1,6 @@
 import { defaultCache } from "@serwist/next/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
-import {
-  CacheableResponsePlugin,
-  CacheFirst,
-  ExpirationPlugin,
-  Serwist,
-} from "serwist";
+import { CacheableResponsePlugin, CacheFirst, ExpirationPlugin, Serwist } from "serwist";
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -31,8 +26,7 @@ declare const self: ServiceWorkerGlobalScope;
 const exerciseImageCache = {
   matcher: ({ url, request }: { url: URL; request: Request }) =>
     request.destination === "image" &&
-    (url.hostname.endsWith("storage.tigris.dev") ||
-      url.hostname === "raw.githubusercontent.com"),
+    (url.hostname.endsWith("storage.tigris.dev") || url.hostname === "raw.githubusercontent.com"),
   handler: new CacheFirst({
     cacheName: "exercise-images",
     plugins: [
@@ -88,16 +82,13 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target =
-    (event.notification.data as { url?: string } | undefined)?.url ?? "/";
+  const target = (event.notification.data as { url?: string } | undefined)?.url ?? "/";
   event.waitUntil(
-    self.clients
-      .matchAll({ type: "window", includeUncontrolled: true })
-      .then((clients) => {
-        for (const client of clients) {
-          if ("focus" in client) return client.focus();
-        }
-        return self.clients.openWindow(target);
-      }),
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ("focus" in client) return client.focus();
+      }
+      return self.clients.openWindow(target);
+    }),
   );
 });

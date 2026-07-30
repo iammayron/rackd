@@ -9,5 +9,5 @@ Tell user the theme was created and show enable snippet:
 
 ```html
 <!-- On HTML element -->
-<html data-theme="theme-<theme-name>">
+<html data-theme="theme-<theme-name>"></html>
 ```

@@ -13,7 +13,11 @@ describe("finishSession (real Postgres)", () => {
     const { sessionId } = await makeSessionWithSets({ sets: [{ weight: 100, reps: 5 }] });
     await finishSession(sessionId, 12345);
 
-    const [session] = await db.select().from(t.sessions).where(eq(t.sessions.id, sessionId)).limit(1);
+    const [session] = await db
+      .select()
+      .from(t.sessions)
+      .where(eq(t.sessions.id, sessionId))
+      .limit(1);
     expect(session!.endedAt).toBe(12345);
   });
 
@@ -49,7 +53,11 @@ describe("finishSession (real Postgres)", () => {
     const found = await finishSession(sessionId, 8000);
     expect(found).toEqual([]);
 
-    const [session] = await db.select().from(t.sessions).where(eq(t.sessions.id, sessionId)).limit(1);
+    const [session] = await db
+      .select()
+      .from(t.sessions)
+      .where(eq(t.sessions.id, sessionId))
+      .limit(1);
     expect(session!.endedAt).toBe(8000); // still marked finished
   });
 });

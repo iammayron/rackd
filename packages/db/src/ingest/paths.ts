@@ -13,6 +13,7 @@ export const SOURCE_FILES: Record<string, string> = {
 /** Cache path for a source, or throw if the source is unknown. */
 export function sourceFile(source: string): string {
   const f = SOURCE_FILES[source];
-  if (!f) throw new Error(`Unknown source "${source}". Known: ${Object.keys(SOURCE_FILES).join(", ")}`);
+  if (!f)
+    throw new Error(`Unknown source "${source}". Known: ${Object.keys(SOURCE_FILES).join(", ")}`);
   return f;
 }

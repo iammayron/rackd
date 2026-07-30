@@ -110,18 +110,14 @@ export default function WorkoutPage() {
 
   const byId = new Map(sessionExercises.map((e) => [e.id, e]));
   const ordered = dragId
-    ? (orderIds
-        .map((id) => byId.get(id))
-        .filter(Boolean) as SessionExerciseRow[])
+    ? (orderIds.map((id) => byId.get(id)).filter(Boolean) as SessionExerciseRow[])
     : sessionExercises;
 
   function onDragMove(clientY: number) {
     const id = dragId;
     const container = listRef.current;
     if (!id || !container) return;
-    const nodes = Array.from(
-      container.querySelectorAll<HTMLElement>("[data-sex]"),
-    );
+    const nodes = Array.from(container.querySelectorAll<HTMLElement>("[data-sex]"));
     let target = nodes.findIndex((n) => {
       const r = n.getBoundingClientRect();
       return clientY < r.top + r.height / 2;
@@ -149,9 +145,7 @@ export default function WorkoutPage() {
       void api(`/api/sessions/${sessionId}/exercises/reorder`, {
         method: "PUT",
         body: JSON.stringify({ orderedIds: ids }),
-      }).then(() =>
-        queryClient.invalidateQueries({ queryKey: qk.session(sessionId) }),
-      );
+      }).then(() => queryClient.invalidateQueries({ queryKey: qk.session(sessionId) }));
     };
     window.addEventListener("pointermove", onMovePtr, { passive: false });
     window.addEventListener("pointerup", onUp);
@@ -180,13 +174,8 @@ export default function WorkoutPage() {
   function scrollToCurrent(behavior: ScrollBehavior) {
     const id = currentIdRef.current;
     if (!id) return;
-    const el = listRef.current?.querySelector<HTMLElement>(
-      `[data-sex="${id}"]`,
-    );
-    if (el)
-      requestAnimationFrame(() =>
-        el.scrollIntoView({ behavior, block: "start" }),
-      );
+    const el = listRef.current?.querySelector<HTMLElement>(`[data-sex="${id}"]`);
+    if (el) requestAnimationFrame(() => el.scrollIntoView({ behavior, block: "start" }));
   }
 
   // 1) Once, after the session first loads, jump to where you left off.
@@ -266,9 +255,7 @@ export default function WorkoutPage() {
    * and diverged from its prescription, offer save-back before the summary.
    */
   async function afterFinish() {
-    const ctx = await api<SaveBackContext | null>(
-      `/api/sessions/${sessionId}/save-back-context`,
-    );
+    const ctx = await api<SaveBackContext | null>(`/api/sessions/${sessionId}/save-back-context`);
     if (!ctx) return goSummary();
     const diff = diffSessionVsRoutine(ctx.prescription, ctx.performed);
     if (!diff.exercisesChanged && !diff.numbersChanged) return goSummary();
@@ -300,10 +287,9 @@ export default function WorkoutPage() {
   }
 
   async function finish() {
-    const { prs: found } = await api<{ prs: DetectedPR[] }>(
-      `/api/sessions/${sessionId}/finish`,
-      { method: "POST" },
-    );
+    const { prs: found } = await api<{ prs: DetectedPR[] }>(`/api/sessions/${sessionId}/finish`, {
+      method: "POST",
+    });
     queryClient.invalidateQueries({ queryKey: qk.sessions });
     queryClient.invalidateQueries({ queryKey: qk.activeSession });
     queryClient.invalidateQueries({ queryKey: qk.personalRecords });
@@ -326,10 +312,10 @@ export default function WorkoutPage() {
     if (target === "here" && sb.programDayId) {
       // Fork keeps the original name (no "(copy)") — it's this program's private
       // copy of the routine, not a user-visible duplicate.
-      const { id: copyId } = await api<{ id: string }>(
-        `/api/routines/${sb.routineId}/duplicate`,
-        { method: "POST", body: JSON.stringify({ name: sb.routineName }) },
-      );
+      const { id: copyId } = await api<{ id: string }>(`/api/routines/${sb.routineId}/duplicate`, {
+        method: "POST",
+        body: JSON.stringify({ name: sb.routineName }),
+      });
       if (copyId) {
         await api(`/api/program-days/${sb.programDayId}`, {
           method: "PUT",
@@ -355,16 +341,13 @@ export default function WorkoutPage() {
   }
 
   async function onAddExercise(exerciseId: string) {
-    const se = await api<{ id: string }>(
-      `/api/sessions/${sessionId}/exercises`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          exerciseId,
-          order: sessionExercises.length + 1,
-        }),
-      },
-    );
+    const se = await api<{ id: string }>(`/api/sessions/${sessionId}/exercises`, {
+      method: "POST",
+      body: JSON.stringify({
+        exerciseId,
+        order: sessionExercises.length + 1,
+      }),
+    });
     await api("/api/set-logs", {
       method: "POST",
       body: JSON.stringify({ sessionExerciseId: se.id, order: 1 }),
@@ -417,9 +400,7 @@ export default function WorkoutPage() {
       <main className="flex-1 p-4">
         {fetching && <p className="text-[var(--text-muted)]">Loading…</p>}
         {!fetching && sessionExercises.length === 0 && (
-          <p className="text-[var(--text-muted)]">
-            No exercises in this session.
-          </p>
+          <p className="text-[var(--text-muted)]">No exercises in this session.</p>
         )}
         <div ref={listRef}>
           {(() => {
@@ -429,22 +410,14 @@ export default function WorkoutPage() {
             const groups: SessionExerciseRow[][] = [];
             for (const se of ordered) {
               const run = groups[groups.length - 1];
-              if (
-                run &&
-                se.supersetGroup != null &&
-                run[0]!.supersetGroup === se.supersetGroup
-              ) {
+              if (run && se.supersetGroup != null && run[0]!.supersetGroup === se.supersetGroup) {
                 run.push(se);
               } else {
                 groups.push([se]);
               }
             }
 
-            const card = (
-              se: SessionExerciseRow,
-              inGroup: boolean,
-              startsRest: boolean,
-            ) => {
+            const card = (se: SessionExerciseRow, inGroup: boolean, startsRest: boolean) => {
               const i = ordered.indexOf(se);
               return (
                 <ExerciseCard
@@ -507,10 +480,7 @@ export default function WorkoutPage() {
         <PrCelebration
           prs={prs}
           nameById={Object.fromEntries(
-            sessionExercises.map((se) => [
-              se.exerciseId,
-              se.exercise?.name ?? "Exercise",
-            ]),
+            sessionExercises.map((se) => [se.exerciseId, se.exercise?.name ?? "Exercise"]),
           )}
           onClose={() => {
             setPrs(null);

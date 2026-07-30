@@ -83,10 +83,7 @@ export function ExerciseDemo({
           aria-label={`${alt} demonstration`}
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4"
         >
-          <div
-            className="relative w-full max-w-2xl"
-            style={{ height: "min(80vh, 90vw)" }}
-          >
+          <div className="relative w-full max-w-2xl" style={{ height: "min(80vh, 90vw)" }}>
             {layers("contain")}
           </div>
           <button

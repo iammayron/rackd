@@ -33,12 +33,7 @@ export interface ProgramTemplate {
 // The templates are authored against the readable legacy `ex_*` ids; the
 // hand-written seed they referenced is gone, so resolve each to its rich
 // free-exercise-db import (LEGACY_EXERCISE_MAP). Unmapped ids pass through.
-const e = (
-  exerciseId: string,
-  sets: number,
-  reps: number,
-  rest?: number,
-): TemplateExercise => ({
+const e = (exerciseId: string, sets: number, reps: number, rest?: number): TemplateExercise => ({
   exerciseId: LEGACY_EXERCISE_MAP[exerciseId] ?? exerciseId,
   sets,
   reps,

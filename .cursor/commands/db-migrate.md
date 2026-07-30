@@ -22,7 +22,7 @@ Steps:
 3. **Review the generated SQL before applying.** Show the new file's diff. Check for:
    - destructive ops (DROP COLUMN / TABLE, NOT NULL on an existing populated table without a default, type narrowing) — call these out explicitly, they can lose data;
    - FK actions (ON DELETE CASCADE / SET NULL) matching the prescription-vs-session and ownership intent;
-   - the migration only contains *this* change, nothing dragged in from local DB drift.
+   - the migration only contains _this_ change, nothing dragged in from local DB drift.
 4. **Apply to Postgres** (needs `DATABASE_URL`; local Supabase or the target):
    ```bash
    pnpm --filter @rackd/db db:push

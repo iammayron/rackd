@@ -135,9 +135,7 @@ export async function seedDemo(email = DEMO_EMAIL): Promise<void> {
   );
   const ownerId = found.rows[0]?.id;
   if (!ownerId) {
-    throw new Error(
-      `No auth user for ${email}. Sign up in the app first, then re-run.`,
-    );
+    throw new Error(`No auth user for ${email}. Sign up in the app first, then re-run.`);
   }
 
   const now = Date.now();

@@ -130,9 +130,9 @@ Replace Triplit's sync engine with a thin offline-first layer.
 // Pseudocode
 interface QueuedMutation {
   id: string;
-  url: string;         // e.g. "/api/sets"
+  url: string; // e.g. "/api/sets"
   method: "POST" | "PUT" | "DELETE";
-  body: string;        // JSON
+  body: string; // JSON
   createdAt: number;
 }
 
@@ -217,10 +217,10 @@ Replace the ~35 Triplit repository functions with Next.js API route handlers tha
 
 No code changes needed for the auth flow. Swap environment variables:
 
-| Variable | Old (self-hosted) | New (Supabase Cloud) |
-|----------|-------------------|----------------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | `http://box.tailXXX.ts.net:54321` | `https://xxxx.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | local anon key | cloud anon key |
+| Variable                        | Old (self-hosted)                 | New (Supabase Cloud)       |
+| ------------------------------- | --------------------------------- | -------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | `http://box.tailXXX.ts.net:54321` | `https://xxxx.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | local anon key                    | cloud anon key             |
 
 The `AuthProvider`, `signIn`, `signUp`, `signOut` — all unchanged. The Supabase JS client just points at a different URL.
 
@@ -235,6 +235,7 @@ The `AuthProvider`, `signIn`, `signUp`, `signOut` — all unchanged. The Supabas
 Replace MinIO with Tigris. Same S3 API, minimal code changes.
 
 **Provision:**
+
 ```bash
 fly storage create --name myfit-photos
 # Returns: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_ENDPOINT_URL_S3, BUCKET_NAME
@@ -244,13 +245,13 @@ fly storage create --name myfit-photos
 
 The existing manual SigV4 signing works as-is — just swap the credentials:
 
-| Env var | Old (MinIO) | New (Tigris) |
-|---------|-------------|--------------|
-| `S3_ENDPOINT` | `http://minio:9000` | Tigris endpoint from `fly storage create` |
+| Env var         | Old (MinIO)             | New (Tigris)                              |
+| --------------- | ----------------------- | ----------------------------------------- |
+| `S3_ENDPOINT`   | `http://minio:9000`     | Tigris endpoint from `fly storage create` |
 | `S3_PUBLIC_URL` | `http://box:9000/myfit` | `https://<bucket>.fly.storage.tigris.dev` |
-| `S3_BUCKET` | `myfit` | Tigris bucket name |
-| `S3_ACCESS_KEY` | MinIO root user | Tigris access key |
-| `S3_SECRET_KEY` | MinIO root password | Tigris secret key |
+| `S3_BUCKET`     | `myfit`                 | Tigris bucket name                        |
+| `S3_ACCESS_KEY` | MinIO root user         | Tigris access key                         |
+| `S3_SECRET_KEY` | MinIO root password     | Tigris secret key                         |
 
 **Public access:** Set the bucket policy to allow public reads (same as MinIO's `mc anonymous set download`), so `<img>` tags can load photos directly.
 
@@ -326,13 +327,13 @@ Note: `NEXT_PUBLIC_*` vars need to be available at build time. Set them as build
 
 ## 10. Estimated Monthly Cost
 
-| Resource | Configuration | Cost |
-|----------|---------------|------|
-| Web Machine | shared-cpu-1x, 512MB, auto-stop | ~$1–3 |
-| Supabase Cloud | Free tier (auth + Postgres, 500 MB) | $0 |
-| Tigris | Free tier (5GB, 100k reads) | $0 |
-| SSL | First 10 certs free | $0 |
-| **Total** | | **~$1–3/mo** |
+| Resource       | Configuration                       | Cost         |
+| -------------- | ----------------------------------- | ------------ |
+| Web Machine    | shared-cpu-1x, 512MB, auto-stop     | ~$1–3        |
+| Supabase Cloud | Free tier (auth + Postgres, 500 MB) | $0           |
+| Tigris         | Free tier (5GB, 100k reads)         | $0           |
+| SSL            | First 10 certs free                 | $0           |
+| **Total**      |                                     | **~$1–3/mo** |
 
 **Comparison to current setup:** Home box electricity + internet is "free" but requires hardware, Tailscale networking, and manual maintenance. Fly.io is fully managed with auto-deploy.
 
@@ -341,6 +342,7 @@ Note: `NEXT_PUBLIC_*` vars need to be available at build time. Set them as build
 ## 11. Migration Steps
 
 ### Phase 1: Infrastructure Setup (no code changes)
+
 1. Create Supabase Cloud project, configure auth settings (redirect URLs, providers)
 2. `fly launch` — create the Fly app
 3. Supabase Cloud Postgres — already provisioned with the auth project
@@ -349,12 +351,14 @@ Note: `NEXT_PUBLIC_*` vars need to be available at build time. Set them as build
 6. Set up GitHub Actions for auto-deploy
 
 ### Phase 2: Database Layer (biggest code change)
+
 1. Design Postgres schema (see §4.1), write Drizzle schema + migrations
 2. Create new `packages/db-pg` (or replace `packages/db`) with Drizzle client + repository functions matching the existing API surface
 3. Build all API route handlers (see §6)
 4. Add auth middleware — validate Supabase JWT, extract `ownerId`
 
 ### Phase 3: Client Rewrite
+
 1. Replace all `@triplit/client` usage with React Query hooks calling the new API routes
 2. Implement offline mutation queue (see §5)
 3. Set up `@tanstack/query-persist-client` for offline read cache
@@ -362,11 +366,13 @@ Note: `NEXT_PUBLIC_*` vars need to be available at build time. Set them as build
 5. Update `AuthProvider` — remove `client.startSession(accessToken)`, keep Supabase auth as-is
 
 ### Phase 4: Storage Swap
+
 1. Update `S3_*` env vars to point at Tigris
 2. Test profile photo upload/display
 3. Migrate existing photos from MinIO to Tigris (if needed — or start fresh)
 
 ### Phase 5: Cleanup
+
 1. Remove `apps/sync` entirely
 2. Remove `@triplit/client`, `@triplit/server`, `better-sqlite3` dependencies
 3. Remove Triplit schema from `packages/db`
@@ -374,6 +380,7 @@ Note: `NEXT_PUBLIC_*` vars need to be available at build time. Set them as build
 5. Update `CLAUDE.md`, `DEPLOY.md`, `README.md`
 
 ### Phase 6: Verify
+
 1. Test full flow: signup → create routine → run workout → log sets → finish → history
 2. Test offline: airplane mode mid-workout → log sets → reconnect → verify sync
 3. Test profile photo upload

@@ -49,9 +49,7 @@ export function SetRow({
   const confirm = useConfirm();
   const startTimer = useTimerStore((s) => s.start);
   const { unit, display, toKg } = useUnit();
-  const [weight, setWeight] = useState(
-    data.weight ? String(display(data.weight)) : "",
-  );
+  const [weight, setWeight] = useState(data.weight ? String(display(data.weight)) : "");
   const [reps, setReps] = useState(String(data.reps || ""));
   const [rpe, setRpe] = useState<number | undefined>(data.rpe);
   const [rpeOpen, setRpeOpen] = useState(false);
@@ -71,9 +69,7 @@ export function SetRow({
       wasEditing.current = false;
       const card = rowRef.current?.closest<HTMLElement>("[data-sex]");
       if (card) {
-        requestAnimationFrame(() =>
-          card.scrollIntoView({ behavior: "smooth", block: "nearest" }),
-        );
+        requestAnimationFrame(() => card.scrollIntoView({ behavior: "smooth", block: "nearest" }));
       }
     }
   }, [editing]);
@@ -104,8 +100,7 @@ export function SetRow({
   // Resync local state when the persisted value changes, but only when no write
   // of ours is pending. Keeps the canonical-kg → display conversion at the edge.
   useEffect(() => {
-    if (!weightWriting.current)
-      setWeight(data.weight ? String(display(data.weight)) : "");
+    if (!weightWriting.current) setWeight(data.weight ? String(display(data.weight)) : "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.weight, unit]);
   useEffect(() => {
@@ -203,9 +198,7 @@ export function SetRow({
       ref={rowRef}
       className={`flex items-center gap-2 py-2 ${data.completed ? "opacity-70" : ""}`}
     >
-      <span className="w-6 shrink-0 font-semibold text-[var(--text-muted)]">
-        {data.order}
-      </span>
+      <span className="w-6 shrink-0 font-semibold text-[var(--text-muted)]">{data.order}</span>
       <span className="w-16 shrink-0 text-sm text-[var(--text-muted)] truncate">
         {prevLabel ?? "—"}
       </span>
@@ -217,11 +210,7 @@ export function SetRow({
         aria-haspopup="dialog"
         className={CELL}
       >
-        {weight ? (
-          weight
-        ) : (
-          <span className="text-[var(--text-muted)]">{unit}</span>
-        )}
+        {weight ? weight : <span className="text-[var(--text-muted)]">{unit}</span>}
       </button>
 
       <button
@@ -246,11 +235,7 @@ export function SetRow({
             ? "text-[var(--text-on-accent)] border-transparent text-lg"
             : "bg-[var(--surface-2)] text-[var(--text-muted)] border-[var(--border)] text-xs"
         }`}
-        style={
-          rpe != null
-            ? { background: rpeColor(rpe) ?? "var(--accent)" }
-            : undefined
-        }
+        style={rpe != null ? { background: rpeColor(rpe) ?? "var(--accent)" } : undefined}
       >
         {rpe != null ? rpe : "RPE"}
       </button>
@@ -287,12 +272,7 @@ export function SetRow({
         onClose={() => setEditing(null)}
       />
 
-      <RpeSheet
-        open={rpeOpen}
-        value={rpe}
-        onChoose={chooseRpe}
-        onClose={() => setRpeOpen(false)}
-      />
+      <RpeSheet open={rpeOpen} value={rpe} onChoose={chooseRpe} onClose={() => setRpeOpen(false)} />
 
       <button
         type="button"

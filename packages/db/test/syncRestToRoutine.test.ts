@@ -37,10 +37,18 @@ const sessionExercises = (sessionId: string) =>
 describe("syncRestToRoutine (via finishSession)", () => {
   it("writes a single matched exercise's restSec back to the routine", async () => {
     const routine = await createRoutine({ ownerId: OWNER_A, name: "R" });
-    const re = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_bench", order: 1 });
+    const re = await addRoutineExercise({
+      routineId: routine.id,
+      exerciseId: "ex_bench",
+      order: 1,
+    });
     await updateRoutineExercise(re.id, { restSec: 120 });
 
-    const session = await startSessionFromRoutine({ routineId: routine.id, ownerId: OWNER_A, now: 1000 });
+    const session = await startSessionFromRoutine({
+      routineId: routine.id,
+      ownerId: OWNER_A,
+      now: 1000,
+    });
     const [se] = await sessionExercises(session.id);
     await updateSessionExercise(se!.id, { restSec: 45 });
 
@@ -53,12 +61,24 @@ describe("syncRestToRoutine (via finishSession)", () => {
   it("pairs duplicate routine slots by order so the edited slot updates", async () => {
     const routine = await createRoutine({ ownerId: OWNER_A, name: "R" });
     // Two bench slots with distinct rest values.
-    const first = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_bench", order: 1 });
-    const second = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_bench", order: 2 });
+    const first = await addRoutineExercise({
+      routineId: routine.id,
+      exerciseId: "ex_bench",
+      order: 1,
+    });
+    const second = await addRoutineExercise({
+      routineId: routine.id,
+      exerciseId: "ex_bench",
+      order: 2,
+    });
     await updateRoutineExercise(first.id, { restSec: 60 });
     await updateRoutineExercise(second.id, { restSec: 90 });
 
-    const session = await startSessionFromRoutine({ routineId: routine.id, ownerId: OWNER_A, now: 1000 });
+    const session = await startSessionFromRoutine({
+      routineId: routine.id,
+      ownerId: OWNER_A,
+      now: 1000,
+    });
     const ses = await sessionExercises(session.id);
     // Edit only the second (order 2) session exercise.
     await updateSessionExercise(ses[1]!.id, { restSec: 200 });
@@ -73,10 +93,18 @@ describe("syncRestToRoutine (via finishSession)", () => {
 
   it("does not write when rest is unchanged", async () => {
     const routine = await createRoutine({ ownerId: OWNER_A, name: "R" });
-    const re = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_bench", order: 1 });
+    const re = await addRoutineExercise({
+      routineId: routine.id,
+      exerciseId: "ex_bench",
+      order: 1,
+    });
     await updateRoutineExercise(re.id, { restSec: 120 });
 
-    const session = await startSessionFromRoutine({ routineId: routine.id, ownerId: OWNER_A, now: 1000 });
+    const session = await startSessionFromRoutine({
+      routineId: routine.id,
+      ownerId: OWNER_A,
+      now: 1000,
+    });
     // No edit to the session exercise; rest stays 120 on both sides.
 
     await finishSession(session.id, 2000);
@@ -87,12 +115,21 @@ describe("syncRestToRoutine (via finishSession)", () => {
 
   it("is a no-op for an ad-hoc session with no routineId", async () => {
     const routine = await createRoutine({ ownerId: OWNER_A, name: "R" });
-    const re = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_bench", order: 1 });
+    const re = await addRoutineExercise({
+      routineId: routine.id,
+      exerciseId: "ex_bench",
+      order: 1,
+    });
     await updateRoutineExercise(re.id, { restSec: 120 });
 
     // Ad-hoc session: not started from the routine, no routineId link.
     const session = await startSession({ ownerId: OWNER_A, name: "Ad-hoc", now: 1000 });
-    const se = await addSessionExercise({ sessionId: session.id, exerciseId: "ex_bench", order: 1, restSec: 30 });
+    const se = await addSessionExercise({
+      sessionId: session.id,
+      exerciseId: "ex_bench",
+      order: 1,
+      restSec: 30,
+    });
     await updateSessionExercise(se.id, { restSec: 30 });
 
     await finishSession(session.id, 2000);

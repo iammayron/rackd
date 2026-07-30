@@ -70,8 +70,16 @@ describe("API route response shapes + status codes", () => {
 
   it("GET /api/sessions/[id] returns the nested {exercises:[{exercise,sets}]} tree, ordered", async () => {
     const session = await startSession({ ownerId: A, name: "Workout", now: Date.now() });
-    const se1 = await addSessionExercise({ sessionId: session.id, exerciseId: "ex_bench", order: 1 });
-    const se2 = await addSessionExercise({ sessionId: session.id, exerciseId: "ex_squat", order: 2 });
+    const se1 = await addSessionExercise({
+      sessionId: session.id,
+      exerciseId: "ex_bench",
+      order: 1,
+    });
+    const se2 = await addSessionExercise({
+      sessionId: session.id,
+      exerciseId: "ex_squat",
+      order: 2,
+    });
     // Two logged sets on bench, inserted out of order.
     await logSet({ sessionExerciseId: se1.id, order: 2, weight: 60, reps: 8 });
     await logSet({ sessionExerciseId: se1.id, order: 1, weight: 50, reps: 10 });
@@ -112,7 +120,12 @@ describe("API route response shapes + status codes", () => {
     const r = await createRoutine({ ownerId: A, name: "Push" });
     const program = await createProgram({ ownerId: A, name: "PPL" });
     // Day 1 has a routine; day 2 is a Rest day (no routineId).
-    const d1 = await addProgramDay({ programId: program.id, order: 1, name: "Push", routineId: r.id });
+    const d1 = await addProgramDay({
+      programId: program.id,
+      order: 1,
+      name: "Push",
+      routineId: r.id,
+    });
     const d2 = await addProgramDay({ programId: program.id, order: 2, name: "Rest" });
 
     const res = await programByIdGET(
@@ -195,7 +208,10 @@ describe("API route response shapes + status codes", () => {
 
     // One unfinished session → that row.
     const session = await startSession({ ownerId: A, name: "Live", now: Date.now() });
-    const active = await activeSessionGET(authedRequest("http://t/api/sessions/active", A), ctx({}));
+    const active = await activeSessionGET(
+      authedRequest("http://t/api/sessions/active", A),
+      ctx({}),
+    );
     const body = await active.json();
     expect(body).not.toBeNull();
     expect(body.id).toBe(session.id);
@@ -204,7 +220,11 @@ describe("API route response shapes + status codes", () => {
 
   it("POST /api/set-logs with completed:true takes the logSet branch (completed row)", async () => {
     const session = await startSession({ ownerId: A, name: "Workout", now: Date.now() });
-    const se = await addSessionExercise({ sessionId: session.id, exerciseId: "ex_bench", order: 1 });
+    const se = await addSessionExercise({
+      sessionId: session.id,
+      exerciseId: "ex_bench",
+      order: 1,
+    });
 
     const res = await setLogsPOST(
       authedRequest("http://t/api/set-logs", A, {
@@ -230,7 +250,11 @@ describe("API route response shapes + status codes", () => {
 
   it("POST /api/set-logs without completed takes the addSet branch (empty, completed:false)", async () => {
     const session = await startSession({ ownerId: A, name: "Workout", now: Date.now() });
-    const se = await addSessionExercise({ sessionId: session.id, exerciseId: "ex_squat", order: 1 });
+    const se = await addSessionExercise({
+      sessionId: session.id,
+      exerciseId: "ex_squat",
+      order: 1,
+    });
 
     const res = await setLogsPOST(
       authedRequest("http://t/api/set-logs", A, {

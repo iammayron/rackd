@@ -25,7 +25,12 @@ export function Badge({ children, tone = "neutral", solid = false, style, ...res
     danger: { fg: "var(--danger)", bg: "color-mix(in srgb, var(--danger) 16%, transparent)" },
   };
   const t = tones[tone] ?? tones.neutral;
-  const solidFg = tone === "success" ? "var(--success-ink)" : tone === "accent" ? "var(--text-on-accent)" : "#fff";
+  const solidFg =
+    tone === "success"
+      ? "var(--success-ink)"
+      : tone === "accent"
+        ? "var(--text-on-accent)"
+        : "#fff";
   const solidBg = `var(--${tone === "neutral" ? "text-muted" : tone === "accent" ? "accent" : tone})`;
   return (
     <span

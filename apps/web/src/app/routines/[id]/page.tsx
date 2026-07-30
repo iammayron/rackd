@@ -101,9 +101,7 @@ function RoutineEditor() {
       const details = await Promise.all(
         programs.map((p) => api<ProgramDetail>(`/api/programs/${p.id}`)),
       );
-      return details
-        .flatMap((p) => p.days)
-        .filter((d) => d.routineId === routineId);
+      return details.flatMap((p) => p.days).filter((d) => d.routineId === routineId);
     },
   });
 
@@ -238,10 +236,9 @@ function RoutineEditor() {
   }
 
   async function duplicate() {
-    const { id: newId } = await api<{ id: string }>(
-      `/api/routines/${routineId}/duplicate`,
-      { method: "POST" },
-    );
+    const { id: newId } = await api<{ id: string }>(`/api/routines/${routineId}/duplicate`, {
+      method: "POST",
+    });
     queryClient.invalidateQueries({ queryKey: qk.routines });
     if (newId) router.push(`/routines/${newId}`);
   }

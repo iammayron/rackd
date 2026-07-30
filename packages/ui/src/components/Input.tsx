@@ -15,7 +15,16 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
  * Text / number input. Large 44px target, surface-2 fill, coral focus ring.
  * `align` center is used for the weight/reps set cells. `suffix` shows a unit.
  */
-export function Input({ align = "left", suffix, style, wrapStyle, className, onFocus, onBlur, ...rest }: InputProps) {
+export function Input({
+  align = "left",
+  suffix,
+  style,
+  wrapStyle,
+  className,
+  onFocus,
+  onBlur,
+  ...rest
+}: InputProps) {
   const [focus, setFocus] = React.useState(false);
   return (
     <div style={{ position: "relative", display: "flex", alignItems: "center", ...wrapStyle }}>
@@ -44,7 +53,8 @@ export function Input({ align = "left", suffix, style, wrapStyle, className, onF
           outline: "none",
           boxShadow: focus ? "0 0 0 2px var(--ring)" : "none",
           borderColor: focus ? "var(--accent)" : "var(--border)",
-          transition: "box-shadow var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out)",
+          transition:
+            "box-shadow var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out)",
           fontVariantNumeric: "tabular-nums",
           ...style,
         }}

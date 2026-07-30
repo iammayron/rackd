@@ -41,28 +41,28 @@ keeping schema ⇄ `@rackd/core` types in sync), `/test-author` / `/test-auditor
 ### Auth (Supabase Cloud)
 
 - Supabase Cloud issues the JWTs; the client is unchanged. Web env:
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (baked at build).
+  `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (baked at build).
 - The app is auth-gated (no anonymous use). After login `AuthProvider` holds the
-Supabase session; the `api()` helper attaches `Authorization: Bearer <access_token>`
-to every request. `getCurrentUserId()` = Supabase user id (client-side reads).
+  Supabase session; the `api()` helper attaches `Authorization: Bearer <access_token>`
+  to every request. `getCurrentUserId()` = Supabase user id (client-side reads).
 - API routes validate that token server-side via `SUPABASE_SERVICE_ROLE_KEY`
-(`lib/api-auth.ts` → `getAuthUser` / `withUser`), derive `ownerId` from the
-token's `sub`, and scope every query by `ownerId`. The exercise + sharedRoutines
-libraries are the public exceptions (world-readable, owner-writable).
+  (`lib/api-auth.ts` → `getAuthUser` / `withUser`), derive `ownerId` from the
+  token's `sub`, and scope every query by `ownerId`. The exercise + sharedRoutines
+  libraries are the public exceptions (world-readable, owner-writable).
 - No Triplit signing-key dance, no RS256/HS256 JWK, no `SUPABASE_JWT_SECRET`.
 
 ### Data layer
 
 - **Drizzle ORM → Supabase Postgres.** `packages/db` owns the schema and the
-repository functions; nothing else touches `pg` (single pool in `db.ts`).
+  repository functions; nothing else touches `pg` (single pool in `db.ts`).
 - **Reads/writes go through Next API route handlers** under
-`apps/web/src/app/api/**` (~43 routes). The client never calls the DB — it calls
-`api()` (`lib/api.ts`) wrapped in **React Query** (`lib/query.ts`, central `qk`
-key registry). The query cache is persisted to IndexedDB for offline reads; a
-write that fails offline is queued in IndexedDB (`lib/offline-queue.ts`) and
-flushed FIFO on reconnect.
+  `apps/web/src/app/api/**` (~43 routes). The client never calls the DB — it calls
+  `api()` (`lib/api.ts`) wrapped in **React Query** (`lib/query.ts`, central `qk`
+  key registry). The query cache is persisted to IndexedDB for offline reads; a
+  write that fails offline is queued in IndexedDB (`lib/offline-queue.ts`) and
+  flushed FIFO on reconnect.
 - `apps/push` polls Postgres (`getPendingPushes()`) to deliver scheduled web-push
-notifications (needs `DATABASE_URL` + VAPID env). No Triplit anywhere.
+  notifications (needs `DATABASE_URL` + VAPID env). No Triplit anywhere.
 
 ## Architecture
 

@@ -14,7 +14,8 @@ export const GET = withUser(async (ownerId, _req, ctx) => {
   const { id } = await ctx.params;
   const row = await getExerciseDetail(id);
   if (!row) return Response.json({ error: "Not found" }, { status: 404 });
-  if (row.ownerId && row.ownerId !== ownerId) return Response.json({ error: "Forbidden" }, { status: 403 });
+  if (row.ownerId && row.ownerId !== ownerId)
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   return Response.json(row);
 });
 

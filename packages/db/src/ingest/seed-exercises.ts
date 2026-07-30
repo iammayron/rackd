@@ -24,7 +24,9 @@ const chunk = <T>(arr: T[], size: number): T[][] => {
   return out;
 };
 
-export async function seedExercisesFromSource(opts: { limit?: number; dryRun?: boolean } = {}): Promise<void> {
+export async function seedExercisesFromSource(
+  opts: { limit?: number; dryRun?: boolean } = {},
+): Promise<void> {
   const raw = await readFile(sourceFile("free-exercise-db"), "utf8").catch(() => {
     throw new Error("Source not cached. Run `pnpm --filter @rackd/db ingest:fetch` first.");
   });
@@ -142,7 +144,8 @@ export async function seedExercisesFromSource(opts: { limit?: number; dryRun?: b
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const limit = Number(process.argv.find((a) => a.startsWith("--limit="))?.split("=")[1]) || undefined;
+  const limit =
+    Number(process.argv.find((a) => a.startsWith("--limit="))?.split("=")[1]) || undefined;
   const dryRun = process.argv.includes("--dry-run");
   seedExercisesFromSource({ limit, dryRun })
     .then(() => process.exit(0))

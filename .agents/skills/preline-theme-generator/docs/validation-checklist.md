@@ -1,6 +1,7 @@
 # Validation checklist (must self-check before returning)
 
 ## Final source style
+
 - [ ] Only one project file is created or edited: `<name>.css`
 - [ ] The final file is a production-style `<name>.css` file
 - [ ] `@theme theme-<name> inline { }` is present
@@ -10,6 +11,7 @@
 - [ ] No raw `oklch(...)` or literal hex values remain in semantic, chart, or map token assignments in the final theme file
 
 ## Structure
+
 - [ ] Theme key consistent: `theme-<name>` everywhere
 - [ ] Light selector uses `:root[data-theme=...]`, `[data-theme=...]`
 - [ ] Dark selector is `[data-theme="theme-<name>"].dark`
@@ -17,17 +19,20 @@
 - [ ] No requirement to change HTML utility classes (only `data-theme`, optional `.dark`)
 
 ## Palette strategy
+
 - [ ] Primary ramp maps `--primary-*` directly to theme-local palette vars
 - [ ] Neutral/background tokens use assigned palette vars
 - [ ] If a new custom palette is needed, it is declared inside the new theme file's `@theme` block, not by editing another file
 
 ## Token coverage
+
 - [ ] Full coverage present across global tokens, states, and major component groups
 - [ ] CSS syntax valid (balanced braces, no broken comments)
 - [ ] If behavior overrides exist, they are theme-scoped only
 - [ ] Chart/map tokens use variable references matching shipped theme patterns
 
 ## Dark mode consistency
+
 - [ ] Dark mode uses CSS variables (`var(--color-*)`) not hardcoded color literals
 - [ ] Dark mode uses one consistent grayscale family unless there is a deliberate, reference-backed reason not to
 - [ ] Hover/focus/active states remain readable and distinguishable

@@ -40,10 +40,7 @@ export default function ExerciseDetailPage() {
       </header>
 
       <main className="flex-1 px-4 pt-2 pb-24">
-        <ExerciseDetail
-          id={id}
-          onSelectExercise={(next) => router.push(`/exercise/${next}`)}
-        />
+        <ExerciseDetail id={id} onSelectExercise={(next) => router.push(`/exercise/${next}`)} />
       </main>
     </div>
   );

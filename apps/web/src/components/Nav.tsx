@@ -9,7 +9,11 @@ import { usePathname } from "next/navigation";
 // Progress is the hub for history + PRs/weight.
 const items = [
   { href: "/", label: "Home", match: (p: string) => p === "/" },
-  { href: "/programs", label: "Plans", match: (p: string) => p.startsWith("/programs") || p.startsWith("/routines") },
+  {
+    href: "/programs",
+    label: "Plans",
+    match: (p: string) => p.startsWith("/programs") || p.startsWith("/routines"),
+  },
   { href: "/exercises", label: "Exercises", match: (p: string) => p.startsWith("/exercise") },
   { href: "/history", label: "Progress", match: (p: string) => p.startsWith("/history") },
 ];

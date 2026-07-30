@@ -15,7 +15,7 @@ The kit is a **MyFit → Rackd rebrand + feature expansion**. Two facts shape th
    `/history` + `/history/[id]`, `/workout/[id]`, `/discover`, `/settings`. Quick
    ad-hoc workout already ships (dashboard picker → session). So **~70% of the kit is
    restyle + reorganize**, not greenfield.
-2. **Do not copy the kit's mock data model.** `data.js` references routines by *name*
+2. **Do not copy the kit's mock data model.** `data.js` references routines by _name_
    and keys overrides by string — mock convenience. Adopt the kit's **UX**; map it onto
    the real ID-based `@myfit/core` types + `@myfit/db` repos.
 
@@ -33,14 +33,14 @@ Genuinely-new surfaces: exercise **detail page**, **workout summary + share card
 
 ## Brand deltas (kit vs today)
 
-| | Today (MyFit) | Kit (Rackd) |
-|---|---|---|
-| Theme | dark-first via `prefers-color-scheme` | **light default** via `[data-theme]` attribute + JS controller |
-| Accent | blue `#4f7cff` | **coral `#ff5a3c`** (both themes; `#ff6b4d` on dark) |
-| Font | system stack | **Hanken Grotesk** 400–800, `tabular-nums` on metrics |
-| Radii | 6/10/16 | 8/12/16/24/28/pill |
-| Shadows | flat | soft warm + `--shadow-accent` coral glow |
-| Signature | — | **rep ring** (rest timer + logo motif) |
+|           | Today (MyFit)                         | Kit (Rackd)                                                    |
+| --------- | ------------------------------------- | -------------------------------------------------------------- |
+| Theme     | dark-first via `prefers-color-scheme` | **light default** via `[data-theme]` attribute + JS controller |
+| Accent    | blue `#4f7cff`                        | **coral `#ff5a3c`** (both themes; `#ff6b4d` on dark)           |
+| Font      | system stack                          | **Hanken Grotesk** 400–800, `tabular-nums` on metrics          |
+| Radii     | 6/10/16                               | 8/12/16/24/28/pill                                             |
+| Shadows   | flat                                  | soft warm + `--shadow-accent` coral glow                       |
+| Signature | —                                     | **rep ring** (rest timer + logo motif)                         |
 
 ---
 
@@ -57,6 +57,7 @@ Genuinely-new surfaces: exercise **detail page**, **workout summary + share card
 - **Phase 7 — done**: reduced-motion, tabular-nums sweep, focus rings, tap-target audit.
 
 ## Open (external / optional)
+
 - Real exercise photos/clips — schema fields ready; gradient placeholders until assets exist.
 - `cues: string[]` on `Exercise` — kit had it; type doesn't. Add if wanted (then the detail "form cues" card).
 - Share from the Progress tab (Phase 6 surfaced only from the summary).
@@ -68,6 +69,7 @@ Each phase is independently shippable. 0 is pure foundation; 5 is the only one n
 schema changes + a sync-server restart.
 
 ### Phase 0 — Brand foundations + rename (no behavior change)
+
 - Replace `packages/ui/src/tokens.css` with the full Rackd token set: colors (light
   default + `[data-theme="dark"]`), typography scale + weights + `--num`, effects
   (radii, soft warm shadows, `--shadow-accent`), spacing, motion.
@@ -81,6 +83,7 @@ schema changes + a sync-server restart.
 - Gate (`pnpm typecheck && pnpm test`); visual sanity light + dark.
 
 ### Phase 1 — Rackd component layer (`packages/ui`)
+
 - Build kit primitives as React/Tailwind components: Button, Card, Badge, Avatar,
   Input, SegmentedControl, StatTile, ProgressBar, SelectableRow, TabBar,
   **RestTimerRing** (signature), SetRow.
@@ -88,6 +91,7 @@ schema changes + a sync-server restart.
 - Add a test alongside any new pure helper.
 
 ### Phase 2 — IA / navigation + screen restyle
+
 - 5 tabs → 3: **Home** (`/`), **Plans** (`/programs`, folds in routines + templates),
   **Progress** (`/history`, folds in PRs + weight). Settings via header gear;
   `/discover` → Templates surface.
@@ -96,6 +100,7 @@ schema changes + a sync-server restart.
 - Restyle Routines, Programs, History, Settings onto the new components.
 
 ### Phase 3 — Live workout overhaul
+
 - Lift workout state into a shell/provider so it survives navigation → **MiniWorkoutBar**
   (minimize/resume); workout stays mounted, not unmounted.
 - **Workout summary** screen on finish (volume, PRs, duration, sets).
@@ -106,6 +111,7 @@ schema changes + a sync-server restart.
   the RPE chip on SetRow (fields already exist).
 
 ### Phase 4 — Exercise system
+
 - **Exercise detail page** (route): image/clip, **muscle visualizer** (primary +
   secondary), instructions + cues. Reachable from any exercise name. (Add `cues` to the
   `Exercise` type or fold into `instructions`.)
@@ -117,6 +123,7 @@ schema changes + a sync-server restart.
 - Dedicated **PRs list** screen.
 
 ### Phase 5 — Programs, schedules, templates, overrides, supersets (schema work)
+
 - Add **schedule** to programs (rotation / weekly maps); Dashboard "today's workout"
   reads it. Program detail screen.
 - **Templates** browse + adopt (db fns exist) → copies routines, creates a scheduled
@@ -129,14 +136,17 @@ schema changes + a sync-server restart.
   CLAUDE.md gotcha).
 
 ### Phase 6 — Share
+
 - Summary → shareable **image** (html-to-canvas of a ShareCard) + text via the Web Share
   API. Also reachable from the Progress tab.
 
 ### Phase 7 — Polish / PWA / a11y
+
 - Reduced-motion, 2px coral focus rings, 44px-target audit, `tabular-nums` on all
   metrics, service-worker media caching for exercise clips, finalize theme toggle.
 
 ## Open flags
+
 - Real exercise photo/video assets (Phase 4) — kit uses placeholder gradients.
-- Lucide icon library is a kit *recommendation*, not present in source — confirm before
+- Lucide icon library is a kit _recommendation_, not present in source — confirm before
   adopting.

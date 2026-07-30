@@ -42,11 +42,19 @@ describe("startSessionFromRoutine (deep-copy plan → live session)", () => {
 
   it("carries supersetGroup and restSec onto session exercises", async () => {
     const routine = await createRoutine({ ownerId: OWNER_A, name: "R" });
-    const re = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_bench", order: 1 });
+    const re = await addRoutineExercise({
+      routineId: routine.id,
+      exerciseId: "ex_bench",
+      order: 1,
+    });
     await setRoutineExerciseSuperset(re.id, 7);
     await updateRoutineExercise(re.id, { restSec: 90 });
 
-    const session = await startSessionFromRoutine({ routineId: routine.id, ownerId: OWNER_A, now: 1000 });
+    const session = await startSessionFromRoutine({
+      routineId: routine.id,
+      ownerId: OWNER_A,
+      now: 1000,
+    });
 
     const [se] = await sessionExercises(session.id);
     expect(se!.supersetGroup).toBe(7);
@@ -55,8 +63,16 @@ describe("startSessionFromRoutine (deep-copy plan → live session)", () => {
 
   it("carries barType onto session exercises and defaults to standard", async () => {
     const routine = await createRoutine({ ownerId: OWNER_A, name: "R" });
-    const def = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_squat", order: 1 });
-    const ez = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_bench", order: 2 });
+    const def = await addRoutineExercise({
+      routineId: routine.id,
+      exerciseId: "ex_squat",
+      order: 1,
+    });
+    const ez = await addRoutineExercise({
+      routineId: routine.id,
+      exerciseId: "ex_bench",
+      order: 2,
+    });
     await updateRoutineExercise(ez.id, { barType: "ezbar" });
 
     // updateRoutineExercise persisted the override on the plan…
@@ -68,7 +84,11 @@ describe("startSessionFromRoutine (deep-copy plan → live session)", () => {
     expect(def.barType).toBe("standard"); // column default on insert
 
     // …and it copies through to the live session.
-    const session = await startSessionFromRoutine({ routineId: routine.id, ownerId: OWNER_A, now: 1000 });
+    const session = await startSessionFromRoutine({
+      routineId: routine.id,
+      ownerId: OWNER_A,
+      now: 1000,
+    });
     const ses = await sessionExercises(session.id);
     expect(ses.find((s) => s.exerciseId === "ex_squat")!.barType).toBe("standard");
     expect(ses.find((s) => s.exerciseId === "ex_bench")!.barType).toBe("ezbar");
@@ -76,11 +96,19 @@ describe("startSessionFromRoutine (deep-copy plan → live session)", () => {
 
   it("copies routineSets to setLogs with targets, completed=false", async () => {
     const routine = await createRoutine({ ownerId: OWNER_A, name: "R" });
-    const re = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_bench", order: 1 });
+    const re = await addRoutineExercise({
+      routineId: routine.id,
+      exerciseId: "ex_bench",
+      order: 1,
+    });
     await addRoutineSet({ routineExerciseId: re.id, order: 1, targetReps: 5, targetWeight: 100 });
     await addRoutineSet({ routineExerciseId: re.id, order: 2, targetReps: 8, targetWeight: 80 });
 
-    const session = await startSessionFromRoutine({ routineId: routine.id, ownerId: OWNER_A, now: 1000 });
+    const session = await startSessionFromRoutine({
+      routineId: routine.id,
+      ownerId: OWNER_A,
+      now: 1000,
+    });
 
     const [se] = await sessionExercises(session.id);
     const logs = await setLogs(se!.id);
@@ -93,11 +121,19 @@ describe("startSessionFromRoutine (deep-copy plan → live session)", () => {
 
   it("defaults weight/reps to 0 when targets are null", async () => {
     const routine = await createRoutine({ ownerId: OWNER_A, name: "R" });
-    const re = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_bench", order: 1 });
+    const re = await addRoutineExercise({
+      routineId: routine.id,
+      exerciseId: "ex_bench",
+      order: 1,
+    });
     // No targetReps / targetWeight => both null on the routine set.
     await addRoutineSet({ routineExerciseId: re.id, order: 1 });
 
-    const session = await startSessionFromRoutine({ routineId: routine.id, ownerId: OWNER_A, now: 1000 });
+    const session = await startSessionFromRoutine({
+      routineId: routine.id,
+      ownerId: OWNER_A,
+      now: 1000,
+    });
 
     const [se] = await sessionExercises(session.id);
     const logs = await setLogs(se!.id);
@@ -109,7 +145,11 @@ describe("startSessionFromRoutine (deep-copy plan → live session)", () => {
   it("empty routine yields a session with no exercises", async () => {
     const routine = await createRoutine({ ownerId: OWNER_A, name: "Empty" });
 
-    const session = await startSessionFromRoutine({ routineId: routine.id, ownerId: OWNER_A, now: 1000 });
+    const session = await startSessionFromRoutine({
+      routineId: routine.id,
+      ownerId: OWNER_A,
+      now: 1000,
+    });
 
     expect(session.name).toBe("Empty");
     expect(session.routineId).toBe(routine.id);

@@ -126,11 +126,11 @@ export default function ExercisesPage() {
                   <Card style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <ExerciseThumb ex={ex} size={44} />
                     <span className="min-w-0 flex-1">
-                      <span className="block font-bold text-[var(--text)] truncate">
-                        {ex.name}
-                      </span>
+                      <span className="block font-bold text-[var(--text)] truncate">{ex.name}</span>
                       <span className="block text-sm text-[var(--text-muted)] truncate">
-                        {ex.equipment ? `${cap(ex.primaryMuscle)} · ${cap(ex.equipment)}` : cap(ex.primaryMuscle)}
+                        {ex.equipment
+                          ? `${cap(ex.primaryMuscle)} · ${cap(ex.equipment)}`
+                          : cap(ex.primaryMuscle)}
                       </span>
                     </span>
                     <span className="text-[var(--text-muted)]">›</span>

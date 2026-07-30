@@ -60,9 +60,7 @@ export function AddExercisePicker({
     );
   }, [exercises, search, muscle, equipment, existing]);
 
-  const previewName = previewId
-    ? exercises.find((e) => e.id === previewId)?.name
-    : undefined;
+  const previewName = previewId ? exercises.find((e) => e.id === previewId)?.name : undefined;
 
   function close() {
     setOpen(false);

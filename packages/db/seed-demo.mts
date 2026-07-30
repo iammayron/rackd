@@ -240,7 +240,11 @@ async function seedRoutine() {
  * meta and the per-day category tag.
  */
 async function seedPrograms() {
-  type SeededRoutine = { category: string; name: string; lifts: { ex: string; reps: number; weight: number }[] };
+  type SeededRoutine = {
+    category: string;
+    name: string;
+    lifts: { ex: string; reps: number; weight: number }[];
+  };
   type SeededProgram = {
     key: string;
     name: string;

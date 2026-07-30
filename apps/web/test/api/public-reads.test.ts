@@ -1,5 +1,12 @@
 import { beforeEach, describe, it, expect } from "vitest";
-import { createRoutine, addRoutineExercise, addRoutineSet, publishRoutine, db, schema } from "@rackd/db";
+import {
+  createRoutine,
+  addRoutineExercise,
+  addRoutineSet,
+  publishRoutine,
+  db,
+  schema,
+} from "@rackd/db";
 import { eq } from "drizzle-orm";
 import { resetDb, authedRequest, ctx } from "../db-helper";
 import { GET as exercisesGet, POST as exercisesPost } from "@/app/api/exercises/route";
@@ -14,7 +21,10 @@ const { routines } = schema;
 /** Create a custom exercise owned by `ownerId` via the real POST route; return its id. */
 async function createCustomExercise(ownerId: string, name: string): Promise<string> {
   const res = await exercisesPost(
-    authedRequest(`http://t/api/exercises`, ownerId, { method: "POST", body: JSON.stringify({ name }) }),
+    authedRequest(`http://t/api/exercises`, ownerId, {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
     ctx({}),
   );
   expect(res.status).toBe(201);
@@ -57,9 +67,18 @@ describe("public / shared reads", () => {
   it("GET /api/shared-routines returns the public catalog to any authed user", async () => {
     // A publishes a routine into the shared catalog.
     const routine = await createRoutine({ ownerId: A, name: "PPL" });
-    const re = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_bench", order: 1 });
+    const re = await addRoutineExercise({
+      routineId: routine.id,
+      exerciseId: "ex_bench",
+      order: 1,
+    });
     await addRoutineSet({ routineExerciseId: re.id, order: 1, targetReps: 5, targetWeight: 100 });
-    const shared = await publishRoutine({ routineId: routine.id, ownerId: A, authorName: "A", now: Date.now() });
+    const shared = await publishRoutine({
+      routineId: routine.id,
+      ownerId: A,
+      authorName: "A",
+      now: Date.now(),
+    });
     expect(shared).not.toBeNull();
 
     // B (a different user) sees the catalog entry.
@@ -77,9 +96,18 @@ describe("public / shared reads", () => {
   it("POST /api/shared-routines/[id]/clone works for ANY authed user → creates a routine owned by the caller", async () => {
     // A publishes; B clones it.
     const routine = await createRoutine({ ownerId: A, name: "PPL" });
-    const re = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_bench", order: 1 });
+    const re = await addRoutineExercise({
+      routineId: routine.id,
+      exerciseId: "ex_bench",
+      order: 1,
+    });
     await addRoutineSet({ routineExerciseId: re.id, order: 1, targetReps: 5, targetWeight: 100 });
-    const shared = await publishRoutine({ routineId: routine.id, ownerId: A, authorName: "A", now: Date.now() });
+    const shared = await publishRoutine({
+      routineId: routine.id,
+      ownerId: A,
+      authorName: "A",
+      now: Date.now(),
+    });
 
     const res = await sharedClone(
       authedRequest(`http://t/api/shared-routines/${shared!.id}/clone`, B, { method: "POST" }),

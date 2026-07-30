@@ -9,11 +9,7 @@ const { routineExercises } = schema;
 /** POST /api/routine-exercises/[id]/replace — swap an owned slot's library exercise. */
 export const POST = withUser(async (ownerId, req, ctx) => {
   const { id } = await ctx.params;
-  const [re] = await db
-    .select()
-    .from(routineExercises)
-    .where(eq(routineExercises.id, id))
-    .limit(1);
+  const [re] = await db.select().from(routineExercises).where(eq(routineExercises.id, id)).limit(1);
   if (!re) return Response.json({ error: "Not found" }, { status: 404 });
   if (re.ownerId !== ownerId) return Response.json({ error: "Forbidden" }, { status: 403 });
 

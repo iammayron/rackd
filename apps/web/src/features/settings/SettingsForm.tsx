@@ -385,15 +385,11 @@ export function SettingsForm() {
           <Avatar src={photoUrl || null} name={name} size={64} />
           <div className="min-w-0 flex-1 space-y-2">
             <div>
-              <p className="truncate text-lg font-bold text-[var(--text)]">
-                {name || "Your name"}
-              </p>
+              <p className="truncate text-lg font-bold text-[var(--text)]">{name || "Your name"}</p>
               {user?.email && (
                 <p className="mb-2 truncate text-sm text-[var(--text-muted)]">{user.email}</p>
               )}
-              <p className="text-sm text-[var(--text-muted)]">
-                JPEG, PNG or WebP · up to 5 MB
-              </p>
+              <p className="text-sm text-[var(--text-muted)]">JPEG, PNG or WebP · up to 5 MB</p>
             </div>
             <input
               ref={fileInput}
@@ -447,11 +443,7 @@ export function SettingsForm() {
           </Field>
 
           <Field label="Name">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
-            />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
@@ -619,8 +611,8 @@ export function SettingsForm() {
           Danger zone
         </p>
         <p className="mb-3 text-sm text-[var(--text-muted)]">
-          Permanently delete your account and all your workouts, programs, and
-          history. This can’t be undone. Type <strong>DELETE</strong> to confirm.
+          Permanently delete your account and all your workouts, programs, and history. This can’t
+          be undone. Type <strong>DELETE</strong> to confirm.
         </p>
         <div className="space-y-3">
           <Input

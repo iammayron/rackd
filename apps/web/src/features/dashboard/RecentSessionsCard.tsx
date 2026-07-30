@@ -77,10 +77,7 @@ export function RecentSessionsCard({ showViewAll = true }: { showViewAll?: boole
           Recent sessions
         </h2>
         {showViewAll && sessions.length > 0 && (
-          <Link
-            href="/history"
-            className="text-sm font-semibold text-[var(--accent)] no-underline"
-          >
+          <Link href="/history" className="text-sm font-semibold text-[var(--accent)] no-underline">
             View all
           </Link>
         )}
@@ -112,7 +109,9 @@ export function RecentSessionsCard({ showViewAll = true }: { showViewAll?: boole
                       </span>
                     )}
                   </div>
-                  <div className="mt-0.5 text-sm text-[var(--text-muted)]">{fmtDate(s.startedAt)}</div>
+                  <div className="mt-0.5 text-sm text-[var(--text-muted)]">
+                    {fmtDate(s.startedAt)}
+                  </div>
                 </Link>
 
                 {vol !== undefined && vol > 0 && (

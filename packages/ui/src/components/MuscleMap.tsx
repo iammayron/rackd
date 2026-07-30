@@ -44,8 +44,7 @@ const RBH_TO_GROUP: Record<string, string> = {
   "right-soleus": "calves",
 };
 
-export interface MuscleMapProps
-  extends Omit<React.SVGProps<SVGSVGElement>, "primary"> {
+export interface MuscleMapProps extends Omit<React.SVGProps<SVGSVGElement>, "primary"> {
   /** Primary mover (full-intensity highlight). */
   primary: string;
   /** Assisting groups (reduced-intensity highlight). */
@@ -54,13 +53,7 @@ export interface MuscleMapProps
   size?: number;
 }
 
-export function MuscleMap({
-  primary,
-  secondary = [],
-  size = 104,
-  style,
-  ...rest
-}: MuscleMapProps) {
+export function MuscleMap({ primary, secondary = [], size = 104, style, ...rest }: MuscleMapProps) {
   const p = (primary ?? "").toLowerCase();
   const sec = new Set(secondary.filter(Boolean).map((m) => m.toLowerCase()));
   const full = p === "fullbody";
@@ -78,8 +71,7 @@ export function MuscleMap({
       {data.map((region) => {
         const group = RBH_TO_GROUP[region.muscle];
         const role = roleFor(group);
-        const fill =
-          role === "none" ? BASE_FILL : `oklch(0.64 0.15 ${muscleHue(group!)})`;
+        const fill = role === "none" ? BASE_FILL : `oklch(0.64 0.15 ${muscleHue(group!)})`;
         const opacity = role === "secondary" ? 0.55 : 1;
         return (
           <g key={region.muscle} fill={fill} fillOpacity={opacity}>

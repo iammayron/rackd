@@ -28,9 +28,7 @@ export function PrCelebration({
       <div className="flex max-h-[85dvh] w-full max-w-sm flex-col bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-lg)] p-6 text-center">
         <div className="shrink-0">
           <div className="text-5xl mb-2">🏆</div>
-          <h2 className="text-xl font-bold mb-1">
-            New PR{prs.length > 1 ? "s" : ""}!
-          </h2>
+          <h2 className="text-xl font-bold mb-1">New PR{prs.length > 1 ? "s" : ""}!</h2>
           <p className="text-sm text-[var(--text-muted)] mb-4">
             {prs.length} record{prs.length > 1 ? "s" : ""} this workout.
           </p>
@@ -42,9 +40,7 @@ export function PrCelebration({
               key={i}
               className="flex items-center gap-2 bg-[var(--surface-2)] border border-[var(--border)] rounded-[var(--radius-sm)] py-2 px-3 text-start"
             >
-              <span className="flex-1 font-semibold">
-                {nameById[pr.exerciseId] ?? "Exercise"}
-              </span>
+              <span className="flex-1 font-semibold">{nameById[pr.exerciseId] ?? "Exercise"}</span>
               <span className="text-sm text-[var(--text-muted)]">
                 {pr.type === "1rm" ? "est 1RM" : "top"}
               </span>
