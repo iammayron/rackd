@@ -342,10 +342,18 @@ export interface Program {
   /** Rotation mode: index into the ordered ProgramDays for "today". */
   rotationCursor?: number;
   /**
-   * Epoch ms when the program last became active. Anchors "week 1, day 1" of
-   * the block-progress bar; reset each time the program is re-activated.
+   * Epoch ms when the program last became active; reset each time the program is
+   * re-activated. Anchors "week 1, day 1" of the block-progress bar in weekly
+   * mode, and bounds the start of the current block in rotation mode (whose bar
+   * advances by training, not by calendar day — see `programRotationDayKinds`).
    */
   activatedAt?: number;
+  /**
+   * Epoch ms of the last explicit rotation nudge ("Skip"). A rotation restarts
+   * at day 1 after `LAYOFF_RESTART_DAYS` away, measured from the later of this
+   * and the last finished workout, so a skip during a layoff isn't undone.
+   */
+  rotationTouchedAt?: number;
 }
 
 export interface ProgramDay {

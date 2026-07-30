@@ -10,16 +10,21 @@ import {
   programNextSlot,
   advanceRotation,
   estimateSessionMinutes,
+  sessionCountsForProgram,
+  daysAway,
+  firstWorkoutSlot,
+  shouldRestartRotation,
 } from "@rackd/core";
 import { Card, Button, Badge, Avatar, Input, SelectableRow } from "@rackd/ui";
 import { BottomSheet } from "@/components/BottomSheet";
-import { api } from "@/lib/api";
+import { api, apiMutate } from "@/lib/api";
 import { queryClient, qk } from "@/lib/query";
 import { Nav } from "@/components/Nav";
 import { ActivateProgramSheet } from "@/components/ActivateProgramSheet";
 import { ThisWeekCard } from "@/features/dashboard/ThisWeekCard";
 import { RecentSessionsCard } from "@/features/dashboard/RecentSessionsCard";
 import { ProgramProgress } from "@/features/dashboard/ProgramProgress";
+import { dayIndex } from "@/lib/day";
 
 interface ExerciseRow {
   id: string;
@@ -49,6 +54,7 @@ interface ProgramRow {
   rotationCursor?: number;
   blockWeeks?: number;
   activatedAt?: number;
+  rotationTouchedAt?: number;
 }
 
 interface ProgramDayRow {
@@ -127,10 +133,10 @@ export default function Home() {
     [activeProgramDetail],
   );
 
-  // Program progress: how many workouts have been logged against this program's
-  // routines (lifetime), and where that lands within the current block. The
-  // rotation cursor only moves on "Skip", so completed-session count is the
-  // honest measure of progress — not the cursor.
+  // Program progress: which workouts have been logged against this program's
+  // routines, and where that lands within the current block. Progress is counted
+  // from completed sessions, not from the rotation cursor — the cursor is a
+  // "what's next" pointer (moved by finishing or skipping), not a position.
   const programRoutineIds = useMemo(
     () =>
       new Set(
@@ -151,11 +157,50 @@ export default function Home() {
 
   const routineName = (id?: string) => routines.find((r) => r.id === id)?.name;
 
+  const isRotation =
+    !!activeProgram &&
+    (activeProgram.scheduleMode ?? "rotation") === "rotation";
+
+  // Coming back from a layoff. A rotation only moves on finish/skip and ignores
+  // the calendar, so without this a fortnight off leaves the same workout
+  // queued — and "next in the rotation" is the wrong pick once time off has
+  // rested every muscle group equally. Measured from the later of the last
+  // finished program workout and the last explicit Skip, so a skip during a
+  // layoff sticks instead of being re-restarted on the next render.
+  const lastActivityMs = useMemo(() => {
+    if (!activeProgram) return null;
+    const stamps = finished
+      .filter(
+        (s) =>
+          s.endedAt != null &&
+          sessionCountsForProgram(s, activeProgram.id, programRoutineIds),
+      )
+      .map((s) => s.endedAt!);
+    const last = stamps.reduce(
+      (a, b) => Math.max(a, b),
+      activeProgram.rotationTouchedAt ?? 0,
+    );
+    return last > 0 ? last : null;
+  }, [activeProgram, finished, programRoutineIds]);
+
+  const away = daysAway(
+    lastActivityMs == null ? null : dayIndex(lastActivityMs),
+    dayIndex(Date.now()),
+  );
+  // Derived, never written: nothing mutates the stored cursor on render (no
+  // write-on-load, no multi-tab race). Finishing a workout re-syncs the cursor
+  // server-side from the finished routine, so this heals itself.
+  const restarted =
+    isRotation && shouldRestartRotation(away) && programDays.length > 0;
+  const effectiveCursor = restarted
+    ? firstWorkoutSlot(programDays)
+    : (activeProgram?.rotationCursor ?? 0);
+
   const slot = activeProgram
     ? programTodaySlot(
         programDays,
         activeProgram.scheduleMode ?? "rotation",
-        activeProgram.rotationCursor ?? 0,
+        effectiveCursor,
         weekday,
       )
     : null;
@@ -163,7 +208,7 @@ export default function Home() {
     ? programNextSlot(
         programDays,
         activeProgram.scheduleMode ?? "rotation",
-        activeProgram.rotationCursor ?? 0,
+        effectiveCursor,
         weekday,
       )
     : null;
@@ -206,9 +251,8 @@ export default function Home() {
     return finished
       .filter(
         (s) =>
-          s.routineId &&
-          programRoutineIds.has(s.routineId) &&
-          (s.endedAt ?? 0) >= since,
+          (s.endedAt ?? 0) >= since &&
+          sessionCountsForProgram(s, activeProgram.id, programRoutineIds),
       )
       .sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0))[0];
   }, [activeProgram, finished, programRoutineIds]);
@@ -302,11 +346,14 @@ export default function Home() {
 
   async function skipDay() {
     if (!activeProgram) return;
-    const next = advanceRotation(
-      activeProgram.rotationCursor ?? 0,
-      programDays.length,
-    );
-    await api(`/api/programs/${activeProgram.id}`, {
+    // Step from the *effective* cursor: during a layoff restart the stored cursor
+    // is stale, and advancing from it would jump to an unrelated workout. The
+    // route stamps `rotationTouchedAt` for any cursor patch, which resets the
+    // layoff clock so this skip sticks instead of being re-restarted next render.
+    // Note this commits the restart: a layoff skip steps forward from day 1, it
+    // does not return you to where the cycle left off.
+    const next = advanceRotation(effectiveCursor, programDays.length);
+    await apiMutate(`/api/programs/${activeProgram.id}`, {
       method: "PUT",
       body: JSON.stringify({ rotationCursor: next }),
     });
@@ -483,7 +530,7 @@ export default function Home() {
           <Card variant="accent" style={{ marginBottom: 24 }}>
             <div className="flex items-center gap-2.5">
               <div className="text-xs font-bold uppercase tracking-[0.06em] opacity-85 whitespace-nowrap">
-                Today&apos;s workout
+                {restarted ? `Back after ${away} days` : "Today's workout"}
               </div>
               {canSkip && (
                 <button
@@ -498,6 +545,14 @@ export default function Home() {
             <div className="mt-2 text-3xl font-extrabold leading-[1.05]">
               {heroName}
             </div>
+            {/* Say what the restart did — the rotation moves silently, but it
+                should never move invisibly. "Skip ›" above steps forward from
+                here for anyone who wants a different workout today. */}
+            {restarted && (
+              <div className="mt-1.5 text-sm font-semibold text-white/85">
+                Starting the cycle over.
+              </div>
+            )}
             {heroEstimate && (
               <div className="mt-1.5 text-sm font-semibold text-white/85 tabular-nums">
                 {heroEstimate.count} exercise
@@ -584,7 +639,6 @@ export default function Home() {
 
         <ThisWeekCard />
         <RecentSessionsCard />
-
       </main>
       <Nav />
 

@@ -1,0 +1,1 @@
+ALTER TABLE "programs" ADD COLUMN "rotation_touched_at" bigint;

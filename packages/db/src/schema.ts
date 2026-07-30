@@ -335,6 +335,11 @@ export const programs = pgTable("programs", {
   // When the program last became active — anchors "week 1, day 1" for the
   // dashboard's week-block progress bar. Reset each time it's re-activated.
   activatedAt: bigint("activated_at", { mode: "number" }),
+  // Last explicit nudge of the rotation ("Skip"). A rotation restarts itself at
+  // day 1 after LAYOFF_RESTART_DAYS away, measured from the later of this and
+  // the last finished workout — so skipping during a layoff sticks instead of
+  // being re-restarted on the next render.
+  rotationTouchedAt: bigint("rotation_touched_at", { mode: "number" }),
 });
 
 export const programDays = pgTable("program_days", {

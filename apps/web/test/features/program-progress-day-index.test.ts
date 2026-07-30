@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { dayIndex } from "@/features/dashboard/ProgramProgress";
+import { dayIndex } from "@/lib/day";
 
 /**
  * `dayIndex` anchors the week-block progress bar: it must map an epoch ms to a
