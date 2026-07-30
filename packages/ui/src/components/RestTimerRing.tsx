@@ -20,6 +20,12 @@ export interface RestTimerRingProps extends React.HTMLAttributes<HTMLDivElement>
   /** Self-running countdown when uncontrolled. @default false */
   running?: boolean;
   onComplete?: () => void;
+  /**
+   * Render the "Rest"/time readout inside the ring. Turn it off at small sizes
+   * where the text can't breathe, and put the readout beside the dial instead.
+   * @default true
+   */
+  showLabel?: boolean;
   /** @default 200 */
   size?: number;
   /** @default 14 */
@@ -41,6 +47,7 @@ export function RestTimerRing({
   fired: firedProp,
   running = false,
   onComplete,
+  showLabel = true,
   size = 200,
   strokeWidth = 14,
   style,
@@ -96,40 +103,42 @@ export function RestTimerRing({
           style={{ transition: "stroke-dashoffset 250ms linear, stroke var(--dur) var(--ease-out)" }}
         />
       </svg>
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <span
+      {showLabel && (
+        <div
           style={{
-            fontSize: 11,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            color: fired ? "var(--success)" : "var(--text-muted)",
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          {fired ? "Rest over" : "Rest"}
-        </span>
-        <span
-          style={{
-            fontSize: size * 0.28,
-            fontWeight: 800,
-            lineHeight: 1,
-            letterSpacing: "-0.01em",
-            color: "var(--text)",
-            fontVariantNumeric: "tabular-nums lining-nums",
-          }}
-        >
-          {fired ? "0:00" : mmss(left)}
-        </span>
-      </div>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              color: fired ? "var(--success)" : "var(--text-muted)",
+            }}
+          >
+            {fired ? "Rest over" : "Rest"}
+          </span>
+          <span
+            style={{
+              fontSize: size * 0.28,
+              fontWeight: 800,
+              lineHeight: 1,
+              letterSpacing: "-0.01em",
+              color: "var(--text)",
+              fontVariantNumeric: "tabular-nums lining-nums",
+            }}
+          >
+            {fired ? "0:00" : mmss(left)}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

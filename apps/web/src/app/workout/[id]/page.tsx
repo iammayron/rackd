@@ -412,17 +412,9 @@ export default function WorkoutPage() {
         </button>
       </header>
 
-      <main
-        className="flex-1 p-4"
-        // While a rest is running the timer docks a floating bar at the bottom.
-        // Pad the content so the last card / add-exercise picker clears it — the
-        // dock is non-blocking, so the list must stay reachable behind it.
-        style={
-          timerStatus !== "idle"
-            ? { paddingBottom: "calc(112px + var(--safe-bottom))" }
-            : undefined
-        }
-      >
+      {/* The rest dock below is sticky, so it takes real space at the end of the
+          column — no bottom padding needed here to keep content reachable. */}
+      <main className="flex-1 p-4">
         {fetching && <p className="text-[var(--text-muted)]">Loading…</p>}
         {!fetching && sessionExercises.length === 0 && (
           <p className="text-[var(--text-muted)]">
