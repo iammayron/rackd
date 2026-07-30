@@ -17,6 +17,7 @@ import {
 import { ReplaceExercisePicker } from "@/features/routines/ReplaceExercisePicker";
 import { useExerciseDetail } from "@/features/exercise/exercise-detail-store";
 import { SetRow, type SetRowData } from "./SetRow";
+import { copyTargets } from "./copy-targets";
 import { PlatesPanel } from "./PlatesPanel";
 import { RestSheet } from "./RestSheet";
 
@@ -121,14 +122,15 @@ export function ExerciseCard({
    * (higher `order`) in this exercise that aren't done yet AND don't already
    * match — no point prompting to copy onto identical values. Non-blocking
    * toast with a "Copy" action; ignored = auto-dismiss, no change.
+   *
+   * "Match" is judged at display precision, not raw kg. Storage is canonical kg
+   * while the lifter reads a rounded lb/kg value, so two sets can differ in the
+   * 4th decimal and be indistinguishable on screen — prompting to copy 93.7 lb
+   * onto 93.7 lb reads as a bug. Comparing what's actually shown also absorbs
+   * rows that already drifted before the write path stopped rewriting them.
    */
   function onSetCompleted(set: SetRowData) {
-    const targets = sets.filter(
-      (s) =>
-        s.order > set.order &&
-        !s.completed &&
-        (s.weight !== set.weight || s.reps !== set.reps),
-    );
+    const targets = copyTargets(sets, set, display);
     if (targets.length === 0) return;
     toast.info(
       `Copy ${display(set.weight)} ${unit} × ${set.reps} to remaining sets?`,
