@@ -632,7 +632,7 @@ describe("programDayKinds", () => {
       anchorWeekday: 1, // Mon
       todayOffset: 3,
       completedOffsets: [0, 2],
-      schedule: { mode: "weekly", workoutWeekdays: [1, 3, 5] },
+      schedule: { workoutWeekdays: [1, 3, 5] },
     });
     expect(kinds).toEqual([
       "done", "rest", "done", "rest", "future", "future", "future",
@@ -646,7 +646,7 @@ describe("programDayKinds", () => {
       anchorWeekday: 1,
       todayOffset: 4,
       completedOffsets: [0],
-      schedule: { mode: "weekly", workoutWeekdays: [1, 3, 5] },
+      schedule: { workoutWeekdays: [1, 3, 5] },
     });
     expect(kinds).toEqual([
       "done", "rest", "missed", "rest", "pending", "future", "future",
@@ -660,7 +660,7 @@ describe("programDayKinds", () => {
       anchorWeekday: 6, // Sat
       todayOffset: 6,
       completedOffsets: [1],
-      schedule: { mode: "weekly", workoutWeekdays: [0] },
+      schedule: { workoutWeekdays: [0] },
     });
     expect(kinds).toEqual([
       "rest", "done", "rest", "rest", "rest", "rest", "rest",
@@ -674,35 +674,10 @@ describe("programDayKinds", () => {
       anchorWeekday: 1,
       todayOffset: 1,
       completedOffsets: [1],
-      schedule: { mode: "weekly", workoutWeekdays: [1] },
+      schedule: { workoutWeekdays: [1] },
     });
     expect(kinds[0]).toBe("missed"); // Mon workout not done
     expect(kinds[1]).toBe("done"); // logged on the rest day → done
-  });
-
-  it("classifies a rotation schedule, wrapping the cycle by calendar day", () => {
-    // 3-day cycle: workout, workout, rest. All elapsed (today past the week).
-    const kinds = programDayKinds({
-      blockWeeks: 1,
-      anchorWeekday: 0, // irrelevant for rotation
-      todayOffset: 8,
-      completedOffsets: [0, 1, 3, 4, 6],
-      schedule: { mode: "rotation", restByOrder: [false, false, true] },
-    });
-    expect(kinds).toEqual([
-      "done", "done", "rest", "done", "done", "rest", "done",
-    ]);
-  });
-
-  it("treats an empty rotation as all rest", () => {
-    const kinds = programDayKinds({
-      blockWeeks: 1,
-      anchorWeekday: 2,
-      todayOffset: 6,
-      completedOffsets: [],
-      schedule: { mode: "rotation", restByOrder: [] },
-    });
-    expect(kinds).toEqual(Array<ProgramDayKind>(7).fill("rest"));
   });
 
   it("returns an empty array for a zero-week block", () => {
@@ -712,7 +687,7 @@ describe("programDayKinds", () => {
         anchorWeekday: 0,
         todayOffset: 0,
         completedOffsets: [],
-        schedule: { mode: "weekly", workoutWeekdays: [] },
+        schedule: { workoutWeekdays: [] },
       }),
     ).toEqual([]);
   });

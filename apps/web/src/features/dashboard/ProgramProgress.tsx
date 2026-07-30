@@ -127,7 +127,6 @@ export function ProgramProgress({
       todayOffset,
       completedOffsets,
       schedule: {
-        mode: "weekly",
         workoutWeekdays: programDays
           .filter((d) => d.routineId && d.weekday != null)
           .map((d) => d.weekday!),

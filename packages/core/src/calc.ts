@@ -473,19 +473,17 @@ export function programWeekProgress(
 }
 
 /**
- * A program's schedule reduced to "is day N a rest day?", per mode:
- *  - "weekly": `workoutWeekdays` lists the weekdays (0=Sun … 6=Sat) that have a
- *    routine; every other weekday is rest.
- *  - "rotation": `restByOrder[k]` is true when the k-th ordered day is a rest
- *    slot, interpreted as one slot per calendar day from the anchor (cursor 0 on
- *    day 0); an empty rotation is all-rest. That assumption does NOT hold for a
- *    real rotation — it cycles on finish/skip and ignores the calendar entirely —
- *    so the dashboard uses `programRotationDayKinds` instead. This arm remains
- *    only for a genuine per-calendar-day view.
+ * A weekly program's schedule reduced to "is day N a rest day?":
+ * `workoutWeekdays` lists the weekdays (0=Sun … 6=Sat) that have a routine;
+ * every other weekday is rest.
+ *
+ * Weekly only, deliberately. This used to carry a "rotation" arm that read
+ * `restByOrder` as one slot per calendar day from the anchor — but a rotation
+ * cycles on finish/skip and ignores the calendar, so that arm was wrong by
+ * construction and produced the "Week 4 of 4" drift. Rotation progress is
+ * training-driven and lives in `programRotationDayKinds`.
  */
-export type ProgramSchedule =
-  | { mode: "weekly"; workoutWeekdays: readonly number[] }
-  | { mode: "rotation"; restByOrder: readonly boolean[] };
+export type ProgramSchedule = { workoutWeekdays: readonly number[] };
 
 /**
  * Classify each calendar day of a program block into a `ProgramDayKind` for the
@@ -512,13 +510,8 @@ export function programDayKinds(args: {
   const totalDays = Math.max(0, Math.floor(blockWeeks)) * 7;
   const done = new Set(completedOffsets);
   const isRest = (i: number): boolean => {
-    if (schedule.mode === "weekly") {
-      const wd = (((anchorWeekday + i) % 7) + 7) % 7;
-      return !schedule.workoutWeekdays.includes(wd);
-    }
-    const len = schedule.restByOrder.length;
-    if (len === 0) return true;
-    return schedule.restByOrder[((i % len) + len) % len]!;
+    const wd = (((anchorWeekday + i) % 7) + 7) % 7;
+    return !schedule.workoutWeekdays.includes(wd);
   };
 
   const out: ProgramDayKind[] = [];
