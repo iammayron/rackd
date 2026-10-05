@@ -21,7 +21,10 @@ const B = "owner-b";
 const { routineExercises, sessionExercises, programDays } = schema;
 
 function reorderReq(ownerId: string | null, orderedIds: string[]) {
-  return authedRequest(`http://t/x`, ownerId, { method: "PUT", body: JSON.stringify({ orderedIds }) });
+  return authedRequest(`http://t/x`, ownerId, {
+    method: "PUT",
+    body: JSON.stringify({ orderedIds }),
+  });
 }
 
 describe("reorder routes owner isolation", () => {
@@ -32,8 +35,16 @@ describe("reorder routes owner isolation", () => {
   describe("/api/routines/[id]/exercises/reorder", () => {
     async function seed(ownerId: string) {
       const routine = await createRoutine({ ownerId, name: "Plan" });
-      const a = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_bench", order: 1 });
-      const b = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_squat", order: 2 });
+      const a = await addRoutineExercise({
+        routineId: routine.id,
+        exerciseId: "ex_bench",
+        order: 1,
+      });
+      const b = await addRoutineExercise({
+        routineId: routine.id,
+        exerciseId: "ex_squat",
+        order: 2,
+      });
       return { routineId: routine.id, aId: a.id, bId: b.id };
     }
 
@@ -72,11 +83,20 @@ describe("reorder routes owner isolation", () => {
       const victim = await seed(A);
       const attacker = await createRoutine({ ownerId: B, name: "Decoy" });
       // B reorders THEIR OWN routine but slips A's child ids into orderedIds.
-      const res = await routineReorder(reorderReq(B, [victim.bId, victim.aId]), ctx({ id: attacker.id }));
+      const res = await routineReorder(
+        reorderReq(B, [victim.bId, victim.aId]),
+        ctx({ id: attacker.id }),
+      );
       // Whatever the status, A's rows must keep their original order.
       void res;
-      const [a] = await db.select().from(routineExercises).where(eq(routineExercises.id, victim.aId));
-      const [b] = await db.select().from(routineExercises).where(eq(routineExercises.id, victim.bId));
+      const [a] = await db
+        .select()
+        .from(routineExercises)
+        .where(eq(routineExercises.id, victim.aId));
+      const [b] = await db
+        .select()
+        .from(routineExercises)
+        .where(eq(routineExercises.id, victim.bId));
       expect(a!.order).toBe(1);
       expect(b!.order).toBe(2);
     });
@@ -123,7 +143,10 @@ describe("reorder routes owner isolation", () => {
     it("does NOT let an owner reorder another owner's program days via crafted ids", async () => {
       const victim = await seed(A);
       const attacker = await createProgram({ ownerId: B, name: "Decoy" });
-      const res = await programReorder(reorderReq(B, [victim.bId, victim.aId]), ctx({ id: attacker.id }));
+      const res = await programReorder(
+        reorderReq(B, [victim.bId, victim.aId]),
+        ctx({ id: attacker.id }),
+      );
       void res;
       const [a] = await db.select().from(programDays).where(eq(programDays.id, victim.aId));
       const [b] = await db.select().from(programDays).where(eq(programDays.id, victim.bId));
@@ -137,8 +160,16 @@ describe("reorder routes owner isolation", () => {
   describe("/api/sessions/[id]/exercises/reorder", () => {
     async function seed(ownerId: string) {
       const session = await startSession({ ownerId, name: "Workout", now: Date.now() });
-      const a = await addSessionExercise({ sessionId: session.id, exerciseId: "ex_bench", order: 1 });
-      const b = await addSessionExercise({ sessionId: session.id, exerciseId: "ex_squat", order: 2 });
+      const a = await addSessionExercise({
+        sessionId: session.id,
+        exerciseId: "ex_bench",
+        order: 1,
+      });
+      const b = await addSessionExercise({
+        sessionId: session.id,
+        exerciseId: "ex_squat",
+        order: 2,
+      });
       return { sessionId: session.id, aId: a.id, bId: b.id };
     }
 
@@ -173,10 +204,19 @@ describe("reorder routes owner isolation", () => {
     it("does NOT let an owner reorder another owner's session exercises via crafted ids", async () => {
       const victim = await seed(A);
       const attacker = await startSession({ ownerId: B, name: "Decoy", now: Date.now() });
-      const res = await sessionReorder(reorderReq(B, [victim.bId, victim.aId]), ctx({ id: attacker.id }));
+      const res = await sessionReorder(
+        reorderReq(B, [victim.bId, victim.aId]),
+        ctx({ id: attacker.id }),
+      );
       void res;
-      const [a] = await db.select().from(sessionExercises).where(eq(sessionExercises.id, victim.aId));
-      const [b] = await db.select().from(sessionExercises).where(eq(sessionExercises.id, victim.bId));
+      const [a] = await db
+        .select()
+        .from(sessionExercises)
+        .where(eq(sessionExercises.id, victim.aId));
+      const [b] = await db
+        .select()
+        .from(sessionExercises)
+        .where(eq(sessionExercises.id, victim.bId));
       expect(a!.order).toBe(1);
       expect(b!.order).toBe(2);
     });

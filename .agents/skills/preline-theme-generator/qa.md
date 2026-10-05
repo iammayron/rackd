@@ -39,12 +39,14 @@ Use this checklist immediately before returning a generated theme.
 ## 3) Full theme coverage sanity
 
 ### 3.1 Global surfaces + text
+
 - Did I define background tokens?
   - `--background`, `--background-1`, `--background-2`, `--background-plain`
 - Did I define foreground tokens?
   - `--foreground`, `--foreground-inverse`, `--inverse`
 
 ### 3.2 Borders (full scale)
+
 - Did I define the base border token?
   - `--border`
 - Did I define the full border scale?
@@ -53,6 +55,7 @@ Use this checklist immediately before returning a generated theme.
 - Is the border scale coherent and usable across different surfaces?
 
 ### 3.3 Primary ramp + states
+
 - Did I define the full primary color ramp?
   - `--primary-50` through `--primary-950` (all 11 shades)
 - Do the shades feel like one cohesive family?
@@ -62,6 +65,7 @@ Use this checklist immediately before returning a generated theme.
 - Is `--primary-foreground` readable against `--primary`?
 
 ### 3.4 Secondary / Layer / Surface / Muted / Destructive
+
 - Did I define secondary tokens?
   - `--secondary`, `--secondary-line`, `--secondary-foreground`
   - `--secondary-hover`, `--secondary-focus`, `--secondary-active`
@@ -81,6 +85,7 @@ Use this checklist immediately before returning a generated theme.
 - Is destructive visually distinct from primary?
 
 ### 3.5 Component groups (all variants)
+
 - Did I define navbar tokens (base + variants)?
   - `--navbar`, `--navbar-line`, `--navbar-divider`, `--navbar-inverse`
   - `--navbar-nav-foreground`, `--navbar-nav-hover`, `--navbar-nav-focus`, `--navbar-nav-active`

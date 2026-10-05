@@ -45,9 +45,7 @@ export function ProgramDayRow({
   onGripPointerUp: (e: PointerEvent) => void;
 }) {
   const label =
-    mode === "weekly" && day.weekday != null
-      ? WEEKDAY_ABBR[day.weekday]
-      : `DAY ${dayNumber}`;
+    mode === "weekly" && day.weekday != null ? WEEKDAY_ABBR[day.weekday] : `DAY ${dayNumber}`;
 
   return (
     <div

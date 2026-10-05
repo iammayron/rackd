@@ -1,8 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import {
-  persistQueryClient,
-  type Persister,
-} from "@tanstack/query-persist-client-core";
+import { persistQueryClient, type Persister } from "@tanstack/query-persist-client-core";
 import { get, set, del } from "idb-keyval";
 
 /**

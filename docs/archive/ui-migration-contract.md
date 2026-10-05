@@ -22,6 +22,7 @@ const { data: routines = [] } = useQuery({
   queryFn: () => api<Routine[]>("/api/routines"),
 });
 ```
+
 - Triplit's `const { results: x } = useQuery((c) => c.query("..."))` → React Query as above. Default `data` to `[]`/sensible empty.
 - Triplit gave live updates for free; React Query does not. After a mutation, **invalidate** the affected query keys.
 - A reactive query that depended on another value → use `enabled: Boolean(dep)` and put the dep in the queryKey.
@@ -42,6 +43,7 @@ const rename = useMutation({
   },
 });
 ```
+
 - For simple imperative call sites (inside an existing `async function handleX()`), you may skip `useMutation` and just `await api(path, { method, body: JSON.stringify(payload) })` then `queryClient.invalidateQueries(...)`. Use whichever keeps the diff smallest and the file consistent.
 - `api(path, { method, body })` throws on non-2xx. `body` must be a JSON string.
 - Import `queryClient` and `qk` from `@/lib/query`.
@@ -51,6 +53,7 @@ const rename = useMutation({
 **IMPORTANT: open the route file under `apps/web/src/app/api/<path>/route.ts` to confirm the exact JSON response shape before wiring a page.** Summary:
 
 Exercises
+
 - `GET /api/exercises` → `Exercise[]` (library + caller's custom)
 - `POST /api/exercises` body `{name, primaryMuscle, equipment, category, instructions?, secondaryMuscles?}` → created exercise
 - `GET|PUT|DELETE /api/exercises/[id]`
@@ -58,6 +61,7 @@ Exercises
 - `GET /api/exercises/[id]/last-performance?excludeSessionId=` → `PrevSet[] | null` (`{order,weight,reps}[]`)
 
 Routines
+
 - `GET /api/routines` → `Routine[]` (ordered)
 - `POST /api/routines` body `{name, order?, category?}` → routine
 - `GET /api/routines/[id]` → `{ ...routine, exercises: [{ ...routineExercise, exercise: Exercise, sets: RoutineSet[] }] }`
@@ -76,11 +80,12 @@ Routines
 - `DELETE /api/routine-sets/[id]`
 
 Sessions
+
 - `GET /api/sessions` → finished `Session[]` (newest first)
 - `GET /api/sessions/active` → unfinished `Session | null`
 - `POST /api/sessions` body `{routineId?}` (from routine) or `{name?}` (blank) → session
 - `GET /api/sessions/[id]` → `{ ...session, exercises: [{ ...sessionExercise, exercise: Exercise, sets: SetLog[] }] }`
-- `POST /api/sessions/[id]/finish` → `{ prs: DetectedPR[] }`  (`DetectedPR = {exerciseId, type:"1rm"|"weight", value}`)
+- `POST /api/sessions/[id]/finish` → `{ prs: DetectedPR[] }` (`DetectedPR = {exerciseId, type:"1rm"|"weight", value}`)
 - `POST /api/sessions/[id]/discard`
 - `POST /api/sessions/[id]/save-back` body `{routineId, mode}` (`mode: "numbers"|"exercises"|"everything"`)
 - `GET /api/sessions/[id]/save-back-context` → `SaveBackContext | null`
@@ -94,12 +99,14 @@ Sessions
 - `DELETE /api/set-logs/[id]`
 
 Stats / profile / body / PRs
+
 - `GET /api/personal-records` → `PR[]` (newest first), `GET /api/personal-records/exercise/[id]`
 - `GET /api/profile` → profile (created if missing); `PUT /api/profile` body ProfilePatch
 - `GET /api/body-weight?from=&to=` (range) or no params (all) → `BodyWeightLog[]`; `POST /api/body-weight` body `{weightKg, loggedAt?}`
 - `GET /api/stats/weekly-volume` → `{weekStart:number, volume:number}[]`
 
 Programs / shared / templates
+
 - `GET /api/programs` → `Program[]`; `POST /api/programs` body `{name, order?, blockWeeks?}`
 - `GET /api/programs/[id]` → `{ ...program, days: [{ ...programDay, routine: Routine|null }] }`
 - `PUT /api/programs/[id]` body any of `{name}|{active:true}|{scheduleMode?,rotationCursor?,blockWeeks?}`
@@ -112,6 +119,7 @@ Programs / shared / templates
 - `GET /api/program-templates` → `ProgramTemplate[]`; `POST /api/program-templates/[id]/clone` → `{ id }` (new program id)
 
 Push (lib/push.ts)
+
 - `GET /api/push-subscriptions`; `POST /api/push-subscriptions` body `{endpoint, p256dh, auth, userAgent?}`
 - `DELETE /api/push-subscriptions/[id]`
 - `POST /api/scheduled-pushes` body `{subscriptionId, fireAt, title, body}`

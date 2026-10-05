@@ -57,9 +57,7 @@ const REF_TABLES = [
 
 type RefCounts = Record<string, number>;
 
-async function referenceCounts(
-  legacyIds: string[],
-): Promise<Map<string, RefCounts>> {
+async function referenceCounts(legacyIds: string[]): Promise<Map<string, RefCounts>> {
   const counts = new Map<string, RefCounts>();
   for (const id of legacyIds) counts.set(id, {});
   if (legacyIds.length === 0) return counts;
@@ -78,12 +76,9 @@ async function referenceCounts(
   return counts;
 }
 
-const totalRefs = (c: RefCounts): number =>
-  Object.values(c).reduce((a, b) => a + b, 0);
+const totalRefs = (c: RefCounts): number => Object.values(c).reduce((a, b) => a + b, 0);
 
-export async function dedupLegacyExercises(
-  opts: { dryRun?: boolean } = {},
-): Promise<void> {
+export async function dedupLegacyExercises(opts: { dryRun?: boolean } = {}): Promise<void> {
   // Legacy seed = source 'rackd', non-custom. Custom user exercises share the
   // default source but are isCustom=true, so they're excluded here.
   const legacy = (await db
@@ -94,9 +89,7 @@ export async function dedupLegacyExercises(
       source: exercises.source,
     })
     .from(exercises)
-    .where(
-      and(eq(exercises.source, "rackd"), eq(exercises.isCustom, false)),
-    )) as MatchExercise[];
+    .where(and(eq(exercises.source, "rackd"), eq(exercises.isCustom, false)))) as MatchExercise[];
 
   const candidates = (await db
     .select({
@@ -108,24 +101,18 @@ export async function dedupLegacyExercises(
     .from(exercises)
     .where(ne(exercises.source, "rackd"))) as MatchExercise[];
 
-  console.log(
-    `[dedup] ${legacy.length} legacy exercises, ${candidates.length} import candidates`,
-  );
+  console.log(`[dedup] ${legacy.length} legacy exercises, ${candidates.length} import candidates`);
   if (legacy.length === 0) {
     console.log("[dedup] nothing to do — no legacy rows.");
     return;
   }
 
-  const matches: LegacyMatch[] = legacy.map((l) =>
-    matchLegacyExercise(l, candidates),
-  );
+  const matches: LegacyMatch[] = legacy.map((l) => matchLegacyExercise(l, candidates));
   const refs = await referenceCounts(legacy.map((l) => l.id));
   const nameById = new Map(legacy.map((l) => [l.id, l.name]));
 
   // Report table — every legacy row, sorted unresolved-first.
-  const ordered = [...matches].sort(
-    (a, b) => Number(isApplicable(a)) - Number(isApplicable(b)),
-  );
+  const ordered = [...matches].sort((a, b) => Number(isApplicable(a)) - Number(isApplicable(b)));
   console.log("\n[dedup] match report:");
   for (const m of ordered) {
     const tag = isApplicable(m) ? "APPLY" : "SKIP ";
@@ -158,10 +145,7 @@ export async function dedupLegacyExercises(
     for (const m of applicable) {
       const target = m.targetId!;
       for (const { table, col } of REF_TABLES) {
-        await tx
-          .update(table)
-          .set({ exerciseId: target })
-          .where(eq(col, m.legacyId));
+        await tx.update(table).set({ exerciseId: target }).where(eq(col, m.legacyId));
       }
       repointed++;
     }
@@ -173,9 +157,7 @@ export async function dedupLegacyExercises(
       .filter((id) => totalRefs(after.get(id) ?? {}) === 0);
     const stillReferenced = applicable.length - deletable.length;
     if (stillReferenced > 0) {
-      console.warn(
-        `[dedup] ${stillReferenced} legacy rows still referenced post-repoint — kept.`,
-      );
+      console.warn(`[dedup] ${stillReferenced} legacy rows still referenced post-repoint — kept.`);
     }
     if (deletable.length) {
       await tx.delete(exercises).where(inArray(exercises.id, deletable));
@@ -183,9 +165,7 @@ export async function dedupLegacyExercises(
     }
   });
 
-  console.log(
-    `[dedup] repointed ${repointed} legacy exercises, deleted ${deleted} rows.`,
-  );
+  console.log(`[dedup] repointed ${repointed} legacy exercises, deleted ${deleted} rows.`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

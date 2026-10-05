@@ -33,10 +33,7 @@ export default function PRsPage() {
     queryFn: () => api<ExerciseLite[]>("/api/exercises"),
   });
 
-  const rows = useMemo(
-    () => bestPrsByExercise(prs, exercises, Date.now()),
-    [prs, exercises],
-  );
+  const rows = useMemo(() => bestPrsByExercise(prs, exercises, Date.now()), [prs, exercises]);
 
   const list = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -85,33 +82,33 @@ export default function PRsPage() {
                   onClick={() => openExercise(p.exerciseId)}
                   className="block w-full text-left text-[var(--text)]"
                 >
-                <Card padding={16}>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-base text-[var(--text)] whitespace-nowrap">
-                          {p.name}
-                        </span>
-                        {p.fresh && (
-                          <Badge tone="accent" solid>
-                            PR
-                          </Badge>
-                        )}
+                  <Card padding={16}>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-base text-[var(--text)] whitespace-nowrap">
+                            {p.name}
+                          </span>
+                          {p.fresh && (
+                            <Badge tone="accent" solid>
+                              PR
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-[13px] text-[var(--text-muted)] mt-0.5">
+                          {cap(p.muscle)} · {fmtDate(p.achievedAt)}
+                        </div>
                       </div>
-                      <div className="text-[13px] text-[var(--text-muted)] mt-0.5">
-                        {cap(p.muscle)} · {fmtDate(p.achievedAt)}
+                      <div className="text-right shrink-0">
+                        <div className="font-extrabold text-lg tabular-nums whitespace-nowrap text-[var(--text)]">
+                          {display(p.value)} {unit}
+                        </div>
+                        <div className="text-xs text-[var(--text-muted)] whitespace-nowrap">
+                          {is1rm ? "est 1RM" : "top weight"}
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-extrabold text-lg tabular-nums whitespace-nowrap text-[var(--text)]">
-                        {display(p.value)} {unit}
-                      </div>
-                      <div className="text-xs text-[var(--text-muted)] whitespace-nowrap">
-                        {is1rm ? "est 1RM" : "top weight"}
-                      </div>
-                    </div>
-                  </div>
-                </Card>
+                  </Card>
                 </button>
               );
             })}

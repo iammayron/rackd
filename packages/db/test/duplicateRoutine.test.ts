@@ -39,12 +39,12 @@ describe("duplicateRoutine", () => {
 
     const firstCopyId = await duplicateRoutine({ routineId: src.id, ownerId: OWNER_A });
     expect(firstCopyId).not.toBeNull();
-    expect((await routinesNamed("Push (copy)"))).toHaveLength(1);
+    expect(await routinesNamed("Push (copy)")).toHaveLength(1);
 
     // "Push (copy)" now exists, so the next duplicate escalates to "(copy 2)".
     const secondCopyId = await duplicateRoutine({ routineId: src.id, ownerId: OWNER_A });
     expect(secondCopyId).not.toBeNull();
-    expect((await routinesNamed("Push (copy 2)"))).toHaveLength(1);
+    expect(await routinesNamed("Push (copy 2)")).toHaveLength(1);
   });
 
   it('uses an explicit name verbatim (no "(copy)" suffix) when provided', async () => {
@@ -69,10 +69,21 @@ describe("duplicateRoutine", () => {
   it("deep-clones exercises and sets including targetRpe, tempo, notes", async () => {
     const src = await createRoutine({ ownerId: OWNER_A, name: "Legs" });
     const re = await addRoutineExercise({ routineId: src.id, exerciseId: "ex_squat", order: 1 });
-    const rs = await addRoutineSet({ routineExerciseId: re.id, order: 1, targetReps: 5, targetWeight: 140 });
+    const rs = await addRoutineSet({
+      routineExerciseId: re.id,
+      order: 1,
+      targetReps: 5,
+      targetWeight: 140,
+    });
     // Fields not exposed by repo setters — set directly to exercise the clone.
-    await db.update(t.routineExercises).set({ notes: "brace hard" }).where(eq(t.routineExercises.id, re.id));
-    await db.update(t.routineSets).set({ targetRpe: 8.5, tempo: "3-1-1" }).where(eq(t.routineSets.id, rs.id));
+    await db
+      .update(t.routineExercises)
+      .set({ notes: "brace hard" })
+      .where(eq(t.routineExercises.id, re.id));
+    await db
+      .update(t.routineSets)
+      .set({ targetRpe: 8.5, tempo: "3-1-1" })
+      .where(eq(t.routineSets.id, rs.id));
 
     const copyId = await duplicateRoutine({ routineId: src.id, ownerId: OWNER_A });
     const [copyEx] = await exercisesOf(copyId!);

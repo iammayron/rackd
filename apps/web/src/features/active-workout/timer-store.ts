@@ -1,14 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import {
-  idleTimer,
-  startTimer,
-  addTime,
-  remainingMs,
-  isFired,
-  type TimerState,
-} from "@rackd/core";
+import { idleTimer, startTimer, addTime, remainingMs, isFired, type TimerState } from "@rackd/core";
 import {
   requestNotifyPermission,
   showLocalNotification,

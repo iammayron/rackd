@@ -103,7 +103,15 @@ export function RestSheet({
             className="h-16 w-16 shrink-0 inline-flex flex-col items-center justify-center gap-0.5 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] select-none disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] active:bg-[var(--surface)]"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-              <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+              <line
+                x1="5"
+                y1="12"
+                x2="19"
+                y2="12"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
             </svg>
             <span className="text-xs font-semibold leading-none tabular-nums text-[var(--text-muted)]">
               {STEP}s
@@ -147,8 +155,24 @@ export function RestSheet({
             className="h-16 w-16 shrink-0 inline-flex flex-col items-center justify-center gap-0.5 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] select-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)] active:bg-[var(--surface)]"
           >
             <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-              <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
-              <line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+              <line
+                x1="5"
+                y1="12"
+                x2="19"
+                y2="12"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+              <line
+                x1="12"
+                y1="5"
+                x2="12"
+                y2="19"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
             </svg>
             <span className="text-xs font-semibold leading-none tabular-nums text-[var(--text-muted)]">
               {STEP}s

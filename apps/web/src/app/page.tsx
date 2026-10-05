@@ -78,8 +78,7 @@ interface RoutineDetailRow {
   exercises: { restSec?: number; sets?: unknown[] }[];
 }
 
-const EYEBROW =
-  "text-[var(--text-muted)] text-xs font-semibold uppercase tracking-[0.06em]";
+const EYEBROW = "text-[var(--text-muted)] text-xs font-semibold uppercase tracking-[0.06em]";
 
 export default function Home() {
   const router = useRouter();
@@ -104,8 +103,7 @@ export default function Home() {
   // we offer Resume, never a Start that would spawn a duplicate session.
   const { data: active } = useQuery({
     queryKey: qk.activeSession,
-    queryFn: () =>
-      api<{ id: string; name: string } | null>("/api/sessions/active"),
+    queryFn: () => api<{ id: string; name: string } | null>("/api/sessions/active"),
   });
 
   // Finished sessions (newest first) — used to flip the hero into a "done"
@@ -124,26 +122,17 @@ export default function Home() {
   const activeProgram = programs.find((p) => p.active);
   const { data: activeProgramDetail } = useQuery({
     queryKey: qk.program(activeProgram?.id ?? ""),
-    queryFn: () =>
-      api<{ days: ProgramDayRow[] }>(`/api/programs/${activeProgram!.id}`),
+    queryFn: () => api<{ days: ProgramDayRow[] }>(`/api/programs/${activeProgram!.id}`),
     enabled: Boolean(activeProgram?.id),
   });
-  const programDays = useMemo(
-    () => activeProgramDetail?.days ?? [],
-    [activeProgramDetail],
-  );
+  const programDays = useMemo(() => activeProgramDetail?.days ?? [], [activeProgramDetail]);
 
   // Program progress: which workouts have been logged against this program's
   // routines, and where that lands within the current block. Progress is counted
   // from completed sessions, not from the rotation cursor — the cursor is a
   // "what's next" pointer (moved by finishing or skipping), not a position.
   const programRoutineIds = useMemo(
-    () =>
-      new Set(
-        programDays
-          .map((d) => d.routineId)
-          .filter((id): id is string => Boolean(id)),
-      ),
+    () => new Set(programDays.map((d) => d.routineId).filter((id): id is string => Boolean(id))),
     [programDays],
   );
   const weekday = new Date().getDay();
@@ -157,9 +146,7 @@ export default function Home() {
 
   const routineName = (id?: string) => routines.find((r) => r.id === id)?.name;
 
-  const isRotation =
-    !!activeProgram &&
-    (activeProgram.scheduleMode ?? "rotation") === "rotation";
+  const isRotation = !!activeProgram && (activeProgram.scheduleMode ?? "rotation") === "rotation";
 
   // Coming back from a layoff. A rotation only moves on finish/skip and ignores
   // the calendar, so without this a fortnight off leaves the same workout
@@ -171,15 +158,10 @@ export default function Home() {
     if (!activeProgram) return null;
     const stamps = finished
       .filter(
-        (s) =>
-          s.endedAt != null &&
-          sessionCountsForProgram(s, activeProgram.id, programRoutineIds),
+        (s) => s.endedAt != null && sessionCountsForProgram(s, activeProgram.id, programRoutineIds),
       )
       .map((s) => s.endedAt!);
-    const last = stamps.reduce(
-      (a, b) => Math.max(a, b),
-      activeProgram.rotationTouchedAt ?? 0,
-    );
+    const last = stamps.reduce((a, b) => Math.max(a, b), activeProgram.rotationTouchedAt ?? 0);
     return last > 0 ? last : null;
   }, [activeProgram, finished, programRoutineIds]);
 
@@ -190,8 +172,7 @@ export default function Home() {
   // Derived, never written: nothing mutates the stored cursor on render (no
   // write-on-load, no multi-tab race). Finishing a workout re-syncs the cursor
   // server-side from the finished routine, so this heals itself.
-  const restarted =
-    isRotation && shouldRestartRotation(away) && programDays.length > 0;
+  const restarted = isRotation && shouldRestartRotation(away) && programDays.length > 0;
   const effectiveCursor = restarted
     ? firstWorkoutSlot(programDays)
     : (activeProgram?.rotationCursor ?? 0);
@@ -215,9 +196,7 @@ export default function Home() {
 
   // slot is null on a rest day (or no active program → use the weekday fallback).
   const heroRoutineId = activeProgram ? slot?.routineId : fallbackToday?.id;
-  const heroName = activeProgram
-    ? routineName(slot?.routineId)
-    : fallbackToday?.name;
+  const heroName = activeProgram ? routineName(slot?.routineId) : fallbackToday?.name;
   const nextName = routineName(nextSlot?.routineId);
   const isRest = !heroRoutineId;
 
@@ -282,10 +261,7 @@ export default function Home() {
       programs.map((p) => ({
         id: p.id,
         name: p.name,
-        meta:
-          (p.scheduleMode ?? "rotation") === "weekly"
-            ? "Fixed weekly"
-            : "Rotation",
+        meta: (p.scheduleMode ?? "rotation") === "weekly" ? "Fixed weekly" : "Rotation",
       })),
     [programs],
   );
@@ -303,15 +279,11 @@ export default function Home() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return exercises;
-    return exercises.filter(
-      (e) => e.name.toLowerCase().includes(q) || e.primaryMuscle.includes(q),
-    );
+    return exercises.filter((e) => e.name.toLowerCase().includes(q) || e.primaryMuscle.includes(q));
   }, [exercises, search]);
 
   function toggle(id: string) {
-    setSelected((s) =>
-      s.includes(id) ? s.filter((x) => x !== id) : [...s, id],
-    );
+    setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   }
 
   async function start() {
@@ -367,35 +339,19 @@ export default function Home() {
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/assets/logo-mark.svg"
-            alt=""
-            width={34}
-            height={34}
-            className="block"
-          />
+          <img src="/assets/logo-mark.svg" alt="" width={34} height={34} className="block" />
           <div className="flex-1">
-            <div className="text-2xl font-extrabold leading-none tracking-[-0.01em]">
-              Rackd
-            </div>
-            <div className="text-[var(--text-muted)] text-sm">
-              Ready when you are.
-            </div>
+            <div className="text-2xl font-extrabold leading-none tracking-[-0.01em]">Rackd</div>
+            <div className="text-[var(--text-muted)] text-sm">Ready when you are.</div>
           </div>
           <Link href="/settings" aria-label="Profile and settings">
-            <Avatar
-              src={profile?.photoUrl || null}
-              name={profile?.displayName}
-            />
+            <Avatar src={profile?.photoUrl || null} name={profile?.displayName} />
           </Link>
         </div>
 
         {/* Active program → drives today's workout */}
         {activeProgram && (
-          <Link
-            href={`/programs/${activeProgram.id}`}
-            className="no-underline block mb-3.5"
-          >
+          <Link href={`/programs/${activeProgram.id}`} className="no-underline block mb-3.5">
             <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius)] px-3.5 py-3">
               <div className="flex items-center gap-2.5">
                 <Badge tone="accent" solid>
@@ -424,9 +380,7 @@ export default function Home() {
             <div className="text-xs font-bold uppercase tracking-[0.06em] opacity-85">
               In progress
             </div>
-            <div className="mt-2 text-3xl font-extrabold leading-[1.05]">
-              {active.name}
-            </div>
+            <div className="mt-2 text-3xl font-extrabold leading-[1.05]">{active.name}</div>
             <Button
               variant="secondary"
               size="lg"
@@ -443,14 +397,9 @@ export default function Home() {
             </Button>
           </Card>
         ) : !activeProgram ? (
-          <Card
-            variant="dashed"
-            style={{ marginBottom: 24, textAlign: "center", padding: 28 }}
-          >
+          <Card variant="dashed" style={{ marginBottom: 24, textAlign: "center", padding: 28 }}>
             <div className={EYEBROW}>Get started</div>
-            <div className="mt-1.5 text-3xl font-extrabold leading-[1.1]">
-              No active program
-            </div>
+            <div className="mt-1.5 text-3xl font-extrabold leading-[1.1]">No active program</div>
             <div className="mt-1 text-sm text-[var(--text-muted)]">
               {programs.length > 0
                 ? "Activate a program to plan your week — or create a new one."
@@ -472,9 +421,7 @@ export default function Home() {
               fullWidth
               onClick={() => router.push("/programs")}
               style={
-                programs.length > 0
-                  ? { marginTop: 10, color: "var(--accent)" }
-                  : { marginTop: 18 }
+                programs.length > 0 ? { marginTop: 10, color: "var(--accent)" } : { marginTop: 18 }
               }
             >
               Create program
@@ -496,9 +443,7 @@ export default function Home() {
               variant="secondary"
               size="lg"
               fullWidth
-              onClick={() =>
-                router.push(`/workout/${completedToday.id}/summary`)
-              }
+              onClick={() => router.push(`/workout/${completedToday.id}/summary`)}
               style={{
                 marginTop: 18,
                 background: "#fff",
@@ -542,9 +487,7 @@ export default function Home() {
                 </button>
               )}
             </div>
-            <div className="mt-2 text-3xl font-extrabold leading-[1.05]">
-              {heroName}
-            </div>
+            <div className="mt-2 text-3xl font-extrabold leading-[1.05]">{heroName}</div>
             {/* Say what the restart did — the rotation moves silently, but it
                 should never move invisibly. "Skip ›" above steps forward from
                 here for anyone who wants a different workout today. */}
@@ -556,8 +499,7 @@ export default function Home() {
             {heroEstimate && (
               <div className="mt-1.5 text-sm font-semibold text-white/85 tabular-nums">
                 {heroEstimate.count} exercise
-                {heroEstimate.count === 1 ? "" : "s"} · ~{heroEstimate.minutes}{" "}
-                min
+                {heroEstimate.count === 1 ? "" : "s"} · ~{heroEstimate.minutes} min
               </div>
             )}
             <Button
@@ -584,14 +526,9 @@ export default function Home() {
             </button>
           </Card>
         ) : (
-          <Card
-            variant="dashed"
-            style={{ marginBottom: 24, textAlign: "center", padding: 28 }}
-          >
+          <Card variant="dashed" style={{ marginBottom: 24, textAlign: "center", padding: 28 }}>
             <div className={EYEBROW}>Today</div>
-            <div className="mt-1.5 text-3xl font-extrabold leading-[1.1]">
-              Rest day
-            </div>
+            <div className="mt-1.5 text-3xl font-extrabold leading-[1.1]">Rest day</div>
             <div className="mt-1 text-sm text-[var(--text-muted)]">
               {nextName
                 ? `Recovery is where you grow. Next up: ${nextName}.`

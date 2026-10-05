@@ -47,9 +47,7 @@ function ExerciseSummary({ se }: { se: SessionExerciseRow }) {
           <span className="text-[var(--text)]">
             {display(s.weight)} {unit} × {s.reps}
           </span>
-          {s.rpe != null && (
-            <span className="text-[var(--text-muted)]">@ RPE {s.rpe}</span>
-          )}
+          {s.rpe != null && <span className="text-[var(--text-muted)]">@ RPE {s.rpe}</span>}
           {s.isPr && <span title="Personal record">🏆</span>}
         </div>
       ))}
@@ -73,9 +71,7 @@ export default function HistoryDetailPage() {
     enabled: Boolean(sessionId),
   });
 
-  const exercises = (session?.exercises ?? [])
-    .slice()
-    .sort((a, b) => a.order - b.order);
+  const exercises = (session?.exercises ?? []).slice().sort((a, b) => a.order - b.order);
 
   return (
     <div className="flex flex-col min-h-[100dvh]">

@@ -55,7 +55,14 @@ function Sparkline({ values }: { values: number[] }) {
       className="mt-4 h-14 w-full"
       aria-hidden="true"
     >
-      <path d={path} fill="none" stroke="var(--accent)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d={path}
+        fill="none"
+        stroke="var(--accent)"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -191,9 +198,7 @@ export function WeightProgressCard() {
               −
             </button>
             <div className="min-w-[7.5rem] text-center">
-              <span className="text-5xl font-extrabold tabular-nums">
-                {value.toFixed(1)}
-              </span>
+              <span className="text-5xl font-extrabold tabular-nums">{value.toFixed(1)}</span>
               <span className="ml-1.5 text-xl font-bold text-[var(--text-muted)]">{unit}</span>
             </div>
             <button

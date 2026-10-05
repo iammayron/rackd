@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 
 /** The four semantic flavors, each mapped to a design token + icon. */
 export type ToastType = "success" | "error" | "warning" | "info";
@@ -76,10 +69,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       const id = nextId.current++;
       const type = options?.type ?? "info";
       const duration = options?.duration ?? DEFAULT_DURATION;
-      setToasts((prev) => [
-        ...prev,
-        { id, message, type, duration, action: options?.action },
-      ]);
+      setToasts((prev) => [...prev, { id, message, type, duration, action: options?.action }]);
       if (duration > 0) {
         timers.current.set(
           id,
@@ -94,11 +84,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const api = useMemo<ToastApi>(
     () => ({
       show,
-      success: (message, options) =>
-        show(message, { ...options, type: "success" }),
+      success: (message, options) => show(message, { ...options, type: "success" }),
       error: (message, options) => show(message, { ...options, type: "error" }),
-      warning: (message, options) =>
-        show(message, { ...options, type: "warning" }),
+      warning: (message, options) => show(message, { ...options, type: "warning" }),
       info: (message, options) => show(message, { ...options, type: "info" }),
       dismiss,
     }),
@@ -173,14 +161,7 @@ const VARIANTS: Record<
     label: "Error",
     icon: (
       <>
-        <circle
-          cx="12"
-          cy="12"
-          r="9"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        />
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
         <path
           d="M12 7v6M12 16.5v.5"
           fill="none"
@@ -220,14 +201,7 @@ const VARIANTS: Record<
     label: "Info",
     icon: (
       <>
-        <circle
-          cx="12"
-          cy="12"
-          r="9"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        />
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
         <path
           d="M12 11v5M12 7.5v.5"
           fill="none"
@@ -240,13 +214,7 @@ const VARIANTS: Record<
   },
 };
 
-function Toast({
-  toast,
-  onDismiss,
-}: {
-  toast: ToastItem;
-  onDismiss: (id: number) => void;
-}) {
+function Toast({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: number) => void }) {
   const [entered, setEntered] = useState(false);
   // Flip to the entered state on the next frame so the mount transition runs.
   const onMount = useCallback((node: HTMLDivElement | null) => {
@@ -270,8 +238,7 @@ function Toast({
         borderColor: `color-mix(in srgb, ${v.color} 45%, var(--border))`,
         opacity: entered ? 1 : 0,
         transform: entered ? "translateX(0)" : "translateX(16px)",
-        transition:
-          "opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out)",
+        transition: "opacity var(--dur) var(--ease-out), transform var(--dur) var(--ease-out)",
       }}
     >
       <span

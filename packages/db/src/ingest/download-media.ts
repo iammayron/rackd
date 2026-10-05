@@ -29,7 +29,11 @@ function extOf(url: string): string {
 }
 
 /** Run `worker` over `items` with bounded concurrency. */
-async function pool<T>(items: T[], limit: number, worker: (item: T) => Promise<void>): Promise<void> {
+async function pool<T>(
+  items: T[],
+  limit: number,
+  worker: (item: T) => Promise<void>,
+): Promise<void> {
   let i = 0;
   const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
     while (i < items.length) {
@@ -40,7 +44,9 @@ async function pool<T>(items: T[], limit: number, worker: (item: T) => Promise<v
   await Promise.all(runners);
 }
 
-export async function downloadMedia(opts: { limit?: number; dryRun?: boolean } = {}): Promise<void> {
+export async function downloadMedia(
+  opts: { limit?: number; dryRun?: boolean } = {},
+): Promise<void> {
   const cfg = getS3Config(); // throws early if storage isn't configured
 
   let rows = await db
@@ -92,7 +98,8 @@ export async function downloadMedia(opts: { limit?: number; dryRun?: boolean } =
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const limit = Number(process.argv.find((a) => a.startsWith("--limit="))?.split("=")[1]) || undefined;
+  const limit =
+    Number(process.argv.find((a) => a.startsWith("--limit="))?.split("=")[1]) || undefined;
   const dryRun = process.argv.includes("--dry-run");
   downloadMedia({ limit, dryRun })
     .then(() => process.exit(0))

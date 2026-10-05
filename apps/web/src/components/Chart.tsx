@@ -19,13 +19,21 @@ export function LineChart({ data, unit = "" }: { data: number[]; unit?: string }
   const max = Math.max(...data);
   const step = data.length > 1 ? (W - PAD * 2) / (data.length - 1) : 0;
   const pts = data.map((v, i) => [PAD + i * step, scaleY(v, min, max)] as const);
-  const path = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ");
+  const path = pts
+    .map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(1)},${p[1].toFixed(1)}`)
+    .join(" ");
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="trend chart">
       <path d={path} fill="none" stroke="var(--accent)" strokeWidth={2} strokeLinejoin="round" />
       {pts.map((p, i) => (
-        <circle key={i} cx={p[0]} cy={p[1]} r={i === pts.length - 1 ? 4 : 2.5} fill="var(--accent)" />
+        <circle
+          key={i}
+          cx={p[0]}
+          cy={p[1]}
+          r={i === pts.length - 1 ? 4 : 2.5}
+          fill="var(--accent)"
+        />
       ))}
       <text x={PAD} y={12} fill="var(--text-muted)" fontSize={11}>
         {max}
@@ -77,7 +85,13 @@ export function BarChart({ data, unit = "" }: { data: number[]; unit?: string })
 
 function Empty() {
   return (
-    <div style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)", padding: "var(--space-4) 0" }}>
+    <div
+      style={{
+        color: "var(--text-muted)",
+        fontSize: "var(--text-sm)",
+        padding: "var(--space-4) 0",
+      }}
+    >
       Not enough data yet.
     </div>
   );

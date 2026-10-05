@@ -62,10 +62,7 @@ export default function WorkoutSummaryPage() {
     queryKey: qk.personalRecords,
     queryFn: () => api<PrRow[]>("/api/personal-records"),
   });
-  const prs = useMemo(
-    () => allPrs.filter((pr) => pr.sessionId === sessionId),
-    [allPrs, sessionId],
-  );
+  const prs = useMemo(() => allPrs.filter((pr) => pr.sessionId === sessionId), [allPrs, sessionId]);
 
   const completed = sets.filter((s) => s.completed);
   // sessionVolume sums weight×reps over the completed sets (canonical kg).
@@ -104,7 +101,9 @@ export default function WorkoutSummaryPage() {
               <Badge tone="accent" solid>
                 PR
               </Badge>
-              <span className="flex-1 font-semibold">{nameByExercise[pr.exerciseId] ?? "Exercise"}</span>
+              <span className="flex-1 font-semibold">
+                {nameByExercise[pr.exerciseId] ?? "Exercise"}
+              </span>
               <span className="text-sm text-[var(--text-muted)] tabular-nums">
                 {pr.type === "1rm"
                   ? `${Math.round(display(pr.value))} ${unit} e1RM`
@@ -125,12 +124,21 @@ export default function WorkoutSummaryPage() {
         >
           Share workout
         </Button>
-        <Button variant="ghost" fullWidth onClick={() => router.push("/history")} style={{ marginTop: 10 }}>
+        <Button
+          variant="ghost"
+          fullWidth
+          onClick={() => router.push("/history")}
+          style={{ marginTop: 10 }}
+        >
           Back to progress
         </Button>
       </div>
 
-      <ShareWorkoutSheet sessionId={sessionId} open={shareOpen} onClose={() => setShareOpen(false)} />
+      <ShareWorkoutSheet
+        sessionId={sessionId}
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+      />
     </div>
   );
 }

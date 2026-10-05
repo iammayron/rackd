@@ -46,8 +46,9 @@
 
   /* ── Typography ────────────────────────────────────────────────────────── */
   /* --font-hanken injected by next/font (layout.tsx). System stack is fallback. */
-  --font-sans: var(--font-hanken), -apple-system, BlinkMacSystemFont, "Segoe UI",
-    Roboto, Helvetica, Arial, sans-serif;
+  --font-sans:
+    var(--font-hanken), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
   --font-num: var(--font-sans);
 
   --fw-regular: 400;

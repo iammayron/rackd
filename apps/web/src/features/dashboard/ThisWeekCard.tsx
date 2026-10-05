@@ -51,8 +51,7 @@ export function ThisWeekCard() {
 
   const volumeKg = useMemo(() => {
     const now = Date.now();
-    const weekStart =
-      weekStartIndex(dayIndex(now), new Date(now).getDay()) * DAY_MS;
+    const weekStart = weekStartIndex(dayIndex(now), new Date(now).getDay()) * DAY_MS;
     return weeklyVolume
       .filter((w) => w.weekStart >= weekStart)
       .reduce((sum, w) => sum + w.volume, 0);

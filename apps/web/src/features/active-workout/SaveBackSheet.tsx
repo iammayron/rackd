@@ -62,11 +62,7 @@ export function SaveBackSheet({
 
   return (
     <div className="fixed inset-0 z-[90] flex items-end justify-center">
-      <div
-        onClick={onSkip}
-        aria-hidden="true"
-        className="absolute inset-0 bg-black/50"
-      />
+      <div onClick={onSkip} aria-hidden="true" className="absolute inset-0 bg-black/50" />
       <div
         role="dialog"
         aria-label="Save changes"
@@ -76,9 +72,7 @@ export function SaveBackSheet({
           <span className="w-[38px] h-[5px] rounded-full bg-[var(--border)]" />
         </div>
         <div className="overflow-y-auto px-5 pt-2 pb-[calc(20px+env(safe-area-inset-bottom))]">
-          <h2 className="mt-1 mb-0.5 text-[19px] font-extrabold">
-            Save changes to {routineName}?
-          </h2>
+          <h2 className="mt-1 mb-0.5 text-[19px] font-extrabold">Save changes to {routineName}?</h2>
           <p className="mt-0 mb-4 text-[13.5px] text-[var(--text-muted)] leading-snug">
             You changed this workout from its plan. Choose what to keep — or just log it as a
             one-off.

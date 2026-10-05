@@ -50,7 +50,11 @@ export function fmtShareDate(ms: number): string {
 /** Weekday, date and time for the share message, e.g. "Sat, Jun 21 · 6:00 PM". */
 export function fmtShareDateTime(ms: number): string {
   const d = new Date(ms);
-  const date = d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  const date = d.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
   const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   return `${date} · ${time}`;
 }

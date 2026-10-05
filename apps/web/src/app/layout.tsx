@@ -44,11 +44,7 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     // suppressHydrationWarning: the NO_FOUC script sets `data-theme` on <html>
     // before hydration (anti-flash), and browser extensions (Grammarly, …) inject

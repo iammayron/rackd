@@ -467,16 +467,8 @@ branch + PR per phase.
   "movementPattern": "pull", // derived
   "bodyPart": "upper", // derived
   "isUnilateral": false, // derived
-  "instructions": [
-    "Hinge to ~45°...",
-    "Row to lower ribs.",
-    "Lower under control.",
-  ],
-  "formCues": [
-    "Pull with the elbows",
-    "Keep torso angle fixed",
-    "Squeeze the back",
-  ],
+  "instructions": ["Hinge to ~45°...", "Row to lower ribs.", "Lower under control."],
+  "formCues": ["Pull with the elbows", "Keep torso angle fixed", "Squeeze the back"],
   "muscles": [
     { "muscleId": "lats", "role": "primary", "activation": 1.0 },
     { "muscleId": "rhomboids", "role": "secondary", "activation": 0.5 },

@@ -9,11 +9,7 @@ const { routineSets } = schema;
 /** PUT /api/routine-sets/[id] — patch target reps/weight of an owned set. */
 export const PUT = withUser(async (ownerId, req, ctx) => {
   const { id } = await ctx.params;
-  const [set] = await db
-    .select()
-    .from(routineSets)
-    .where(eq(routineSets.id, id))
-    .limit(1);
+  const [set] = await db.select().from(routineSets).where(eq(routineSets.id, id)).limit(1);
   if (!set) return Response.json({ error: "Not found" }, { status: 404 });
   if (set.ownerId !== ownerId) return Response.json({ error: "Forbidden" }, { status: 403 });
 
@@ -28,11 +24,7 @@ export const PUT = withUser(async (ownerId, req, ctx) => {
 /** DELETE /api/routine-sets/[id] — delete an owned set. */
 export const DELETE = withUser(async (ownerId, _req, ctx) => {
   const { id } = await ctx.params;
-  const [set] = await db
-    .select()
-    .from(routineSets)
-    .where(eq(routineSets.id, id))
-    .limit(1);
+  const [set] = await db.select().from(routineSets).where(eq(routineSets.id, id)).limit(1);
   if (!set) return Response.json({ error: "Not found" }, { status: 404 });
   if (set.ownerId !== ownerId) return Response.json({ error: "Forbidden" }, { status: 403 });
 

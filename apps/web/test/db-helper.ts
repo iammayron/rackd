@@ -26,12 +26,26 @@ const TABLES = [
 ];
 
 export const SEED_EX = [
-  { id: "ex_bench", name: "Bench Press", primaryMuscle: "chest", equipment: "barbell", category: "barbell" },
-  { id: "ex_squat", name: "Back Squat", primaryMuscle: "quads", equipment: "barbell", category: "barbell" },
+  {
+    id: "ex_bench",
+    name: "Bench Press",
+    primaryMuscle: "chest",
+    equipment: "barbell",
+    category: "barbell",
+  },
+  {
+    id: "ex_squat",
+    name: "Back Squat",
+    primaryMuscle: "quads",
+    equipment: "barbell",
+    category: "barbell",
+  },
 ] as const;
 
 export async function resetDb(): Promise<void> {
-  await db.execute(sql.raw(`TRUNCATE TABLE ${TABLES.map((t) => `"${t}"`).join(", ")} RESTART IDENTITY CASCADE`));
+  await db.execute(
+    sql.raw(`TRUNCATE TABLE ${TABLES.map((t) => `"${t}"`).join(", ")} RESTART IDENTITY CASCADE`),
+  );
   await db.insert(schema.exercises).values(
     SEED_EX.map((e) => ({
       id: e.id,
@@ -45,11 +59,7 @@ export async function resetDb(): Promise<void> {
 }
 
 /** Build a Request with a Bearer token = the calling owner id (or none → 401). */
-export function authedRequest(
-  url: string,
-  ownerId: string | null,
-  init?: RequestInit,
-): Request {
+export function authedRequest(url: string, ownerId: string | null, init?: RequestInit): Request {
   const headers = new Headers(init?.headers);
   if (ownerId) headers.set("Authorization", `Bearer ${ownerId}`);
   headers.set("Content-Type", "application/json");

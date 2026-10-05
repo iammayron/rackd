@@ -26,7 +26,11 @@ describe("ownerId derivation from parent (via child-insert repo fns)", () => {
   it("session children (sessionExercise → setLog) inherit the session's owner", async () => {
     const session = await startSession({ ownerId: OWNER_B, name: "W", now: 1000 });
 
-    const se = await addSessionExercise({ sessionId: session.id, exerciseId: "ex_bench", order: 1 });
+    const se = await addSessionExercise({
+      sessionId: session.id,
+      exerciseId: "ex_bench",
+      order: 1,
+    });
     expect(se.ownerId).toBe(OWNER_B);
 
     const empty = await addSet({ sessionExerciseId: se.id, order: 1 });
@@ -39,7 +43,11 @@ describe("ownerId derivation from parent (via child-insert repo fns)", () => {
   it("routine children (routineExercise → routineSet) inherit the routine's owner", async () => {
     const routine = await createRoutine({ ownerId: OWNER_B, name: "R" });
 
-    const re = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_bench", order: 1 });
+    const re = await addRoutineExercise({
+      routineId: routine.id,
+      exerciseId: "ex_bench",
+      order: 1,
+    });
     expect(re.ownerId).toBe(OWNER_B);
 
     const rs = await addRoutineSet({ routineExerciseId: re.id, order: 1, targetReps: 5 });

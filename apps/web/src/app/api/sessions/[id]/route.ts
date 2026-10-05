@@ -21,7 +21,11 @@ export const GET = withUser(async (ownerId, _req, ctx) => {
 
   const exercisesOut = [];
   for (const se of ses) {
-    const [exercise] = await db.select().from(exercises).where(eq(exercises.id, se.exerciseId)).limit(1);
+    const [exercise] = await db
+      .select()
+      .from(exercises)
+      .where(eq(exercises.id, se.exerciseId))
+      .limit(1);
     const sets = await db
       .select()
       .from(setLogs)

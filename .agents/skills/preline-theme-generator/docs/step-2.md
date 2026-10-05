@@ -8,6 +8,7 @@ find . -name "theme.css" -path "*/themes/*" -not -path "*/node_modules/*" 2>/dev
 ```
 
 Common locations to check:
+
 - `src/assets/css/themes/`
 - `src/css/themes/`
 - `src/styles/themes/`

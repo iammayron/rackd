@@ -54,8 +54,7 @@ interface ExerciseStatPoint {
   topWeight: number;
 }
 
-const EYEBROW =
-  "text-[var(--text-muted)] text-xs font-bold uppercase tracking-wider mb-3";
+const EYEBROW = "text-[var(--text-muted)] text-xs font-bold uppercase tracking-wider mb-3";
 
 const cap = (s: string) =>
   !s ? s : s.toLowerCase() === "fullbody" ? "Full body" : s.charAt(0).toUpperCase() + s.slice(1);
@@ -219,11 +218,7 @@ export function ExerciseDetail({
 
       <Card>
         <div className={EYEBROW}>Muscles worked</div>
-        <MuscleVisualizer
-          primary={ex.primaryMuscle}
-          secondary={secondary}
-          muscles={ex.muscles}
-        />
+        <MuscleVisualizer primary={ex.primaryMuscle} secondary={secondary} muscles={ex.muscles} />
       </Card>
 
       {similar.length > 0 && (

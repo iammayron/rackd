@@ -19,6 +19,7 @@ This document provides the complete reference for all semantic tokens available 
 ## Overview
 
 Preline themes use CSS custom properties (variables) as semantic tokens. These tokens are:
+
 - Defined in theme files under `:root` (light) and `.dark` selectors
 - Mapped to Tailwind utilities via `@theme inline` in the base theme
 - Consumed by Preline components for consistent styling
@@ -29,35 +30,35 @@ Important: Generated themes override token values only. Never redefine the Tailw
 
 ## Core token groups
 
-| Group | Tokens | Used for |
-|-------|--------|----------|
-| Brand | `--primary`, `--primary-*` | Primary actions (buttons, links) |
-| Secondary | `--secondary`, `--secondary-*` | Secondary emphasis |
-| Muted | `--muted`, `--muted-*` | Muted/subdued elements |
-| Destructive | `--destructive`, `--destructive-*` | Destructive/danger actions |
-| Background | `--background`, `--background-*` | App surfaces |
-| Foreground | `--foreground`, `--foreground-*` | Default typography colors |
-| Inverse | `--inverse` | Inverted color scheme |
-| Border | `--border` | Default border color |
-| Border line | `--border-line-*` | Border colors for different shades |
-| Layer | `--layer`, `--layer-*` | Layered elements (e.g. white buttons on white panel) |
-| Surface | `--surface`, `--surface-*` | Elevated surfaces |
-| Navbar | `--navbar`, `--navbar-*` | Navigation bar (background, border, divider) |
-| Navbar nav | `--navbar-nav-*` | Navigation bar items (foreground, hover, active) |
-| Sidebar | `--sidebar`, `--sidebar-*` | Sidebar (background, border, divider) |
-| Sidebar nav | `--sidebar-nav-*` | Sidebar items (foreground, hover, active) |
-| Card | `--card`, `--card-*` | Card component (border, divider, header, footer) |
-| Dropdown | `--dropdown`, `--dropdown-*` | Dropdown menus (items, hover, active) |
-| Select | `--select`, `--select-*` | Select component (items, hover, active) |
-| Overlay | `--overlay`, `--overlay-*` | Modal/overlay backgrounds |
-| Popover | `--popover`, `--popover-*` | Popover component |
-| Tooltip | `--tooltip`, `--tooltip-*` | Tooltip component |
-| Table | `--table-line` | Table borders |
-| Switch | `--switch` | Switch/toggle component |
-| Footer | `--footer`, `--footer-*` | Footer component |
-| Scrollbar | `--scrollbar-*` | Custom scrollbar (track, thumb) |
-| Chart | `--chart-*` | Chart colors (Apexcharts) |
-| Map | `--map-colors-*` | Map colors (jsvectormap) |
+| Group       | Tokens                             | Used for                                             |
+| ----------- | ---------------------------------- | ---------------------------------------------------- |
+| Brand       | `--primary`, `--primary-*`         | Primary actions (buttons, links)                     |
+| Secondary   | `--secondary`, `--secondary-*`     | Secondary emphasis                                   |
+| Muted       | `--muted`, `--muted-*`             | Muted/subdued elements                               |
+| Destructive | `--destructive`, `--destructive-*` | Destructive/danger actions                           |
+| Background  | `--background`, `--background-*`   | App surfaces                                         |
+| Foreground  | `--foreground`, `--foreground-*`   | Default typography colors                            |
+| Inverse     | `--inverse`                        | Inverted color scheme                                |
+| Border      | `--border`                         | Default border color                                 |
+| Border line | `--border-line-*`                  | Border colors for different shades                   |
+| Layer       | `--layer`, `--layer-*`             | Layered elements (e.g. white buttons on white panel) |
+| Surface     | `--surface`, `--surface-*`         | Elevated surfaces                                    |
+| Navbar      | `--navbar`, `--navbar-*`           | Navigation bar (background, border, divider)         |
+| Navbar nav  | `--navbar-nav-*`                   | Navigation bar items (foreground, hover, active)     |
+| Sidebar     | `--sidebar`, `--sidebar-*`         | Sidebar (background, border, divider)                |
+| Sidebar nav | `--sidebar-nav-*`                  | Sidebar items (foreground, hover, active)            |
+| Card        | `--card`, `--card-*`               | Card component (border, divider, header, footer)     |
+| Dropdown    | `--dropdown`, `--dropdown-*`       | Dropdown menus (items, hover, active)                |
+| Select      | `--select`, `--select-*`           | Select component (items, hover, active)              |
+| Overlay     | `--overlay`, `--overlay-*`         | Modal/overlay backgrounds                            |
+| Popover     | `--popover`, `--popover-*`         | Popover component                                    |
+| Tooltip     | `--tooltip`, `--tooltip-*`         | Tooltip component                                    |
+| Table       | `--table-line`                     | Table borders                                        |
+| Switch      | `--switch`                         | Switch/toggle component                              |
+| Footer      | `--footer`, `--footer-*`           | Footer component                                     |
+| Scrollbar   | `--scrollbar-*`                    | Custom scrollbar (track, thumb)                      |
+| Chart       | `--chart-*`                        | Chart colors (Apexcharts)                            |
+| Map         | `--map-colors-*`                   | Map colors (jsvectormap)                             |
 
 ---
 
@@ -65,17 +66,17 @@ Important: Generated themes override token values only. Never redefine the Tailw
 
 Preline uses numbered variants for component groups to offer different ready-made looks:
 
-| Pattern | Meaning |
-|---------|---------|
-| `--navbar-*` | Default navbar preset (base style) |
-| `--navbar-1-*` | Variant 1 preset (typically subtle/tinted surface) |
-| `--navbar-2-*` | Variant 2 preset (typically stronger tint or different border) |
-| `*` (no suffix) | Background/surface color of the component |
-| `*-line` | Border color for the component container |
-| `*-divider` | Divider lines inside the component |
-| `*-nav-*` | Nav item colors (foreground, hover, focus, active) |
-| `*-nav-list-divider` | Divider used in nav dropdown/list layouts |
-| `*-inverse` | Inverted/contrast variant |
+| Pattern              | Meaning                                                        |
+| -------------------- | -------------------------------------------------------------- |
+| `--navbar-*`         | Default navbar preset (base style)                             |
+| `--navbar-1-*`       | Variant 1 preset (typically subtle/tinted surface)             |
+| `--navbar-2-*`       | Variant 2 preset (typically stronger tint or different border) |
+| `*` (no suffix)      | Background/surface color of the component                      |
+| `*-line`             | Border color for the component container                       |
+| `*-divider`          | Divider lines inside the component                             |
+| `*-nav-*`            | Nav item colors (foreground, hover, focus, active)             |
+| `*-nav-list-divider` | Divider used in nav dropdown/list layouts                      |
+| `*-inverse`          | Inverted/contrast variant                                      |
 
 This pattern applies to: navbar, sidebar, and similar navigation components.
 
@@ -685,26 +686,26 @@ When creating a theme, override values under theme-scoped selectors:
 
 ## Quick token count summary
 
-| Category | Token Count |
-|----------|-------------|
-| Global surfaces + text | 7 |
-| Borders | 10 |
-| Primary (ramp + states) | 18 |
-| Secondary | 6 |
-| Layer | 6 |
-| Surface | 11 |
-| Muted | 7 |
-| Destructive | 4 |
-| Navbar (3 variants) | 27 |
-| Sidebar (3 variants) | 27 |
-| Card | 6 |
-| Dropdown | 11 |
-| Select | 8 |
-| Overlay | 6 |
-| Popover | 2 |
-| Tooltip | 3 |
-| Table, Switch, Footer | 5 |
-| Scrollbar | 4 |
-| Charts | ~50+ |
-| Maps | 8 |
-| Total | ~220+ tokens
+| Category                | Token Count  |
+| ----------------------- | ------------ |
+| Global surfaces + text  | 7            |
+| Borders                 | 10           |
+| Primary (ramp + states) | 18           |
+| Secondary               | 6            |
+| Layer                   | 6            |
+| Surface                 | 11           |
+| Muted                   | 7            |
+| Destructive             | 4            |
+| Navbar (3 variants)     | 27           |
+| Sidebar (3 variants)    | 27           |
+| Card                    | 6            |
+| Dropdown                | 11           |
+| Select                  | 8            |
+| Overlay                 | 6            |
+| Popover                 | 2            |
+| Tooltip                 | 3            |
+| Table, Switch, Footer   | 5            |
+| Scrollbar               | 4            |
+| Charts                  | ~50+         |
+| Maps                    | 8            |
+| Total                   | ~220+ tokens |

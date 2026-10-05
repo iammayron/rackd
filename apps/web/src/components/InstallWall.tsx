@@ -37,7 +37,15 @@ export function useIsInstalled(): boolean | null {
 /** iOS share glyph used in the install steps. */
 function ShareGlyph() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="inline-block h-[18px] w-[18px] align-text-bottom">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="inline-block h-[18px] w-[18px] align-text-bottom"
+    >
       <path d="M12 15V3" />
       <path d="m8 7 4-4 4 4" />
       <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
@@ -51,8 +59,7 @@ function ShareGlyph() {
  * for anyone who opened it in a plain browser tab.
  */
 export function InstallWall() {
-  const isIOS =
-    typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isIOS = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-6 px-8 text-center">
@@ -65,17 +72,23 @@ export function InstallWall() {
           Home Screen
         </h1>
         <p className="mx-auto mt-2 max-w-sm text-[var(--text-muted)]">
-          Rackd runs as an app. Install it to continue. It launches full-screen, works
-          offline, and delivers your rest-timer alerts.
+          Rackd runs as an app. Install it to continue. It launches full-screen, works offline, and
+          delivers your rest-timer alerts.
         </p>
       </div>
 
       {isIOS ? (
         <ol className="m-0 flex max-w-sm list-none flex-col gap-3 p-0 text-left">
           {[
-            <>Tap the Share button <ShareGlyph /> in the Safari toolbar.</>,
-            <>Scroll down and choose <strong>“Add to Home Screen”</strong>.</>,
-            <>Open <strong>Rackd</strong> from your Home Screen.</>,
+            <>
+              Tap the Share button <ShareGlyph /> in the Safari toolbar.
+            </>,
+            <>
+              Scroll down and choose <strong>“Add to Home Screen”</strong>.
+            </>,
+            <>
+              Open <strong>Rackd</strong> from your Home Screen.
+            </>,
           ].map((step, i) => (
             <li key={i} className="flex items-start gap-3">
               <span
@@ -90,8 +103,8 @@ export function InstallWall() {
         </ol>
       ) : (
         <p className="max-w-sm text-[var(--text-muted)]">
-          Rackd is an iPhone app. Open <strong>rackd.fly.dev</strong> in Safari on your
-          iPhone and add it to your Home Screen to continue.
+          Rackd is an iPhone app. Open <strong>rackd.fly.dev</strong> in Safari on your iPhone and
+          add it to your Home Screen to continue.
         </p>
       )}
     </div>

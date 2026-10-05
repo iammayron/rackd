@@ -16,15 +16,18 @@ tags: [pwa, ios, safe-area, viewport-fit, css, sticky, env-insets]
 # Troubleshooting: iOS PWA content drawing under the status bar and home indicator
 
 ## Problem
+
 After "Add to Home Screen", the MyFit PWA rendered edge-to-edge: the top header collided with the status bar/notch and the bottom tab bar overlapped the home indicator. The app declares `viewport-fit=cover` and a `black-translucent` status bar, which intentionally extends the web view under the system chrome — but nothing applied `env(safe-area-inset-*)` padding to compensate.
 
 ## Environment
+
 - Module: Web PWA (`apps/web`, Next.js App Router)
 - Affected Component: `apps/web/src/app/globals.css` (`.app-shell`), `apps/web/src/components/Nav.tsx` (bottom tab bar)
 - Config that triggers it: `apps/web/src/app/layout.tsx` — `viewport.viewportFit: "cover"` + `appleWebApp.statusBarStyle: "black-translucent"`
 - Date: 2026-06-23
 
 ## Symptoms
+
 - Top page header overlapped the status bar clock/icons (visible in the Stats screen screenshot).
 - Bottom `<nav>` tab labels ran into the home indicator area.
 - Reproduced only in the installed PWA (cover viewport active); a normal Safari tab looked fine.
@@ -32,9 +35,11 @@ After "Add to Home Screen", the MyFit PWA rendered edge-to-edge: the top header 
 ## What Didn't Work
 
 **Considered: top inset via `padding-top` on `.app-shell` alone**
+
 - **Why it failed (in reasoning):** each page wrapper is `min-h-[100dvh]`. Adding `padding-top` to a `border-box` `.app-shell` whose child still forces a full `100dvh` makes the child overflow by the inset amount, so the page scrolls and the sticky nav drifts below the viewport.
 
 **Considered: bottom inset via `padding-bottom` on `.app-shell`**
+
 - **Why it failed (in reasoning):** the tab bar is `position: sticky; bottom: 0`. Sticky anchors to the scroll container / viewport, NOT to the shell's padding box, so the nav still pins to the true viewport bottom and overlaps the home indicator regardless of shell padding.
 
 ## Solution
@@ -42,6 +47,7 @@ After "Add to Home Screen", the MyFit PWA rendered edge-to-edge: the top header 
 Two targeted changes — one CSS rule (covers every page for top + sides) and one shared component class (bottom).
 
 **`apps/web/src/app/globals.css`** — top + side insets on the shell, and recompute full-height wrappers:
+
 ```css
 /* Before (no safe-area handling): */
 .app-shell {
@@ -67,6 +73,7 @@ Two targeted changes — one CSS rule (covers every page for top + sides) and on
 ```
 
 **`apps/web/src/components/Nav.tsx`** — bottom inset on the sticky nav itself:
+
 ```tsx
 // Before:
 <nav className="sticky bottom-0 flex border-t border-[var(--border)] bg-[var(--bg)]">
@@ -75,6 +82,7 @@ Two targeted changes — one CSS rule (covers every page for top + sides) and on
 ```
 
 **Verify the insets shipped in the built bundle:**
+
 ```bash
 CSS=$(curl -s http://localhost:3000 | grep -oE '/_next/static/css/[^"]+\.css' | head -1)
 curl -s "http://localhost:3000$CSS" | grep -o "safe-area-inset-[a-z]*" | sort -u
@@ -96,4 +104,5 @@ curl -s "http://localhost:3000$CSS" | grep -o "safe-area-inset-[a-z]*" | sort -u
 - Test the installed PWA (Add to Home Screen), not just the browser tab — the cover viewport only fully engages standalone. Remember the service worker caches the shell; unregister/re-add to home screen to pick up changes.
 
 ## Related Issues
+
 No related issues documented yet.

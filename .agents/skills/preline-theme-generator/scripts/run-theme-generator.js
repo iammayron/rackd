@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const path = require('path');
-const { generateTheme } = require('./generate-theme');
+const fs = require("fs");
+const path = require("path");
+const { generateTheme } = require("./generate-theme");
 
 function printHelp() {
   console.log(`Usage:
@@ -49,49 +49,49 @@ function parseArgs(argv) {
     const arg = argv[i];
 
     switch (arg) {
-      case '--name':
+      case "--name":
         config.name = requireValue(arg, argv[i + 1]);
         i += 1;
         break;
-      case '--hue':
+      case "--hue":
         config.hue = Number(requireValue(arg, argv[i + 1]));
         i += 1;
         break;
-      case '--primary-color':
+      case "--primary-color":
         config.primaryColor = requireValue(arg, argv[i + 1]);
         i += 1;
         break;
-      case '--style':
+      case "--style":
         config.style = requireValue(arg, argv[i + 1]);
         i += 1;
         break;
-      case '--tailwind-gray':
+      case "--tailwind-gray":
         config.tailwindGray = requireValue(arg, argv[i + 1]);
         i += 1;
         break;
-      case '--use-custom-dark-gray':
+      case "--use-custom-dark-gray":
         config.useCustomDarkGray = true;
         break;
-      case '--font-sans':
+      case "--font-sans":
         config.fontSans = requireValue(arg, argv[i + 1]);
         i += 1;
         break;
-      case '--font-serif':
+      case "--font-serif":
         config.fontSerif = requireValue(arg, argv[i + 1]);
         i += 1;
         break;
-      case '--font-mono':
+      case "--font-mono":
         config.fontMono = requireValue(arg, argv[i + 1]);
         i += 1;
         break;
-      case '--output':
+      case "--output":
         outputPath = requireValue(arg, argv[i + 1]);
         i += 1;
         break;
-      case '--stdout':
+      case "--stdout":
         writeToStdout = true;
         break;
-      case '--help':
+      case "--help":
         printHelp();
         process.exit(0);
       default:
@@ -104,7 +104,7 @@ function parseArgs(argv) {
   }
 
   if (outputPath && writeToStdout) {
-    fail('Use either --output or --stdout, not both');
+    fail("Use either --output or --stdout, not both");
   }
 
   return {
@@ -117,10 +117,10 @@ function parseArgs(argv) {
 function writeOutput(outputPath, css) {
   const absolutePath = path.resolve(outputPath);
   fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
-  fs.writeFileSync(absolutePath, css, 'utf8');
+  fs.writeFileSync(absolutePath, css, "utf8");
   console.error(`Wrote ${absolutePath}`);
 
-  console.error('Generated a final standalone theme file.');
+  console.error("Generated a final standalone theme file.");
 }
 
 function main() {

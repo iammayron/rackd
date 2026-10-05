@@ -48,10 +48,7 @@ async function ownerOf(table: any, id: string): Promise<string> {
 }
 
 /** Insert one row (id auto-filled) and return it. */
-async function insertRow(
-  table: any,
-  values: Record<string, unknown>,
-): Promise<any> {
+async function insertRow(table: any, values: Record<string, unknown>): Promise<any> {
   const rows = await db
     .insert(table)
     .values({ id: newId(), ...values })
@@ -71,11 +68,7 @@ async function insertRow(
  * route does the owner/visibility check on the base row.
  */
 export async function getExerciseDetail(id: string) {
-  const [exercise] = await db
-    .select()
-    .from(t.exercises)
-    .where(eq(t.exercises.id, id))
-    .limit(1);
+  const [exercise] = await db.select().from(t.exercises).where(eq(t.exercises.id, id)).limit(1);
   if (!exercise) return null;
 
   const muscles = await db
@@ -96,9 +89,7 @@ export async function getExerciseDetail(id: string) {
     tertiary: 2,
   };
   muscles.sort(
-    (a, b) =>
-      (roleRank[a.role] ?? 9) - (roleRank[b.role] ?? 9) ||
-      b.activation - a.activation,
+    (a, b) => (roleRank[a.role] ?? 9) - (roleRank[b.role] ?? 9) || b.activation - a.activation,
   );
 
   const media = await db
@@ -142,8 +133,7 @@ export async function addSessionExercise(args: {
   const ownerId = await ownerOf(t.sessions, args.sessionId);
   // An exercise added mid-workout inherits the lifter's default rest, not a
   // hardcoded 2:00 — match what a fresh routine exercise gets.
-  const restSec =
-    args.restSec ?? (await getProfile(ownerId)).defaultRestSec ?? 120;
+  const restSec = args.restSec ?? (await getProfile(ownerId)).defaultRestSec ?? 120;
   return insertRow(t.sessionExercises, {
     ownerId,
     sessionId: args.sessionId,
@@ -154,17 +144,11 @@ export async function addSessionExercise(args: {
 }
 
 export async function setSessionExerciseOrder(id: string, order: number) {
-  await db
-    .update(t.sessionExercises)
-    .set({ order })
-    .where(eq(t.sessionExercises.id, id));
+  await db.update(t.sessionExercises).set({ order }).where(eq(t.sessionExercises.id, id));
 }
 
 /** Patch mutable fields of a live session exercise (currently its rest time). */
-export async function updateSessionExercise(
-  id: string,
-  patch: { restSec?: number },
-) {
+export async function updateSessionExercise(id: string, patch: { restSec?: number }) {
   if (patch.restSec === undefined) return;
   await db
     .update(t.sessionExercises)
@@ -173,10 +157,7 @@ export async function updateSessionExercise(
 }
 
 export async function setRoutineExerciseOrder(id: string, order: number) {
-  await db
-    .update(t.routineExercises)
-    .set({ order })
-    .where(eq(t.routineExercises.id, id));
+  await db.update(t.routineExercises).set({ order }).where(eq(t.routineExercises.id, id));
 }
 
 /** Patch mutable fields of a routine exercise (currently its rest time). */
@@ -188,10 +169,7 @@ export async function updateRoutineExercise(
   if (patch.restSec !== undefined) set.restSec = patch.restSec;
   if (patch.barType !== undefined) set.barType = patch.barType;
   if (Object.keys(set).length === 0) return;
-  await db
-    .update(t.routineExercises)
-    .set(set)
-    .where(eq(t.routineExercises.id, id));
+  await db.update(t.routineExercises).set(set).where(eq(t.routineExercises.id, id));
 }
 
 /**
@@ -222,10 +200,7 @@ export async function reorderRoutineExercises(orderedIds: string[]) {
   );
 }
 
-export async function setRoutineExerciseSuperset(
-  id: string,
-  group: number | undefined,
-) {
+export async function setRoutineExerciseSuperset(id: string, group: number | undefined) {
   await db
     .update(t.routineExercises)
     .set({ supersetGroup: group ?? null })
@@ -236,10 +211,7 @@ export async function setRoutineExerciseSuperset(
  * Swap which library exercise a routine slot points at, keeping its order,
  * superset link, rest and prescribed sets.
  */
-export async function replaceRoutineExercise(
-  id: string,
-  newExerciseId: string,
-) {
+export async function replaceRoutineExercise(id: string, newExerciseId: string) {
   await db
     .update(t.routineExercises)
     .set({ exerciseId: newExerciseId })
@@ -247,10 +219,7 @@ export async function replaceRoutineExercise(
 }
 
 /** Swap which library exercise a live session slot points at, keeping order/rest. */
-export async function replaceSessionExercise(
-  id: string,
-  newExerciseId: string,
-) {
+export async function replaceSessionExercise(id: string, newExerciseId: string) {
   await db
     .update(t.sessionExercises)
     .set({ exerciseId: newExerciseId })
@@ -259,9 +228,7 @@ export async function replaceSessionExercise(
 
 /** Remove an exercise from a live session, including its logged sets (FK cascade). */
 export async function removeSessionExercise(sessionExerciseId: string) {
-  await db
-    .delete(t.sessionExercises)
-    .where(eq(t.sessionExercises.id, sessionExerciseId));
+  await db.delete(t.sessionExercises).where(eq(t.sessionExercises.id, sessionExerciseId));
 }
 
 /** Add an empty (uncompleted) set row to a session exercise. */
@@ -323,15 +290,8 @@ export async function logSet(args: {
 }
 
 export async function finishSession(sessionId: string, now: number) {
-  await db
-    .update(t.sessions)
-    .set({ endedAt: now })
-    .where(eq(t.sessions.id, sessionId));
-  const [session] = await db
-    .select()
-    .from(t.sessions)
-    .where(eq(t.sessions.id, sessionId))
-    .limit(1);
+  await db.update(t.sessions).set({ endedAt: now }).where(eq(t.sessions.id, sessionId));
+  const [session] = await db.select().from(t.sessions).where(eq(t.sessions.id, sessionId)).limit(1);
   if (session) {
     // Carry an in-workout rest edit back to the routine for the next run.
     await syncRestToRoutine(sessionId);
@@ -353,17 +313,12 @@ export async function finishSession(sessionId: string, now: number) {
  * No-op for quick (routine-less) sessions, weekly-mode programs, and sessions
  * whose routine isn't part of the active program.
  */
-async function advanceProgramRotation(session: {
-  ownerId: string;
-  routineId: string | null;
-}) {
+async function advanceProgramRotation(session: { ownerId: string; routineId: string | null }) {
   if (!session.routineId) return;
   const actives = await db
     .select()
     .from(t.programs)
-    .where(
-      and(eq(t.programs.ownerId, session.ownerId), eq(t.programs.active, true)),
-    );
+    .where(and(eq(t.programs.ownerId, session.ownerId), eq(t.programs.active, true)));
   for (const pr of actives) {
     if ((pr.scheduleMode ?? "rotation") !== "rotation") continue;
     const days = await db
@@ -376,10 +331,7 @@ async function advanceProgramRotation(session: {
     if (idx === -1) continue;
     const next = (idx + 1) % days.length;
     if (next !== (pr.rotationCursor ?? 0)) {
-      await db
-        .update(t.programs)
-        .set({ rotationCursor: next })
-        .where(eq(t.programs.id, pr.id));
+      await db.update(t.programs).set({ rotationCursor: next }).where(eq(t.programs.id, pr.id));
     }
     break;
   }
@@ -392,11 +344,7 @@ async function advanceProgramRotation(session: {
  * Pairs session exercises to routine slots by exerciseId, using order for dupes.
  */
 async function syncRestToRoutine(sessionId: string) {
-  const [session] = await db
-    .select()
-    .from(t.sessions)
-    .where(eq(t.sessions.id, sessionId))
-    .limit(1);
+  const [session] = await db.select().from(t.sessions).where(eq(t.sessions.id, sessionId)).limit(1);
   if (!session?.routineId) return;
 
   const routineExs = await db
@@ -417,15 +365,12 @@ async function syncRestToRoutine(sessionId: string) {
     list.push(re);
     slotsByExId.set(re.exerciseId, list);
   }
-  for (const list of slotsByExId.values())
-    list.sort((a, b) => a.order - b.order);
+  for (const list of slotsByExId.values()) list.sort((a, b) => a.order - b.order);
 
   const claimed = new Set<string>();
   const orderedSes = [...sessionExs].sort((a, b) => a.order - b.order);
   for (const se of orderedSes) {
-    const slot = slotsByExId
-      .get(se.exerciseId)
-      ?.find((re) => !claimed.has(re.id));
+    const slot = slotsByExId.get(se.exerciseId)?.find((re) => !claimed.has(re.id));
     if (!slot) continue;
     claimed.add(slot.id);
     if (slot.restSec !== se.restSec) {
@@ -462,12 +407,7 @@ export async function detectAndRecordPRs(args: {
     const sets = await db
       .select()
       .from(t.setLogs)
-      .where(
-        and(
-          eq(t.setLogs.sessionExerciseId, se.id),
-          eq(t.setLogs.completed, true),
-        ),
-      );
+      .where(and(eq(t.setLogs.sessionExerciseId, se.id), eq(t.setLogs.completed, true)));
     if (sets.length === 0) continue;
 
     let best1rmSet = sets[0]!;
@@ -487,10 +427,7 @@ export async function detectAndRecordPRs(args: {
       .select()
       .from(t.personalRecords)
       .where(
-        and(
-          eq(t.personalRecords.exerciseId, se.exerciseId),
-          eq(t.personalRecords.type, "1rm"),
-        ),
+        and(eq(t.personalRecords.exerciseId, se.exerciseId), eq(t.personalRecords.type, "1rm")),
       )
       .orderBy(desc(t.personalRecords.value))
       .limit(1);
@@ -503,10 +440,7 @@ export async function detectAndRecordPRs(args: {
         sessionId: args.sessionId,
         achievedAt: args.now,
       });
-      await db
-        .update(t.setLogs)
-        .set({ isPr: true })
-        .where(eq(t.setLogs.id, best1rmSet.id));
+      await db.update(t.setLogs).set({ isPr: true }).where(eq(t.setLogs.id, best1rmSet.id));
       found.push({ exerciseId: se.exerciseId, type: "1rm", value: best1rm });
     }
 
@@ -514,17 +448,11 @@ export async function detectAndRecordPRs(args: {
       .select()
       .from(t.personalRecords)
       .where(
-        and(
-          eq(t.personalRecords.exerciseId, se.exerciseId),
-          eq(t.personalRecords.type, "weight"),
-        ),
+        and(eq(t.personalRecords.exerciseId, se.exerciseId), eq(t.personalRecords.type, "weight")),
       )
       .orderBy(desc(t.personalRecords.value))
       .limit(1);
-    if (
-      topWeightSet.weight > 0 &&
-      (!priorW || topWeightSet.weight > priorW.value)
-    ) {
+    if (topWeightSet.weight > 0 && (!priorW || topWeightSet.weight > priorW.value)) {
       await insertRow(t.personalRecords, {
         ownerId: args.ownerId,
         exerciseId: se.exerciseId,
@@ -533,10 +461,7 @@ export async function detectAndRecordPRs(args: {
         sessionId: args.sessionId,
         achievedAt: args.now,
       });
-      await db
-        .update(t.setLogs)
-        .set({ isPr: true })
-        .where(eq(t.setLogs.id, topWeightSet.id));
+      await db.update(t.setLogs).set({ isPr: true }).where(eq(t.setLogs.id, topWeightSet.id));
       found.push({
         exerciseId: se.exerciseId,
         type: "weight",
@@ -580,11 +505,7 @@ export async function addBodyWeightLog(args: {
 }
 
 /** Body-weight entries within [from, to] epoch ms (inclusive), oldest→newest. */
-export async function bodyWeightLogsInRange(args: {
-  ownerId: string;
-  from: number;
-  to: number;
-}) {
+export async function bodyWeightLogsInRange(args: { ownerId: string; from: number; to: number }) {
   return db
     .select()
     .from(t.bodyWeightLogs)
@@ -644,14 +565,11 @@ export async function updateProfile(ownerId: string, patch: ProfilePatch) {
   if (patch.displayName !== undefined) set.displayName = patch.displayName;
   if (patch.photoUrl !== undefined) set.photoUrl = patch.photoUrl;
   if (patch.heightCm !== undefined) set.heightCm = patch.heightCm;
-  if (patch.currentWeightKg !== undefined)
-    set.currentWeightKg = patch.currentWeightKg;
+  if (patch.currentWeightKg !== undefined) set.currentWeightKg = patch.currentWeightKg;
   if (patch.goalWeightKg !== undefined) set.goalWeightKg = patch.goalWeightKg;
   if (patch.trainingGoal !== undefined) set.trainingGoal = patch.trainingGoal;
-  if (patch.unitPreference !== undefined)
-    set.unitPreference = patch.unitPreference;
-  if (patch.defaultRestSec !== undefined)
-    set.defaultRestSec = patch.defaultRestSec;
+  if (patch.unitPreference !== undefined) set.unitPreference = patch.unitPreference;
+  if (patch.defaultRestSec !== undefined) set.defaultRestSec = patch.defaultRestSec;
   if (patch.defaultSets !== undefined) set.defaultSets = patch.defaultSets;
   if (patch.defaultReps !== undefined) set.defaultReps = patch.defaultReps;
   if (Object.keys(set).length === 0) return profile;
@@ -664,11 +582,7 @@ export async function updateProfile(ownerId: string, patch: ProfilePatch) {
 }
 
 /** Log a body-weight entry and mirror it onto the profile's currentWeightKg. */
-export async function logBodyWeight(args: {
-  ownerId: string;
-  weightKg: number;
-  loggedAt: number;
-}) {
+export async function logBodyWeight(args: { ownerId: string; weightKg: number; loggedAt: number }) {
   const log = await addBodyWeightLog(args);
   await updateProfile(args.ownerId, { currentWeightKg: args.weightKg });
   return log;
@@ -683,9 +597,7 @@ export interface ExerciseStatPoint {
 }
 
 /** Per-session stats for one exercise across finished sessions, oldest→newest. */
-export async function exerciseStats(
-  exerciseId: string,
-): Promise<ExerciseStatPoint[]> {
+export async function exerciseStats(exerciseId: string): Promise<ExerciseStatPoint[]> {
   const ses = await db
     .select()
     .from(t.sessionExercises)
@@ -702,12 +614,7 @@ export async function exerciseStats(
     const sets = await db
       .select()
       .from(t.setLogs)
-      .where(
-        and(
-          eq(t.setLogs.sessionExerciseId, se.id),
-          eq(t.setLogs.completed, true),
-        ),
-      );
+      .where(and(eq(t.setLogs.sessionExerciseId, se.id), eq(t.setLogs.completed, true)));
     if (sets.length === 0) continue;
     let best1rm = 0;
     let volume = 0;
@@ -753,21 +660,13 @@ export async function renameRoutine(id: string, name: string) {
 /** Set (or clear) a routine's free-text focus/split tag (Push, Pull, Legs…). */
 export async function setRoutineCategory(id: string, category?: string) {
   const value = category?.trim() || null;
-  await db
-    .update(t.routines)
-    .set({ category: value })
-    .where(eq(t.routines.id, id));
+  await db.update(t.routines).set({ category: value }).where(eq(t.routines.id, id));
 }
 
 /** Set the weekdays a routine is scheduled for (0=Sun … 6=Sat). */
 export async function setRoutineSchedule(id: string, days: number[]) {
-  const clean = [...new Set(days)].filter(
-    (d) => Number.isInteger(d) && d >= 0 && d <= 6,
-  );
-  await db
-    .update(t.routines)
-    .set({ scheduledDays: clean })
-    .where(eq(t.routines.id, id));
+  const clean = [...new Set(days)].filter((d) => Number.isInteger(d) && d >= 0 && d <= 6);
+  await db.update(t.routines).set({ scheduledDays: clean }).where(eq(t.routines.id, id));
 }
 
 /**
@@ -937,10 +836,7 @@ export async function duplicateRoutine(args: {
 
   let name = args.name?.trim();
   if (!name) {
-    const existing = await db
-      .select()
-      .from(t.routines)
-      .where(eq(t.routines.ownerId, args.ownerId));
+    const existing = await db.select().from(t.routines).where(eq(t.routines.ownerId, args.ownerId));
     const names = new Set(existing.map((r) => r.name));
     name = `${src.name} (copy)`;
     for (let n = 2; names.has(name); n++) name = `${src.name} (copy ${n})`;
@@ -1066,17 +962,14 @@ export async function applySessionToRoutine(args: {
       })),
     };
     oldPlan.push(entry);
-    if (!oldSetsByExerciseId.has(re.exerciseId))
-      oldSetsByExerciseId.set(re.exerciseId, entry.sets);
+    if (!oldSetsByExerciseId.has(re.exerciseId)) oldSetsByExerciseId.set(re.exerciseId, entry.sets);
   }
 
   let plan: PlanEntry[];
   if (args.mode === "everything") {
     plan = performed;
   } else if (args.mode === "numbers") {
-    const performedByExId = new Map(
-      performed.map((p) => [p.exerciseId, p.sets]),
-    );
+    const performedByExId = new Map(performed.map((p) => [p.exerciseId, p.sets]));
     plan = oldPlan.map((o) => ({
       ...o,
       sets: performedByExId.get(o.exerciseId) ?? o.sets,
@@ -1092,9 +985,7 @@ export async function applySessionToRoutine(args: {
 
   const ownerId = await ownerOf(t.routines, args.routineId);
   // Replace the routine tree (routineSets cascade with their exercise).
-  await db
-    .delete(t.routineExercises)
-    .where(eq(t.routineExercises.routineId, args.routineId));
+  await db.delete(t.routineExercises).where(eq(t.routineExercises.routineId, args.routineId));
   let order = 1;
   for (const entry of plan) {
     const re = await insertRow(t.routineExercises, {
@@ -1130,14 +1021,8 @@ export interface SaveBackContext {
 }
 
 /** Gather everything the finish flow needs to offer save-back. */
-export async function getSaveBackContext(
-  sessionId: string,
-): Promise<SaveBackContext | null> {
-  const [session] = await db
-    .select()
-    .from(t.sessions)
-    .where(eq(t.sessions.id, sessionId))
-    .limit(1);
+export async function getSaveBackContext(sessionId: string): Promise<SaveBackContext | null> {
+  const [session] = await db.select().from(t.sessions).where(eq(t.sessions.id, sessionId)).limit(1);
   if (!session?.routineId) return null;
   const [routine] = await db
     .select()
@@ -1189,18 +1074,13 @@ export async function getSaveBackContext(
   const actives = await db
     .select()
     .from(t.programs)
-    .where(
-      and(eq(t.programs.ownerId, session.ownerId), eq(t.programs.active, true)),
-    );
+    .where(and(eq(t.programs.ownerId, session.ownerId), eq(t.programs.active, true)));
   for (const pr of actives) {
     const [day] = await db
       .select()
       .from(t.programDays)
       .where(
-        and(
-          eq(t.programDays.programId, pr.id),
-          eq(t.programDays.routineId, session.routineId),
-        ),
+        and(eq(t.programDays.programId, pr.id), eq(t.programDays.routineId, session.routineId)),
       )
       .limit(1);
     if (day) {
@@ -1235,10 +1115,7 @@ export async function createProgram(args: {
     blockWeeks: args.blockWeeks,
   });
   // First/only program becomes active by default so Home always drives "today".
-  const all = await db
-    .select()
-    .from(t.programs)
-    .where(eq(t.programs.ownerId, args.ownerId));
+  const all = await db.select().from(t.programs).where(eq(t.programs.ownerId, args.ownerId));
   if (all.length === 1) {
     const now = Date.now();
     await db
@@ -1261,16 +1138,9 @@ export async function renameProgram(id: string, name: string) {
  * week-block bar anchors to "now"; re-activating the already-active program is
  * a no-op and leaves its anchor untouched.
  */
-export async function setProgramActive(args: {
-  programId: string;
-  ownerId: string;
-  now?: number;
-}) {
+export async function setProgramActive(args: { programId: string; ownerId: string; now?: number }) {
   const now = args.now ?? Date.now();
-  const all = await db
-    .select()
-    .from(t.programs)
-    .where(eq(t.programs.ownerId, args.ownerId));
+  const all = await db.select().from(t.programs).where(eq(t.programs.ownerId, args.ownerId));
   for (const p of all) {
     const shouldBe = p.id === args.programId;
     if (!!p.active !== shouldBe) {
@@ -1294,12 +1164,9 @@ export async function setProgramSchedule(
 ) {
   const set: Record<string, unknown> = {};
   if (patch.scheduleMode !== undefined) set.scheduleMode = patch.scheduleMode;
-  if (patch.rotationCursor !== undefined)
-    set.rotationCursor = patch.rotationCursor;
-  if (patch.rotationTouchedAt !== undefined)
-    set.rotationTouchedAt = patch.rotationTouchedAt;
-  if ("blockWeeks" in patch)
-    set.blockWeeks = patch.blockWeeks ? patch.blockWeeks : null;
+  if (patch.rotationCursor !== undefined) set.rotationCursor = patch.rotationCursor;
+  if (patch.rotationTouchedAt !== undefined) set.rotationTouchedAt = patch.rotationTouchedAt;
+  if ("blockWeeks" in patch) set.blockWeeks = patch.blockWeeks ? patch.blockWeeks : null;
   if (Object.keys(set).length === 0) return;
   await db.update(t.programs).set(set).where(eq(t.programs.id, id));
 }
@@ -1429,9 +1296,7 @@ export async function cloneSharedRoutine(args: {
   shared: SharedRoutineRow;
   ownerId: string;
 }): Promise<string> {
-  const snapshot = JSON.parse(
-    args.shared.exercisesJson,
-  ) as SharedSnapshotExercise[];
+  const snapshot = JSON.parse(args.shared.exercisesJson) as SharedSnapshotExercise[];
   const routine = await createRoutine({
     ownerId: args.ownerId,
     name: args.shared.name,
@@ -1482,12 +1347,7 @@ export async function lastPerformance(args: {
 
   const candidates = seRows
     .map((se) => ({ se, session: startedById.get(se.sessionId) }))
-    .filter(
-      (c) =>
-        c.session &&
-        c.session.id !== args.excludeSessionId &&
-        c.session.endedAt != null,
-    )
+    .filter((c) => c.session && c.session.id !== args.excludeSessionId && c.session.endedAt != null)
     .sort((a, b) => (b.session!.startedAt ?? 0) - (a.session!.startedAt ?? 0));
 
   const best = candidates[0];
@@ -1496,12 +1356,7 @@ export async function lastPerformance(args: {
   const sets = await db
     .select()
     .from(t.setLogs)
-    .where(
-      and(
-        eq(t.setLogs.sessionExerciseId, best.se.id),
-        eq(t.setLogs.completed, true),
-      ),
-    )
+    .where(and(eq(t.setLogs.sessionExerciseId, best.se.id), eq(t.setLogs.completed, true)))
     .orderBy(asc(t.setLogs.order));
   if (sets.length === 0) return null;
   return sets.map((s) => ({ order: s.order, weight: s.weight, reps: s.reps }));
@@ -1556,10 +1411,7 @@ export async function savePushSubscription(args: {
 
 /** All push subscriptions (devices) for a user. */
 export async function getPushSubscriptions(ownerId: string) {
-  return db
-    .select()
-    .from(t.pushSubscriptions)
-    .where(eq(t.pushSubscriptions.ownerId, ownerId));
+  return db.select().from(t.pushSubscriptions).where(eq(t.pushSubscriptions.ownerId, ownerId));
 }
 
 /** Remove a stored subscription (e.g. the push service reported it expired). */
@@ -1592,12 +1444,7 @@ export async function reschedulePush(id: string, fireAt: number) {
   await db
     .update(t.scheduledPushes)
     .set({ fireAt })
-    .where(
-      and(
-        eq(t.scheduledPushes.id, id),
-        eq(t.scheduledPushes.status, "pending"),
-      ),
-    );
+    .where(and(eq(t.scheduledPushes.id, id), eq(t.scheduledPushes.status, "pending")));
 }
 
 /** Cancel a scheduled push (rest skipped, or fired locally in the foreground). */
@@ -1620,25 +1467,17 @@ export async function getPendingPushes(): Promise<PendingPushRow[]> {
   const rows = await db
     .select()
     .from(t.scheduledPushes)
-    .leftJoin(
-      t.pushSubscriptions,
-      eq(t.scheduledPushes.subscriptionId, t.pushSubscriptions.id),
-    )
+    .leftJoin(t.pushSubscriptions, eq(t.scheduledPushes.subscriptionId, t.pushSubscriptions.id))
     .where(eq(t.scheduledPushes.status, "pending"));
   return rows.map((r) => ({
     ...(r.scheduled_pushes as unknown as ScheduledPush),
-    subscription:
-      (r.push_subscriptions as unknown as PushSubscriptionRecord | null) ??
-      null,
+    subscription: (r.push_subscriptions as unknown as PushSubscriptionRecord | null) ?? null,
   }));
 }
 
 /** Mark a scheduled push delivered so the sender never sends it twice. */
 export async function markPushSent(id: string) {
-  await db
-    .update(t.scheduledPushes)
-    .set({ status: "sent" })
-    .where(eq(t.scheduledPushes.id, id));
+  await db.update(t.scheduledPushes).set({ status: "sent" }).where(eq(t.scheduledPushes.id, id));
 }
 
 /* ---------------------------------------------------------------------------
@@ -1669,17 +1508,11 @@ export async function deleteAccountData(ownerId: string) {
     await tx.delete(t.sessions).where(eq(t.sessions.ownerId, ownerId));
     await tx.delete(t.routines).where(eq(t.routines.ownerId, ownerId));
     await tx.delete(t.programs).where(eq(t.programs.ownerId, ownerId));
-    await tx
-      .delete(t.pushSubscriptions)
-      .where(eq(t.pushSubscriptions.ownerId, ownerId));
+    await tx.delete(t.pushSubscriptions).where(eq(t.pushSubscriptions.ownerId, ownerId));
     // Standalone owner-scoped tables (no cascade parent).
-    await tx
-      .delete(t.personalRecords)
-      .where(eq(t.personalRecords.ownerId, ownerId));
+    await tx.delete(t.personalRecords).where(eq(t.personalRecords.ownerId, ownerId));
     await tx.delete(t.bodyMetrics).where(eq(t.bodyMetrics.ownerId, ownerId));
-    await tx
-      .delete(t.bodyWeightLogs)
-      .where(eq(t.bodyWeightLogs.ownerId, ownerId));
+    await tx.delete(t.bodyWeightLogs).where(eq(t.bodyWeightLogs.ownerId, ownerId));
     await tx.delete(t.userProfile).where(eq(t.userProfile.ownerId, ownerId));
     // Custom exercises — only those no surviving routine/session references.
     await tx.delete(t.exercises).where(

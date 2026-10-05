@@ -59,10 +59,7 @@ export function PersonalRecordsCard() {
 
       <ul className="list-none p-0 m-0 flex flex-col">
         {top.map((p) => (
-          <li
-            key={p.exerciseId}
-            className="border-b border-[var(--border)] last:border-b-0"
-          >
+          <li key={p.exerciseId} className="border-b border-[var(--border)] last:border-b-0">
             <button
               type="button"
               onClick={() => openExercise(p.exerciseId)}
@@ -77,7 +74,9 @@ export function PersonalRecordsCard() {
                     </span>
                   )}
                 </div>
-                <div className="mt-0.5 text-[13px] text-[var(--text-muted)]">{fmtDate(p.achievedAt)}</div>
+                <div className="mt-0.5 text-[13px] text-[var(--text-muted)]">
+                  {fmtDate(p.achievedAt)}
+                </div>
               </div>
               <div className="shrink-0 text-right">
                 <div className="font-extrabold tabular-nums">

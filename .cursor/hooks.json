@@ -1,8 +1,6 @@
 {
   "version": 1,
   "hooks": {
-    "afterFileEdit": [
-      { "command": ".cursor/hooks/format.sh" }
-    ]
+    "afterFileEdit": [{ "command": ".cursor/hooks/format.sh" }]
   }
 }

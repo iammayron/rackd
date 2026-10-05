@@ -63,10 +63,7 @@ describe("dedupLegacyExercises", () => {
       .from(sessionExercises)
       .where(eq(sessionExercises.id, session.sessionExerciseId));
     expect(se[0].exerciseId).toBe("bench-press");
-    const pr = await db
-      .select()
-      .from(personalRecords)
-      .where(eq(personalRecords.id, "pr1"));
+    const pr = await db.select().from(personalRecords).where(eq(personalRecords.id, "pr1"));
     expect(pr[0].exerciseId).toBe("bench-press");
 
     // Logged-set history survives (came along with its session exercise).
@@ -78,15 +75,9 @@ describe("dedupLegacyExercises", () => {
     expect(logs[0].weight).toBe(100);
 
     // Legacy row gone; unmatched legacy rows remain.
-    const benchGone = await db
-      .select()
-      .from(exercises)
-      .where(eq(exercises.id, "ex_bench"));
+    const benchGone = await db.select().from(exercises).where(eq(exercises.id, "ex_bench"));
     expect(benchGone).toHaveLength(0);
-    const squat = await db
-      .select()
-      .from(exercises)
-      .where(eq(exercises.id, "ex_squat"));
+    const squat = await db.select().from(exercises).where(eq(exercises.id, "ex_squat"));
     expect(squat).toHaveLength(1);
   });
 
@@ -97,10 +88,7 @@ describe("dedupLegacyExercises", () => {
     await dedupLegacyExercises();
     await dedupLegacyExercises(); // must not throw or re-touch anything
 
-    const benchGone = await db
-      .select()
-      .from(exercises)
-      .where(eq(exercises.id, "ex_bench"));
+    const benchGone = await db.select().from(exercises).where(eq(exercises.id, "ex_bench"));
     expect(benchGone).toHaveLength(0);
   });
 
@@ -115,10 +103,7 @@ describe("dedupLegacyExercises", () => {
       .from(routineExercises)
       .where(eq(routineExercises.id, routine.exercises[0].id));
     expect(re[0].exerciseId).toBe("ex_bench");
-    const bench = await db
-      .select()
-      .from(exercises)
-      .where(eq(exercises.id, "ex_bench"));
+    const bench = await db.select().from(exercises).where(eq(exercises.id, "ex_bench"));
     expect(bench).toHaveLength(1);
   });
 });

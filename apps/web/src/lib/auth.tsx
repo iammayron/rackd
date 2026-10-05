@@ -25,10 +25,7 @@ interface AuthState {
    * re-authenticating (Supabase lets a live session set a new password without
    * the old one — we require it so a borrowed/unlocked session can't).
    */
-  updatePassword: (
-    currentPassword: string,
-    newPassword: string,
-  ) => Promise<{ error?: string }>;
+  updatePassword: (currentPassword: string, newPassword: string) => Promise<{ error?: string }>;
   /** Permanently delete the account (data + auth user), then sign out. */
   deleteAccount: () => Promise<{ error?: string }>;
 }

@@ -41,7 +41,12 @@ export const PUT = withUser(async (ownerId, req, ctx) => {
   if ("name" in body) await renameProgram(id, body.name);
   if ("active" in body && body.active === true) await setProgramActive({ programId: id, ownerId });
   if ("scheduleMode" in body || "rotationCursor" in body || "blockWeeks" in body) {
-    const patch: { scheduleMode?: "rotation" | "weekly"; rotationCursor?: number; blockWeeks?: number; rotationTouchedAt?: number } = {};
+    const patch: {
+      scheduleMode?: "rotation" | "weekly";
+      rotationCursor?: number;
+      blockWeeks?: number;
+      rotationTouchedAt?: number;
+    } = {};
     if ("scheduleMode" in body) patch.scheduleMode = body.scheduleMode;
     // Moving the cursor by hand ("Skip") is the nudge the layoff clock measures
     // from. Stamped server-side, never read from the body: a skewed client clock

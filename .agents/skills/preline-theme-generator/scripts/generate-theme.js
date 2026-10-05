@@ -27,7 +27,7 @@ function oklchToRgb(l, c, h) {
   // OKLab to linear sRGB via LMS
   const L = l + 0.3963377774 * a + 0.2158037573 * b;
   const M = l - 0.1055613458 * a - 0.0638541728 * b;
-  const S = l - 0.0894841775 * a - 1.2914855480 * b;
+  const S = l - 0.0894841775 * a - 1.291485548 * b;
 
   const l_ = L * L * L;
   const m_ = M * M * M;
@@ -35,7 +35,7 @@ function oklchToRgb(l, c, h) {
 
   let rLinear = 4.0767416621 * l_ - 3.3077115913 * m_ + 0.2309699292 * s_;
   let gLinear = -1.2684380046 * l_ + 2.6097574011 * m_ - 0.3413193965 * s_;
-  let bLinear = -0.0041960863 * l_ - 0.7034186147 * m_ + 1.7076147010 * s_;
+  let bLinear = -0.0041960863 * l_ - 0.7034186147 * m_ + 1.707614701 * s_;
 
   // Linear to sRGB gamma
   const gammaCorrect = (x) => {
@@ -67,7 +67,7 @@ function oklchToHex(l, c, h) {
 
   const toHex = (n) => {
     const hex = Math.max(0, Math.min(255, n)).toString(16);
-    return hex.length === 1 ? '0' + hex : hex;
+    return hex.length === 1 ? "0" + hex : hex;
   };
 
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
@@ -98,7 +98,7 @@ function getRelativeLuminance(rgb) {
   const g = srgbChannelToLinear(rgb.g);
   const b = srgbChannelToLinear(rgb.b);
 
-  return (0.2126 * r) + (0.7152 * g) + (0.0722 * b);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
 /**
@@ -123,7 +123,7 @@ function getContrastRatio(colorA, colorB) {
  */
 function hexToHue(hex) {
   // Remove # if present
-  hex = hex.replace(/^#/, '');
+  hex = hex.replace(/^#/, "");
 
   const r = parseInt(hex.substring(0, 2), 16) / 255;
   const g = parseInt(hex.substring(2, 4), 16) / 255;
@@ -162,18 +162,22 @@ function validateConfig(config) {
   const errors = [];
 
   // Required: name
-  if (!config.name || typeof config.name !== 'string') {
+  if (!config.name || typeof config.name !== "string") {
     errors.push('Missing required field: "name" (string, kebab-case theme name)');
   } else if (!/^[a-z][a-z0-9-]*$/.test(config.name)) {
-    errors.push(`Invalid name "${config.name}": must be kebab-case (lowercase letters, numbers, hyphens, starting with letter)`);
+    errors.push(
+      `Invalid name "${config.name}": must be kebab-case (lowercase letters, numbers, hyphens, starting with letter)`,
+    );
   }
 
   // Required: hue OR primaryColor
-  const hasHue = typeof config.hue === 'number';
-  const hasPrimaryColor = typeof config.primaryColor === 'string';
+  const hasHue = typeof config.hue === "number";
+  const hasPrimaryColor = typeof config.primaryColor === "string";
 
   if (!hasHue && !hasPrimaryColor) {
-    errors.push('Missing required field: "hue" (number 0-360) or "primaryColor" (hex string like "#2F6BFF")');
+    errors.push(
+      'Missing required field: "hue" (number 0-360) or "primaryColor" (hex string like "#2F6BFF")',
+    );
   }
 
   if (hasHue && (config.hue < 0 || config.hue > 360)) {
@@ -181,18 +185,22 @@ function validateConfig(config) {
   }
 
   if (hasPrimaryColor && !/^#?[0-9A-Fa-f]{6}$/.test(config.primaryColor)) {
-    errors.push(`Invalid primaryColor "${config.primaryColor}": must be 6-digit hex (e.g., "#2F6BFF")`);
+    errors.push(
+      `Invalid primaryColor "${config.primaryColor}": must be 6-digit hex (e.g., "#2F6BFF")`,
+    );
   }
 
   // Optional: style
-  if (config.style && !['vibrant', 'soft'].includes(config.style)) {
+  if (config.style && !["vibrant", "soft"].includes(config.style)) {
     errors.push(`Invalid style "${config.style}": must be "vibrant" or "soft"`);
   }
 
   // Optional: tailwindGray
-  const validGrays = ['neutral', 'stone', 'zinc', 'slate', 'gray'];
+  const validGrays = ["neutral", "stone", "zinc", "slate", "gray"];
   if (config.tailwindGray && !validGrays.includes(config.tailwindGray)) {
-    errors.push(`Invalid tailwindGray "${config.tailwindGray}": must be one of ${validGrays.join(', ')}`);
+    errors.push(
+      `Invalid tailwindGray "${config.tailwindGray}": must be one of ${validGrays.join(", ")}`,
+    );
   }
 
   return errors;
@@ -211,34 +219,54 @@ function calculateLightness(shade) {
   // Use a polynomial curve that matches Tailwind's visual rhythm
   // 50 = ~97%, 500 = ~60%, 950 = ~20%
   const shadeNormalized = shade / 1000;
-  const lightness = 97 - (shadeNormalized * 85) + (Math.pow(shadeNormalized, 2) * 10);
+  const lightness = 97 - shadeNormalized * 85 + Math.pow(shadeNormalized, 2) * 10;
   return Math.round(Math.max(15, Math.min(98, lightness)) * 10) / 10;
 }
 
 /**
  * Generate brand color palette (vibrant or soft)
  */
-function generateBrandPalette(name, hue, style = 'vibrant') {
+function generateBrandPalette(name, hue, style = "vibrant") {
   const shades = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
 
   // Chroma values - vibrant vs soft
   const chromaVibrant = {
-    50: 0.08, 100: 0.10, 200: 0.12, 300: 0.14, 400: 0.16,
-    500: 0.14, 600: 0.12, 700: 0.10, 800: 0.08, 900: 0.06, 950: 0.05
+    50: 0.08,
+    100: 0.1,
+    200: 0.12,
+    300: 0.14,
+    400: 0.16,
+    500: 0.14,
+    600: 0.12,
+    700: 0.1,
+    800: 0.08,
+    900: 0.06,
+    950: 0.05,
   };
 
   const chromaSoft = {
-    50: 0.012, 100: 0.020, 200: 0.035, 300: 0.055, 400: 0.075,
-    500: 0.085, 600: 0.080, 700: 0.070, 800: 0.055, 900: 0.040, 950: 0.030
+    50: 0.012,
+    100: 0.02,
+    200: 0.035,
+    300: 0.055,
+    400: 0.075,
+    500: 0.085,
+    600: 0.08,
+    700: 0.07,
+    800: 0.055,
+    900: 0.04,
+    950: 0.03,
   };
 
-  const chroma = style === 'soft' ? chromaSoft : chromaVibrant;
+  const chroma = style === "soft" ? chromaSoft : chromaVibrant;
 
-  return shades.map(shade => {
-    const l = calculateLightness(shade);
-    const c = chroma[shade];
-    return `  --color-${name}-${shade}: oklch(${l}% ${c} ${hue});`;
-  }).join('\n');
+  return shades
+    .map((shade) => {
+      const l = calculateLightness(shade);
+      const c = chroma[shade];
+      return `  --color-${name}-${shade}: oklch(${l}% ${c} ${hue});`;
+    })
+    .join("\n");
 }
 
 /**
@@ -252,29 +280,47 @@ function generateGrayPalette(name, hue) {
     { shade: 200, l: 89.7, c: 0.008 },
     { shade: 300, l: 82.7, c: 0.012 },
     { shade: 400, l: 73, c: 0.018 },
-    { shade: 500, l: 62.5, c: 0.020 },  // Peak chroma
+    { shade: 500, l: 62.5, c: 0.02 }, // Peak chroma
     { shade: 600, l: 52.8, c: 0.016 },
     { shade: 700, l: 41.4, c: 0.012 },
-    { shade: 800, l: 26.9, c: 0.006 },  // Darker - matches Tailwind neutral-800
-    { shade: 900, l: 20.5, c: 0.004 },  // Darker - matches Tailwind neutral-900
-    { shade: 950, l: 14.1, c: 0.002 },  // Darker - matches Tailwind neutral-950
+    { shade: 800, l: 26.9, c: 0.006 }, // Darker - matches Tailwind neutral-800
+    { shade: 900, l: 20.5, c: 0.004 }, // Darker - matches Tailwind neutral-900
+    { shade: 950, l: 14.1, c: 0.002 }, // Darker - matches Tailwind neutral-950
   ];
 
-  return shades.map(({ shade, l, c }) =>
-    `  --color-${name}-gray-${shade}: oklch(${l}% ${c} ${hue});`
-  ).join('\n');
+  return shades
+    .map(({ shade, l, c }) => `  --color-${name}-gray-${shade}: oklch(${l}% ${c} ${hue});`)
+    .join("\n");
 }
 
 function getBrandShadeOklch(style, hue, shade) {
   const chromaByStyle = {
     vibrant: {
-      50: 0.08, 100: 0.10, 200: 0.12, 300: 0.14, 400: 0.16,
-      500: 0.14, 600: 0.12, 700: 0.10, 800: 0.08, 900: 0.06, 950: 0.05
+      50: 0.08,
+      100: 0.1,
+      200: 0.12,
+      300: 0.14,
+      400: 0.16,
+      500: 0.14,
+      600: 0.12,
+      700: 0.1,
+      800: 0.08,
+      900: 0.06,
+      950: 0.05,
     },
     soft: {
-      50: 0.012, 100: 0.020, 200: 0.035, 300: 0.055, 400: 0.075,
-      500: 0.085, 600: 0.080, 700: 0.070, 800: 0.055, 900: 0.040, 950: 0.030
-    }
+      50: 0.012,
+      100: 0.02,
+      200: 0.035,
+      300: 0.055,
+      400: 0.075,
+      500: 0.085,
+      600: 0.08,
+      700: 0.07,
+      800: 0.055,
+      900: 0.04,
+      950: 0.03,
+    },
   };
 
   return {
@@ -291,7 +337,7 @@ function getThemeGrayShadeOklch(hue, shade) {
     200: { l: 89.7, c: 0.008 },
     300: { l: 82.7, c: 0.012 },
     400: { l: 73, c: 0.018 },
-    500: { l: 62.5, c: 0.020 },
+    500: { l: 62.5, c: 0.02 },
     600: { l: 52.8, c: 0.016 },
     700: { l: 41.4, c: 0.012 },
     800: { l: 26.9, c: 0.006 },
@@ -329,33 +375,36 @@ function pickContrastingForegroundValue(candidates, backgrounds) {
 // ============================================
 
 function buildChartSeriesTokens(series) {
-  return series.map((item, index) => {
-    const num = index + 1;
-    return `
+  return series
+    .map((item, index) => {
+      const num = index + 1;
+      return `
   --chart-${num}: ${item.base};
   --chart-colors-chart-${num}: ${item.base};
   --chart-colors-chart-${num}-inverse: ${item.inverse};
   --chart-colors-chart-${num}-hex: ${item.base};
   --chart-colors-chart-${num}-hex-inverse: ${item.inverse};`;
-  }).join('');
+    })
+    .join("");
 }
 
 function generateChartTokensLight(name) {
   const g = `--color-${name}-gray`;
   const series = [
-    { base: 'var(--color-primary-50)', inverse: 'var(--color-primary-100)' },
-    { base: 'var(--color-primary-200)', inverse: 'var(--color-primary-300)' },
-    { base: 'var(--color-primary-400)', inverse: 'var(--color-primary-500)' },
-    { base: 'var(--color-primary-700)', inverse: 'var(--color-primary-500)' },
-    { base: 'var(--color-primary-900)', inverse: 'var(--color-primary-700)' },
-    { base: 'var(--color-sky-600)', inverse: 'var(--color-sky-400)' },
-    { base: 'var(--color-emerald-600)', inverse: 'var(--color-emerald-400)' },
-    { base: 'var(--color-violet-600)', inverse: 'var(--color-violet-400)' },
-    { base: 'var(--color-rose-500)', inverse: 'var(--color-rose-300)' },
+    { base: "var(--color-primary-50)", inverse: "var(--color-primary-100)" },
+    { base: "var(--color-primary-200)", inverse: "var(--color-primary-300)" },
+    { base: "var(--color-primary-400)", inverse: "var(--color-primary-500)" },
+    { base: "var(--color-primary-700)", inverse: "var(--color-primary-500)" },
+    { base: "var(--color-primary-900)", inverse: "var(--color-primary-700)" },
+    { base: "var(--color-sky-600)", inverse: "var(--color-sky-400)" },
+    { base: "var(--color-emerald-600)", inverse: "var(--color-emerald-400)" },
+    { base: "var(--color-violet-600)", inverse: "var(--color-violet-400)" },
+    { base: "var(--color-rose-500)", inverse: "var(--color-rose-300)" },
     { base: `var(${g}-300)`, inverse: `var(${g}-500)` },
   ];
 
-  return `
+  return (
+    `
   /* ============================================ */
   /* CHARTS (Apexcharts)                          */
   /* ============================================ */
@@ -389,7 +438,8 @@ function generateChartTokensLight(name) {
   --chart-colors-grid-border: var(--border);
   --chart-colors-grid-border-inverse: var(${g}-700);
   --chart-colors-bar-ranges: var(--surface-1);
-  --chart-colors-bar-ranges-inverse: var(${g}-700);`;
+  --chart-colors-bar-ranges-inverse: var(${g}-700);`
+  );
 }
 
 function generateChartTokensDark(name, grayVar, darkModePrimaryProfile) {
@@ -397,19 +447,26 @@ function generateChartTokensDark(name, grayVar, darkModePrimaryProfile) {
   const interactionShade = darkModePrimaryProfile.interactionShade;
   const companionShade = primaryShade >= 500 ? 300 : 200;
   const series = [
-    { base: 'var(--color-primary-200)', inverse: 'var(--color-primary-300)' },
-    { base: 'var(--color-primary-300)', inverse: 'var(--color-primary-400)' },
-    { base: 'var(--color-primary-400)', inverse: `var(--color-primary-${primaryShade})` },
-    { base: `var(--color-primary-${primaryShade})`, inverse: `var(--color-primary-${interactionShade})` },
-    { base: `var(--color-primary-${companionShade})`, inverse: `var(--color-primary-${primaryShade})` },
-    { base: 'var(--color-sky-400)', inverse: 'var(--color-sky-300)' },
-    { base: 'var(--color-emerald-400)', inverse: 'var(--color-emerald-300)' },
-    { base: 'var(--color-violet-400)', inverse: 'var(--color-violet-300)' },
-    { base: 'var(--color-rose-400)', inverse: 'var(--color-rose-300)' },
+    { base: "var(--color-primary-200)", inverse: "var(--color-primary-300)" },
+    { base: "var(--color-primary-300)", inverse: "var(--color-primary-400)" },
+    { base: "var(--color-primary-400)", inverse: `var(--color-primary-${primaryShade})` },
+    {
+      base: `var(--color-primary-${primaryShade})`,
+      inverse: `var(--color-primary-${interactionShade})`,
+    },
+    {
+      base: `var(--color-primary-${companionShade})`,
+      inverse: `var(--color-primary-${primaryShade})`,
+    },
+    { base: "var(--color-sky-400)", inverse: "var(--color-sky-300)" },
+    { base: "var(--color-emerald-400)", inverse: "var(--color-emerald-300)" },
+    { base: "var(--color-violet-400)", inverse: "var(--color-violet-300)" },
+    { base: "var(--color-rose-400)", inverse: "var(--color-rose-300)" },
     { base: `var(${grayVar}-300)`, inverse: `var(${grayVar}-500)` },
   ];
 
-  return `
+  return (
+    `
   /* CHARTS - dark mode adjustments */
   --chart-colors-background: var(--background);
   --chart-colors-background-inverse: var(${grayVar}-100);
@@ -429,7 +486,8 @@ function generateChartTokensDark(name, grayVar, darkModePrimaryProfile) {
   --chart-colors-xaxis-labels: var(${grayVar}-400);
   --chart-colors-yaxis-labels: var(${grayVar}-400);
   --chart-colors-grid-border: var(--border);
-  --chart-colors-bar-ranges: var(--surface);`;
+  --chart-colors-bar-ranges: var(--surface);`
+  );
 }
 
 function generateMapTokens(name) {
@@ -460,10 +518,13 @@ function getPrimaryForegroundForLightMode(name, hue, style) {
     .map(oklchColorToRgb);
   const darkText = oklchColorToRgb(getThemeGrayShadeOklch(hue, 900));
 
-  return pickContrastingForegroundValue([
-    { value: 'var(--color-white)', rgb: { r: 255, g: 255, b: 255 } },
-    { value: `var(--color-${name}-gray-900)`, rgb: darkText },
-  ], backgrounds);
+  return pickContrastingForegroundValue(
+    [
+      { value: "var(--color-white)", rgb: { r: 255, g: 255, b: 255 } },
+      { value: `var(--color-${name}-gray-900)`, rgb: darkText },
+    ],
+    backgrounds,
+  );
 }
 
 function getDarkModePrimaryProfile(name, hue, style, grayVar) {
@@ -472,23 +533,27 @@ function getDarkModePrimaryProfile(name, hue, style, grayVar) {
   const minimumUiContrast = 3;
   const profiles = [
     {
-      key: 'white',
-      foregroundValue: 'var(--color-white)',
-      switchValue: 'var(--color-white)',
+      key: "white",
+      foregroundValue: "var(--color-white)",
+      switchValue: "var(--color-white)",
       primaryShade: 500,
       interactionShade: 600,
       checkedShade: 500,
-      backgrounds: [500, 600].map((shade) => oklchColorToRgb(getBrandShadeOklch(style, hue, shade))),
+      backgrounds: [500, 600].map((shade) =>
+        oklchColorToRgb(getBrandShadeOklch(style, hue, shade)),
+      ),
       foregroundRgb: white,
     },
     {
-      key: 'dark',
+      key: "dark",
       foregroundValue: `var(${grayVar}-900)`,
       switchValue: `var(${grayVar}-800)`,
       primaryShade: 400,
       interactionShade: 500,
       checkedShade: 400,
-      backgrounds: [400, 500].map((shade) => oklchColorToRgb(getBrandShadeOklch(style, hue, shade))),
+      backgrounds: [400, 500].map((shade) =>
+        oklchColorToRgb(getBrandShadeOklch(style, hue, shade)),
+      ),
       foregroundRgb: darkText,
     },
   ].map((profile) => ({
@@ -496,15 +561,17 @@ function getDarkModePrimaryProfile(name, hue, style, grayVar) {
     worstContrast: getWorstContrast(profile.foregroundRgb, profile.backgrounds),
   }));
 
-  const preferredWhiteProfile = profiles.find((profile) =>
-    profile.key === 'white' && profile.worstContrast >= minimumUiContrast
+  const preferredWhiteProfile = profiles.find(
+    (profile) => profile.key === "white" && profile.worstContrast >= minimumUiContrast,
   );
 
   if (preferredWhiteProfile) {
     return preferredWhiteProfile;
   }
 
-  const acceptableProfiles = profiles.filter((profile) => profile.worstContrast >= minimumUiContrast);
+  const acceptableProfiles = profiles.filter(
+    (profile) => profile.worstContrast >= minimumUiContrast,
+  );
   if (acceptableProfiles.length > 0) {
     acceptableProfiles.sort((left, right) => right.worstContrast - left.worstContrast);
     return acceptableProfiles[0];
@@ -522,7 +589,8 @@ function generateLightModeTokens(name, hue, style) {
   const g = `--color-${name}-gray`;
   const primaryForeground = getPrimaryForegroundForLightMode(name, hue, style);
 
-  return `
+  return (
+    `
   /* ============================================ */
   /* GLOBAL SURFACES + TEXT                       */
   /* ============================================ */
@@ -794,18 +862,26 @@ function generateLightModeTokens(name, hue, style) {
   --scrollbar-track-inverse: transparent;
   --scrollbar-thumb-inverse: var(--foreground-inverse);` +
     generateChartTokensLight(name) +
-    generateMapTokens(name);
+    generateMapTokens(name)
+  );
 }
 
-function generateDarkModeTokens(name, tailwindGray, useCustomGray = false, hue = 0, style = 'vibrant') {
+function generateDarkModeTokens(
+  name,
+  tailwindGray,
+  useCustomGray = false,
+  hue = 0,
+  style = "vibrant",
+) {
   const g = useCustomGray ? `--color-${name}-gray` : `--color-${tailwindGray}`;
   const darkModePrimaryProfile = getDarkModePrimaryProfile(name, hue, style, g);
   const switchColor = darkModePrimaryProfile.switchValue;
   const primaryForeground = darkModePrimaryProfile.foregroundValue;
 
-  return `
+  return (
+    `
   /* ============================================ */
-  /* DARK MODE - ${useCustomGray ? 'Custom Gray' : 'Tailwind ' + tailwindGray} */
+  /* DARK MODE - ${useCustomGray ? "Custom Gray" : "Tailwind " + tailwindGray} */
   /* ============================================ */
   
   /* BACKGROUNDS */
@@ -1014,7 +1090,8 @@ function generateDarkModeTokens(name, tailwindGray, useCustomGray = false, hue =
   --map-colors-default: var(--surface);
   --map-colors-default-inverse: var(--surface-2);
   --map-colors-border: var(--border-line-3);
-  --map-colors-border-inverse: var(--border-line-4);`;
+  --map-colors-border-inverse: var(--border-line-4);`
+  );
 }
 
 // ============================================
@@ -1036,9 +1113,9 @@ function generateFontTokens(config) {
   }
 
   if (fonts.length > 0) {
-    return '\n' + fonts.join('\n') + '\n';
+    return "\n" + fonts.join("\n") + "\n";
   }
-  return '';
+  return "";
 }
 
 // ============================================
@@ -1047,7 +1124,7 @@ function generateFontTokens(config) {
 
 /**
  * Generate a complete theme CSS file from config
- * 
+ *
  * @param {Object} config - Theme configuration
  * @param {string} config.name - Theme name (kebab-case)
  * @param {number} [config.hue] - Brand color hue (0-360) - required if no primaryColor
@@ -1064,27 +1141,25 @@ function generateTheme(config) {
   // Validate config
   const errors = validateConfig(config);
   if (errors.length > 0) {
-    throw new Error('Invalid config:\n  - ' + errors.join('\n  - '));
+    throw new Error("Invalid config:\n  - " + errors.join("\n  - "));
   }
 
   // Resolve hue from primaryColor if provided
   let hue = config.hue;
-  if (config.primaryColor && typeof hue !== 'number') {
+  if (config.primaryColor && typeof hue !== "number") {
     hue = hexToHue(config.primaryColor);
   }
 
-  const {
-    name,
-    style = 'vibrant',
-    useCustomDarkGray = false,
-    tailwindGray = 'neutral',
-  } = config;
+  const { name, style = "vibrant", useCustomDarkGray = false, tailwindGray = "neutral" } = config;
 
   const themeName = `theme-${name}`;
-  const displayName = name.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const displayName = name
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 
   // Choose Tailwind gray based on warmth if not specified
-  const darkGray = tailwindGray || (hue > 30 && hue < 200 ? 'stone' : 'neutral');
+  const darkGray = tailwindGray || (hue > 30 && hue < 200 ? "stone" : "neutral");
 
   const brandPalette = generateBrandPalette(name, hue, style);
   const grayPalette = generateGrayPalette(name, hue);
@@ -1122,5 +1197,5 @@ module.exports = {
   generateGrayPalette,
   oklchToHex,
   hexToHue,
-  validateConfig
+  validateConfig,
 };

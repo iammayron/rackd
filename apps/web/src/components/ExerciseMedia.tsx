@@ -51,11 +51,7 @@ export function ExerciseThumb({
   };
   const inner = ex.thumbnailUrl ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={ex.thumbnailUrl}
-      alt={ex.name}
-      className="w-full h-full object-cover"
-    />
+    <img src={ex.thumbnailUrl} alt={ex.name} className="w-full h-full object-cover" />
   ) : (
     <div
       className="w-full h-full flex items-center justify-center font-bold text-white"
@@ -130,9 +126,7 @@ export function ExerciseMediaModal({
               playsInline
               poster={ex.thumbnailUrl}
             >
-              {ex.clipUrlWebm && (
-                <source src={ex.clipUrlWebm} type="video/webm" />
-              )}
+              {ex.clipUrlWebm && <source src={ex.clipUrlWebm} type="video/webm" />}
               <source src={ex.clipUrl} type="video/mp4" />
             </video>
           ) : (
@@ -158,9 +152,7 @@ export function ExerciseMediaModal({
             ))}
         </div>
 
-        {ex.instructions && (
-          <p className="text-sm text-[var(--text)]">{ex.instructions}</p>
-        )}
+        {ex.instructions && <p className="text-sm text-[var(--text)]">{ex.instructions}</p>}
 
         {action && (
           <button

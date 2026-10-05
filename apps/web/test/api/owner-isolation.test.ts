@@ -25,20 +25,36 @@ import { POST as setLogCreate } from "@/app/api/set-logs/route";
 import { GET as sessionGet } from "@/app/api/sessions/[id]/route";
 import { POST as sessionFinish } from "@/app/api/sessions/[id]/finish/route";
 import { POST as sessionDiscard } from "@/app/api/sessions/[id]/discard/route";
-import { GET as programGet, PUT as programPut, DELETE as programDel } from "@/app/api/programs/[id]/route";
+import {
+  GET as programGet,
+  PUT as programPut,
+  DELETE as programDel,
+} from "@/app/api/programs/[id]/route";
 import { PUT as programDayPut, DELETE as programDayDel } from "@/app/api/program-days/[id]/route";
 
 const A = "owner-a";
 const B = "owner-b";
 
-const { routineExercises, routineSets, sessionExercises, setLogs, sessions, programs, programDays } =
-  schema;
+const {
+  routineExercises,
+  routineSets,
+  sessionExercises,
+  setLogs,
+  sessions,
+  programs,
+  programDays,
+} = schema;
 
 /** Seed an owned routine → exercise → set tree; return the ids. */
 async function seedRoutineTree(ownerId: string) {
   const routine = await createRoutine({ ownerId, name: "Plan" });
   const re = await addRoutineExercise({ routineId: routine.id, exerciseId: "ex_bench", order: 1 });
-  const set = await addRoutineSet({ routineExerciseId: re.id, order: 1, targetReps: 5, targetWeight: 100 });
+  const set = await addRoutineSet({
+    routineExerciseId: re.id,
+    order: 1,
+    targetReps: 5,
+    targetWeight: 100,
+  });
   return { routineId: routine.id, reId: re.id, setId: set.id };
 }
 
@@ -87,13 +103,19 @@ describe("API by-id owner isolation", () => {
   describe("/api/routine-exercises/[id] DELETE", () => {
     it("401 without a token", async () => {
       const { reId } = await seedRoutineTree(A);
-      const res = await reExDel(authedRequest(`http://t/x`, null, { method: "DELETE" }), ctx({ id: reId }));
+      const res = await reExDel(
+        authedRequest(`http://t/x`, null, { method: "DELETE" }),
+        ctx({ id: reId }),
+      );
       expect(res.status).toBe(401);
     });
 
     it("403 for a non-owner and the row still exists", async () => {
       const { reId } = await seedRoutineTree(A);
-      const res = await reExDel(authedRequest(`http://t/x`, B, { method: "DELETE" }), ctx({ id: reId }));
+      const res = await reExDel(
+        authedRequest(`http://t/x`, B, { method: "DELETE" }),
+        ctx({ id: reId }),
+      );
       expect(res.status).toBe(403);
       const rows = await db.select().from(routineExercises).where(eq(routineExercises.id, reId));
       expect(rows.length).toBe(1);
@@ -104,7 +126,10 @@ describe("API by-id owner isolation", () => {
     it("401 without a token", async () => {
       const { reId } = await seedRoutineTree(A);
       const res = await reExReplace(
-        authedRequest(`http://t/x`, null, { method: "POST", body: JSON.stringify({ exerciseId: "ex_squat" }) }),
+        authedRequest(`http://t/x`, null, {
+          method: "POST",
+          body: JSON.stringify({ exerciseId: "ex_squat" }),
+        }),
         ctx({ id: reId }),
       );
       expect(res.status).toBe(401);
@@ -113,7 +138,10 @@ describe("API by-id owner isolation", () => {
     it("403 for a non-owner and the slot's exercise is unchanged", async () => {
       const { reId } = await seedRoutineTree(A);
       const res = await reExReplace(
-        authedRequest(`http://t/x`, B, { method: "POST", body: JSON.stringify({ exerciseId: "ex_squat" }) }),
+        authedRequest(`http://t/x`, B, {
+          method: "POST",
+          body: JSON.stringify({ exerciseId: "ex_squat" }),
+        }),
         ctx({ id: reId }),
       );
       expect(res.status).toBe(403);
@@ -128,7 +156,10 @@ describe("API by-id owner isolation", () => {
     it("401 without a token", async () => {
       const { setId } = await seedRoutineTree(A);
       const res = await reSetPut(
-        authedRequest(`http://t/x`, null, { method: "PUT", body: JSON.stringify({ targetReps: 99 }) }),
+        authedRequest(`http://t/x`, null, {
+          method: "PUT",
+          body: JSON.stringify({ targetReps: 99 }),
+        }),
         ctx({ id: setId }),
       );
       expect(res.status).toBe(401);
@@ -149,13 +180,19 @@ describe("API by-id owner isolation", () => {
   describe("/api/routine-sets/[id] DELETE", () => {
     it("401 without a token", async () => {
       const { setId } = await seedRoutineTree(A);
-      const res = await reSetDel(authedRequest(`http://t/x`, null, { method: "DELETE" }), ctx({ id: setId }));
+      const res = await reSetDel(
+        authedRequest(`http://t/x`, null, { method: "DELETE" }),
+        ctx({ id: setId }),
+      );
       expect(res.status).toBe(401);
     });
 
     it("403 for a non-owner and the set still exists", async () => {
       const { setId } = await seedRoutineTree(A);
-      const res = await reSetDel(authedRequest(`http://t/x`, B, { method: "DELETE" }), ctx({ id: setId }));
+      const res = await reSetDel(
+        authedRequest(`http://t/x`, B, { method: "DELETE" }),
+        ctx({ id: setId }),
+      );
       expect(res.status).toBe(403);
       const rows = await db.select().from(routineSets).where(eq(routineSets.id, setId));
       expect(rows.length).toBe(1);
@@ -177,7 +214,10 @@ describe("API by-id owner isolation", () => {
 
     it("403 when B adds a set under A's routine exercise, and no set is created", async () => {
       const { reId } = await seedRoutineTree(A);
-      const before = await db.select().from(routineSets).where(eq(routineSets.routineExerciseId, reId));
+      const before = await db
+        .select()
+        .from(routineSets)
+        .where(eq(routineSets.routineExerciseId, reId));
       const res = await reSetCreate(
         authedRequest(`http://t/api/routine-sets`, B, {
           method: "POST",
@@ -186,7 +226,10 @@ describe("API by-id owner isolation", () => {
         ctx({}),
       );
       expect(res.status).toBe(403);
-      const after = await db.select().from(routineSets).where(eq(routineSets.routineExerciseId, reId));
+      const after = await db
+        .select()
+        .from(routineSets)
+        .where(eq(routineSets.routineExerciseId, reId));
       expect(after.length).toBe(before.length);
     });
   });
@@ -218,13 +261,19 @@ describe("API by-id owner isolation", () => {
   describe("/api/session-exercises/[id] DELETE", () => {
     it("401 without a token", async () => {
       const { seId } = await seedSessionTree(A);
-      const res = await seExDel(authedRequest(`http://t/x`, null, { method: "DELETE" }), ctx({ id: seId }));
+      const res = await seExDel(
+        authedRequest(`http://t/x`, null, { method: "DELETE" }),
+        ctx({ id: seId }),
+      );
       expect(res.status).toBe(401);
     });
 
     it("403 for a non-owner and the row still exists", async () => {
       const { seId } = await seedSessionTree(A);
-      const res = await seExDel(authedRequest(`http://t/x`, B, { method: "DELETE" }), ctx({ id: seId }));
+      const res = await seExDel(
+        authedRequest(`http://t/x`, B, { method: "DELETE" }),
+        ctx({ id: seId }),
+      );
       expect(res.status).toBe(403);
       const rows = await db.select().from(sessionExercises).where(eq(sessionExercises.id, seId));
       expect(rows.length).toBe(1);
@@ -235,7 +284,10 @@ describe("API by-id owner isolation", () => {
     it("401 without a token", async () => {
       const { seId } = await seedSessionTree(A);
       const res = await seExReplace(
-        authedRequest(`http://t/x`, null, { method: "POST", body: JSON.stringify({ exerciseId: "ex_squat" }) }),
+        authedRequest(`http://t/x`, null, {
+          method: "POST",
+          body: JSON.stringify({ exerciseId: "ex_squat" }),
+        }),
         ctx({ id: seId }),
       );
       expect(res.status).toBe(401);
@@ -244,7 +296,10 @@ describe("API by-id owner isolation", () => {
     it("403 for a non-owner and the slot's exercise is unchanged", async () => {
       const { seId } = await seedSessionTree(A);
       const res = await seExReplace(
-        authedRequest(`http://t/x`, B, { method: "POST", body: JSON.stringify({ exerciseId: "ex_squat" }) }),
+        authedRequest(`http://t/x`, B, {
+          method: "POST",
+          body: JSON.stringify({ exerciseId: "ex_squat" }),
+        }),
         ctx({ id: seId }),
       );
       expect(res.status).toBe(403);
@@ -280,13 +335,19 @@ describe("API by-id owner isolation", () => {
   describe("/api/set-logs/[id] DELETE", () => {
     it("401 without a token", async () => {
       const { logId } = await seedSessionTree(A);
-      const res = await setLogDel(authedRequest(`http://t/x`, null, { method: "DELETE" }), ctx({ id: logId }));
+      const res = await setLogDel(
+        authedRequest(`http://t/x`, null, { method: "DELETE" }),
+        ctx({ id: logId }),
+      );
       expect(res.status).toBe(401);
     });
 
     it("403 for a non-owner and the logged set still exists", async () => {
       const { logId } = await seedSessionTree(A);
-      const res = await setLogDel(authedRequest(`http://t/x`, B, { method: "DELETE" }), ctx({ id: logId }));
+      const res = await setLogDel(
+        authedRequest(`http://t/x`, B, { method: "DELETE" }),
+        ctx({ id: logId }),
+      );
       expect(res.status).toBe(403);
       const rows = await db.select().from(setLogs).where(eq(setLogs.id, logId));
       expect(rows.length).toBe(1);
@@ -312,7 +373,13 @@ describe("API by-id owner isolation", () => {
       const res = await setLogCreate(
         authedRequest(`http://t/api/set-logs`, B, {
           method: "POST",
-          body: JSON.stringify({ sessionExerciseId: seId, order: 2, weight: 50, reps: 5, completed: true }),
+          body: JSON.stringify({
+            sessionExerciseId: seId,
+            order: 2,
+            weight: 50,
+            reps: 5,
+            completed: true,
+          }),
         }),
         ctx({}),
       );
@@ -341,13 +408,19 @@ describe("API by-id owner isolation", () => {
   describe("/api/sessions/[id]/finish POST", () => {
     it("401 without a token", async () => {
       const { sessionId } = await seedSessionTree(A);
-      const res = await sessionFinish(authedRequest(`http://t/x`, null, { method: "POST" }), ctx({ id: sessionId }));
+      const res = await sessionFinish(
+        authedRequest(`http://t/x`, null, { method: "POST" }),
+        ctx({ id: sessionId }),
+      );
       expect(res.status).toBe(401);
     });
 
     it("403 for a non-owner and the session is not ended", async () => {
       const { sessionId } = await seedSessionTree(A);
-      const res = await sessionFinish(authedRequest(`http://t/x`, B, { method: "POST" }), ctx({ id: sessionId }));
+      const res = await sessionFinish(
+        authedRequest(`http://t/x`, B, { method: "POST" }),
+        ctx({ id: sessionId }),
+      );
       expect(res.status).toBe(403);
       const [row] = await db.select().from(sessions).where(eq(sessions.id, sessionId));
       expect(row!.endedAt).toBeNull();
@@ -357,13 +430,19 @@ describe("API by-id owner isolation", () => {
   describe("/api/sessions/[id]/discard POST", () => {
     it("401 without a token", async () => {
       const { sessionId } = await seedSessionTree(A);
-      const res = await sessionDiscard(authedRequest(`http://t/x`, null, { method: "POST" }), ctx({ id: sessionId }));
+      const res = await sessionDiscard(
+        authedRequest(`http://t/x`, null, { method: "POST" }),
+        ctx({ id: sessionId }),
+      );
       expect(res.status).toBe(401);
     });
 
     it("403 for a non-owner and the session still exists", async () => {
       const { sessionId } = await seedSessionTree(A);
-      const res = await sessionDiscard(authedRequest(`http://t/x`, B, { method: "POST" }), ctx({ id: sessionId }));
+      const res = await sessionDiscard(
+        authedRequest(`http://t/x`, B, { method: "POST" }),
+        ctx({ id: sessionId }),
+      );
       expect(res.status).toBe(403);
       const rows = await db.select().from(sessions).where(eq(sessions.id, sessionId));
       expect(rows.length).toBe(1);
@@ -390,7 +469,10 @@ describe("API by-id owner isolation", () => {
     it("401 without a token", async () => {
       const { programId } = await seedProgramTree(A);
       const res = await programPut(
-        authedRequest(`http://t/x`, null, { method: "PUT", body: JSON.stringify({ name: "Hacked" }) }),
+        authedRequest(`http://t/x`, null, {
+          method: "PUT",
+          body: JSON.stringify({ name: "Hacked" }),
+        }),
         ctx({ id: programId }),
       );
       expect(res.status).toBe(401);
@@ -411,13 +493,19 @@ describe("API by-id owner isolation", () => {
   describe("/api/programs/[id] DELETE", () => {
     it("401 without a token", async () => {
       const { programId } = await seedProgramTree(A);
-      const res = await programDel(authedRequest(`http://t/x`, null, { method: "DELETE" }), ctx({ id: programId }));
+      const res = await programDel(
+        authedRequest(`http://t/x`, null, { method: "DELETE" }),
+        ctx({ id: programId }),
+      );
       expect(res.status).toBe(401);
     });
 
     it("403 for a non-owner and the program still exists", async () => {
       const { programId } = await seedProgramTree(A);
-      const res = await programDel(authedRequest(`http://t/x`, B, { method: "DELETE" }), ctx({ id: programId }));
+      const res = await programDel(
+        authedRequest(`http://t/x`, B, { method: "DELETE" }),
+        ctx({ id: programId }),
+      );
       expect(res.status).toBe(403);
       const rows = await db.select().from(programs).where(eq(programs.id, programId));
       expect(rows.length).toBe(1);
@@ -430,7 +518,10 @@ describe("API by-id owner isolation", () => {
     it("401 without a token", async () => {
       const { dayId } = await seedProgramTree(A);
       const res = await programDayPut(
-        authedRequest(`http://t/x`, null, { method: "PUT", body: JSON.stringify({ name: "Hacked" }) }),
+        authedRequest(`http://t/x`, null, {
+          method: "PUT",
+          body: JSON.stringify({ name: "Hacked" }),
+        }),
         ctx({ id: dayId }),
       );
       expect(res.status).toBe(401);
@@ -451,13 +542,19 @@ describe("API by-id owner isolation", () => {
   describe("/api/program-days/[id] DELETE", () => {
     it("401 without a token", async () => {
       const { dayId } = await seedProgramTree(A);
-      const res = await programDayDel(authedRequest(`http://t/x`, null, { method: "DELETE" }), ctx({ id: dayId }));
+      const res = await programDayDel(
+        authedRequest(`http://t/x`, null, { method: "DELETE" }),
+        ctx({ id: dayId }),
+      );
       expect(res.status).toBe(401);
     });
 
     it("403 for a non-owner and the day still exists", async () => {
       const { dayId } = await seedProgramTree(A);
-      const res = await programDayDel(authedRequest(`http://t/x`, B, { method: "DELETE" }), ctx({ id: dayId }));
+      const res = await programDayDel(
+        authedRequest(`http://t/x`, B, { method: "DELETE" }),
+        ctx({ id: dayId }),
+      );
       expect(res.status).toBe(403);
       const rows = await db.select().from(programDays).where(eq(programDays.id, dayId));
       expect(rows.length).toBe(1);

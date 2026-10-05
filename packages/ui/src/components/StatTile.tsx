@@ -16,7 +16,15 @@ export interface StatTileProps extends React.HTMLAttributes<HTMLDivElement> {
  * optional unit + caption. The number rides coral by default (accent), or
  * inherits text color when `tone="plain"`.
  */
-export function StatTile({ label, value, unit, caption, tone = "accent", style, ...rest }: StatTileProps) {
+export function StatTile({
+  label,
+  value,
+  unit,
+  caption,
+  tone = "accent",
+  style,
+  ...rest
+}: StatTileProps) {
   return (
     <div style={{ fontFamily: "var(--font-sans)", ...style }} {...rest}>
       {label && (
@@ -47,9 +55,19 @@ export function StatTile({ label, value, unit, caption, tone = "accent", style, 
         >
           {value}
         </span>
-        {unit && <span style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text-muted)" }}>{unit}</span>}
+        {unit && (
+          <span
+            style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--text-muted)" }}
+          >
+            {unit}
+          </span>
+        )}
       </div>
-      {caption && <div style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginTop: 2 }}>{caption}</div>}
+      {caption && (
+        <div style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", marginTop: 2 }}>
+          {caption}
+        </div>
+      )}
     </div>
   );
 }

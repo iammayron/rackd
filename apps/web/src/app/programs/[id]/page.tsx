@@ -11,10 +11,7 @@ import { useToast } from "@/components/toast/ToastProvider";
 import { BottomSheet } from "@/components/BottomSheet";
 import { BackButton } from "@/components/BackButton";
 import { useConfirm } from "@/components/ConfirmDialog";
-import {
-  ActivateProgramSheet,
-  type ProgramChoice,
-} from "@/components/ActivateProgramSheet";
+import { ActivateProgramSheet, type ProgramChoice } from "@/components/ActivateProgramSheet";
 import { ProgramDayRow } from "@/features/programs/ProgramDayRow";
 import { ProgramDaySheet, type RoutineChoice } from "@/features/programs/ProgramDaySheet";
 
@@ -43,21 +40,12 @@ interface ProgramDetail extends ProgramRow {
   days: (DayRow & { programId: string; routineId?: string | null; routine: RoutineRow | null })[];
 }
 
-const EYEBROW =
-  "text-[var(--text-muted)] text-xs font-semibold uppercase tracking-[0.06em]";
+const EYEBROW = "text-[var(--text-muted)] text-xs font-semibold uppercase tracking-[0.06em]";
 
 /** Fixed-weekly week, Mon-first; values follow Date.getDay() (0=Sun…6=Sat). */
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0];
 const WEEKDAY_ABBR = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-const WEEKDAY_FULL = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
+const WEEKDAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 /** Block-length presets; `undefined` = Ongoing (no block / deload). */
 const BLOCK_OPTIONS: { label: string; value: number | undefined }[] = [
@@ -193,7 +181,8 @@ export default function ProgramEditorPage() {
 
   // Every routine the sheet can assign (name + exercise count).
   const routineChoices: RoutineChoice[] = useMemo(
-    () => routines.map((r) => ({ id: r.id, name: r.name, exCount: exCountByRoutine.get(r.id) ?? 0 })),
+    () =>
+      routines.map((r) => ({ id: r.id, name: r.name, exCount: exCountByRoutine.get(r.id) ?? 0 })),
     [routines, exCountByRoutine],
   );
 
@@ -376,14 +365,14 @@ export default function ProgramEditorPage() {
   // weekday (the day may not exist yet). Only one is active per mode.
   const [openDayId, setOpenDayId] = useState<string | null>(null);
   const [openWeekday, setOpenWeekday] = useState<number | null>(null);
-  const openDay = openDayId ? orderedDays.find((d) => d.id === openDayId) ?? null : null;
+  const openDay = openDayId ? (orderedDays.find((d) => d.id === openDayId) ?? null) : null;
   const openDayNumber = openDayId ? orderedDays.findIndex((d) => d.id === openDayId) + 1 : 0;
 
   const sheetOpen = mode === "weekly" ? openWeekday != null : openDayId != null;
   const sheetDay =
     mode === "weekly"
       ? openWeekday != null
-        ? dayByWeekday.get(openWeekday) ?? null
+        ? (dayByWeekday.get(openWeekday) ?? null)
         : null
       : openDay;
   const sheetTitle =
@@ -857,10 +846,7 @@ export default function ProgramEditorPage() {
                   others.map((x) => ({
                     id: x.id,
                     name: x.name,
-                    meta:
-                      (x.scheduleMode ?? "rotation") === "weekly"
-                        ? "Fixed weekly"
-                        : "Rotation",
+                    meta: (x.scheduleMode ?? "rotation") === "weekly" ? "Fixed weekly" : "Rotation",
                   })),
                 );
                 return;
@@ -897,11 +883,7 @@ export default function ProgramEditorPage() {
         }}
       />
 
-      <BottomSheet
-        open={addStep === "choose"}
-        onClose={() => setAddStep(null)}
-        title="Add routine"
-      >
+      <BottomSheet open={addStep === "choose"} onClose={() => setAddStep(null)} title="Add routine">
         <ul className="m-0 flex list-none flex-col gap-2 p-0">
           <li>
             <button

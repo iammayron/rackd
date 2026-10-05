@@ -62,7 +62,11 @@ async function buildRoutine(
   const routine = await createRoutine({ ownerId: OWNER_A, name: "R" });
   let order = 1;
   for (const e of spec) {
-    const re = await addRoutineExercise({ routineId: routine.id, exerciseId: e.exerciseId, order: order++ });
+    const re = await addRoutineExercise({
+      routineId: routine.id,
+      exerciseId: e.exerciseId,
+      order: order++,
+    });
     let so = 1;
     for (const s of e.sets) {
       await addRoutineSet({
@@ -83,7 +87,11 @@ async function buildSession(
   const session = await startSession({ ownerId: OWNER_A, name: "W", now: Date.now() });
   let order = 1;
   for (const e of spec) {
-    const se = await addSessionExercise({ sessionId: session.id, exerciseId: e.exerciseId, order: order++ });
+    const se = await addSessionExercise({
+      sessionId: session.id,
+      exerciseId: e.exerciseId,
+      order: order++,
+    });
     let so = 1;
     for (const s of e.sets) {
       await logSet({ sessionExerciseId: se.id, order: so++, weight: s.weight, reps: s.reps });
@@ -99,7 +107,13 @@ describe("applySessionToRoutine (real Postgres)", () => {
         { exerciseId: "ex_bench", sets: [{ reps: 5, weight: 60 }] },
       ]);
       const sessionId = await buildSession([
-        { exerciseId: "ex_squat", sets: [{ weight: 100, reps: 5 }, { weight: 105, reps: 3 }] },
+        {
+          exerciseId: "ex_squat",
+          sets: [
+            { weight: 100, reps: 5 },
+            { weight: 105, reps: 3 },
+          ],
+        },
         { exerciseId: "ex_bench", sets: [{ weight: 80, reps: 8 }] },
       ]);
 
@@ -155,7 +169,13 @@ describe("applySessionToRoutine (real Postgres)", () => {
     it("keeps old sets for a routine exercise that was not performed", async () => {
       const routineId = await buildRoutine([
         { exerciseId: "ex_bench", sets: [{ reps: 5, weight: 60 }] },
-        { exerciseId: "ex_row", sets: [{ reps: 10, weight: 40 }, { reps: 10, weight: 40 }] },
+        {
+          exerciseId: "ex_row",
+          sets: [
+            { reps: 10, weight: 40 },
+            { reps: 10, weight: 40 },
+          ],
+        },
       ]);
       // Only bench performed; row absent from the session.
       const sessionId = await buildSession([
@@ -177,7 +197,9 @@ describe("applySessionToRoutine (real Postgres)", () => {
     });
 
     it("does not add session exercises absent from the routine", async () => {
-      const routineId = await buildRoutine([{ exerciseId: "ex_bench", sets: [{ reps: 5, weight: 60 }] }]);
+      const routineId = await buildRoutine([
+        { exerciseId: "ex_bench", sets: [{ reps: 5, weight: 60 }] },
+      ]);
       const sessionId = await buildSession([
         { exerciseId: "ex_bench", sets: [{ weight: 80, reps: 8 }] },
         { exerciseId: "ex_squat", sets: [{ weight: 100, reps: 5 }] }, // not in routine
@@ -193,7 +215,13 @@ describe("applySessionToRoutine (real Postgres)", () => {
   describe('mode "exercises"', () => {
     it("adopts the performed lineup but keeps old prescribed sets where the exercise already existed", async () => {
       const routineId = await buildRoutine([
-        { exerciseId: "ex_bench", sets: [{ reps: 5, weight: 60 }, { reps: 5, weight: 60 }] },
+        {
+          exerciseId: "ex_bench",
+          sets: [
+            { reps: 5, weight: 60 },
+            { reps: 5, weight: 60 },
+          ],
+        },
       ]);
       // Performed: squat (new) then bench (existing, with new heavier numbers).
       const sessionId = await buildSession([
@@ -219,7 +247,9 @@ describe("applySessionToRoutine (real Postgres)", () => {
   });
 
   it("coerces a logged weight of 0 to a null targetWeight (s.weight || undefined)", async () => {
-    const routineId = await buildRoutine([{ exerciseId: "ex_bench", sets: [{ reps: 5, weight: 60 }] }]);
+    const routineId = await buildRoutine([
+      { exerciseId: "ex_bench", sets: [{ reps: 5, weight: 60 }] },
+    ]);
     // Bodyweight-style set: 0 kg x 12.
     const sessionId = await buildSession([
       { exerciseId: "ex_bench", sets: [{ weight: 0, reps: 12 }] },

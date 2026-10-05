@@ -38,12 +38,7 @@ export type Equipment =
  */
 export type BarType = "standard" | "womens" | "ezbar" | "trap" | "safety";
 
-export type ExerciseCategory =
-  | "barbell"
-  | "dumbbell"
-  | "machine"
-  | "bodyweight"
-  | "cardio";
+export type ExerciseCategory = "barbell" | "dumbbell" | "machine" | "bodyweight" | "cardio";
 
 export type SetType = "warmup" | "normal" | "drop" | "failure";
 
@@ -136,12 +131,7 @@ export interface MuscleInvolvement {
   activation: number;
 }
 
-export type ExerciseMediaKind =
-  | "image"
-  | "thumbnail"
-  | "gif"
-  | "video"
-  | "muscle_map";
+export type ExerciseMediaKind = "image" | "thumbnail" | "gif" | "video" | "muscle_map";
 
 /** Media row — URL only (mirrored to our CDN), never binary in the DB. */
 export interface ExerciseMedia {

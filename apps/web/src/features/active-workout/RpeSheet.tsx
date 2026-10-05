@@ -27,8 +27,7 @@ const TIERS: Tier[] = [
   {
     level: 2,
     headline: "Light",
-    description:
-      "Feels like you can maintain for hours. Easy to breathe and carry a conversation.",
+    description: "Feels like you can maintain for hours. Easy to breathe and carry a conversation.",
     color: "#06b6d4",
   },
   {
@@ -41,8 +40,7 @@ const TIERS: Tier[] = [
   {
     level: 4,
     headline: "Vigorous",
-    description:
-      "Borderline uncomfortable. Short of breath, can speak a sentence.",
+    description: "Borderline uncomfortable. Short of breath, can speak a sentence.",
     color: "var(--warning)",
   },
   {

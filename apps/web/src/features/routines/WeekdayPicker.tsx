@@ -16,9 +16,7 @@ export function WeekdayPicker({
   onChange: (days: number[]) => void;
 }) {
   function toggle(day: number) {
-    const next = value.includes(day)
-      ? value.filter((d) => d !== day)
-      : [...value, day];
+    const next = value.includes(day) ? value.filter((d) => d !== day) : [...value, day];
     onChange(next.sort((a, b) => a - b));
   }
 

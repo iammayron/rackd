@@ -34,9 +34,7 @@ export function estimate1RM(weight: number, reps: number): number {
 
 /** Total volume (weight x reps) for completed sets. */
 export function sessionVolume(sets: SetLog[]): number {
-  return sets
-    .filter((s) => s.completed)
-    .reduce((sum, s) => sum + s.weight * s.reps, 0);
+  return sets.filter((s) => s.completed).reduce((sum, s) => sum + s.weight * s.reps, 0);
 }
 
 /** One exercise's contribution to a duration estimate: working sets + their rest. */
@@ -109,11 +107,7 @@ export interface WarmupSet {
  * Standard warmup ramp toward a working weight. Rounds to the nearest
  * `step` (plate granularity). Empty-bar set only when it's lighter than 40%.
  */
-export function warmupSets(
-  workingWeight: number,
-  barWeight = 20,
-  step = 2.5,
-): WarmupSet[] {
+export function warmupSets(workingWeight: number, barWeight = 20, step = 2.5): WarmupSet[] {
   if (workingWeight <= barWeight) return [];
   const round = (w: number) => Math.max(barWeight, Math.round(w / step) * step);
   const ramp: Array<{ pct: number; reps: number }> = [
@@ -473,19 +467,17 @@ export function programWeekProgress(
 }
 
 /**
- * A program's schedule reduced to "is day N a rest day?", per mode:
- *  - "weekly": `workoutWeekdays` lists the weekdays (0=Sun … 6=Sat) that have a
- *    routine; every other weekday is rest.
- *  - "rotation": `restByOrder[k]` is true when the k-th ordered day is a rest
- *    slot, interpreted as one slot per calendar day from the anchor (cursor 0 on
- *    day 0); an empty rotation is all-rest. That assumption does NOT hold for a
- *    real rotation — it cycles on finish/skip and ignores the calendar entirely —
- *    so the dashboard uses `programRotationDayKinds` instead. This arm remains
- *    only for a genuine per-calendar-day view.
+ * A weekly program's schedule reduced to "is day N a rest day?":
+ * `workoutWeekdays` lists the weekdays (0=Sun … 6=Sat) that have a routine;
+ * every other weekday is rest.
+ *
+ * Weekly only, deliberately. This used to carry a "rotation" arm that read
+ * `restByOrder` as one slot per calendar day from the anchor — but a rotation
+ * cycles on finish/skip and ignores the calendar, so that arm was wrong by
+ * construction and produced the "Week 4 of 4" drift. Rotation progress is
+ * training-driven and lives in `rotationBlockProgress`.
  */
-export type ProgramSchedule =
-  | { mode: "weekly"; workoutWeekdays: readonly number[] }
-  | { mode: "rotation"; restByOrder: readonly boolean[] };
+export type ProgramSchedule = { workoutWeekdays: readonly number[] };
 
 /**
  * Classify each calendar day of a program block into a `ProgramDayKind` for the
@@ -507,18 +499,12 @@ export function programDayKinds(args: {
   completedOffsets: readonly number[];
   schedule: ProgramSchedule;
 }): ProgramDayKind[] {
-  const { blockWeeks, anchorWeekday, todayOffset, completedOffsets, schedule } =
-    args;
+  const { blockWeeks, anchorWeekday, todayOffset, completedOffsets, schedule } = args;
   const totalDays = Math.max(0, Math.floor(blockWeeks)) * 7;
   const done = new Set(completedOffsets);
   const isRest = (i: number): boolean => {
-    if (schedule.mode === "weekly") {
-      const wd = (((anchorWeekday + i) % 7) + 7) % 7;
-      return !schedule.workoutWeekdays.includes(wd);
-    }
-    const len = schedule.restByOrder.length;
-    if (len === 0) return true;
-    return schedule.restByOrder[((i % len) + len) % len]!;
+    const wd = (((anchorWeekday + i) % 7) + 7) % 7;
+    return !schedule.workoutWeekdays.includes(wd);
   };
 
   const out: ProgramDayKind[] = [];
@@ -533,72 +519,111 @@ export function programDayKinds(args: {
 }
 
 /**
- * Which week of the block a filled-notch count lands in, 1-based and clamped to
- * the block so a complete block reads "week N of N" rather than "N+1 of N".
- * Only meaningful when filled notches form a contiguous prefix — i.e. for
- * `programRotationDayKinds`, whose walk guarantees it.
+ * Progress through a rotation program's block, measured in workouts.
+ *
+ * A rotation cycles its ordered days irrespective of dates, so its block can't
+ * be measured in elapsed days: someone who activated 26 days ago but trained
+ * five times is five workouts in, not 26 days in. Nor can it be measured in
+ * fixed 7-slot chunks — a 6-day PPL divided into "weeks" of 7 puts every
+ * divider mid-cycle, marking nothing.
+ *
+ * So a segment is **one full pass through the rotation**: `cycleWorkouts` is
+ * the number of non-rest days in it, and the block is `blockWeeks` of those.
+ * Rest slots are deliberately not counted — in a rotation a rest isn't
+ * something you complete, it's a position you pass through, and counting them
+ * was a leftover of the calendar model. A segment fills as its workouts land
+ * and ignites when the cycle is done.
+ *
+ * `completedWorkouts` is what the lifter has finished in the *current* block
+ * run (see `workoutsSinceLayoff`); anything beyond the block is clamped.
  */
-export function programCurrentWeek(
-  blockWeeks: number,
-  filledDays: number,
-): number {
-  const weeks = Math.max(0, Math.floor(blockWeeks));
-  if (weeks === 0) return 0;
-  return Math.min(Math.max(Math.floor(filledDays / 7) + 1, 1), weeks);
+export interface RotationBlockProgress {
+  /** Segments in the block — one per pass through the rotation. */
+  blockWeeks: number;
+  /** Workouts in one pass through the rotation. */
+  cycleWorkouts: number;
+  /** Workouts in the whole block (`blockWeeks * cycleWorkouts`). */
+  totalWorkouts: number;
+  /** Workouts done in this block run, clamped to `totalWorkouts`. */
+  completedWorkouts: number;
+  /** Which segment the lifter is in: 1-based, clamped to the block. */
+  currentWeek: number;
+  /** Fill fraction 0..1 per segment, length `blockWeeks`. */
+  weekFill: number[];
+  /** Whether each segment's cycle is complete (→ 🔥), length `blockWeeks`. */
+  weekDone: boolean[];
+  /** Count of completed cycles. */
+  completedCycles: number;
+}
+
+export function rotationBlockProgress(args: {
+  blockWeeks: number;
+  cycleWorkouts: number;
+  completedWorkouts: number;
+}): RotationBlockProgress {
+  const blockWeeks = Math.max(0, Math.floor(args.blockWeeks));
+  const cycleWorkouts = Math.max(0, Math.floor(args.cycleWorkouts));
+  const totalWorkouts = blockWeeks * cycleWorkouts;
+  // A rotation with no workout days has no block to progress through; report an
+  // empty one rather than dividing by zero or completing something untrainable.
+  const done =
+    totalWorkouts === 0
+      ? 0
+      : Math.min(Math.max(0, Math.floor(args.completedWorkouts)), totalWorkouts);
+
+  const weekFill: number[] = [];
+  const weekDone: boolean[] = [];
+  for (let w = 0; w < blockWeeks; w++) {
+    const inSegment = Math.min(Math.max(done - w * cycleWorkouts, 0), cycleWorkouts);
+    weekFill.push(cycleWorkouts === 0 ? 0 : inSegment / cycleWorkouts);
+    weekDone.push(cycleWorkouts > 0 && inSegment === cycleWorkouts);
+  }
+
+  return {
+    blockWeeks,
+    cycleWorkouts,
+    totalWorkouts,
+    completedWorkouts: done,
+    // Sits on the segment being worked on; a finished block reads "N of N"
+    // rather than "N+1 of N".
+    currentWeek:
+      blockWeeks === 0
+        ? 0
+        : Math.min(Math.floor(done / Math.max(cycleWorkouts, 1)) + 1, blockWeeks),
+    weekFill,
+    weekDone,
+    completedCycles: weekDone.filter(Boolean).length,
+  };
 }
 
 /**
- * Rotation-mode counterpart to `programDayKinds` — the input to
- * `programWeekProgress` for a program that ignores the calendar.
+ * How many completed workouts belong to the current block run — those logged
+ * since the most recent layoff.
  *
- * A rotation cycles its ordered days irrespective of dates, so its block can't
- * be measured in elapsed days: someone who activated 26 days ago but trained 5
- * times is 5 slots in, not 26. Here the block is `blockWeeks * 7` rotation
- * *slots* and the bar advances with training only. `restByOrder[k]` is true when
- * the k-th ordered day is a rest slot, cycling across the block (slot i →
- * `restByOrder[i % len]`); `completedWorkouts` is how many program workouts have
- * been finished in this block (two in one day consume two slots).
+ * A gap of `LAYOFF_RESTART_DAYS`+ restarts the rotation at day 1, so the block
+ * has to restart with it; otherwise the bar keeps crediting workouts from
+ * before a month off and claims ignited cycles that were never trained as
+ * cycles. The gap between the last workout and today counts too: mid-layoff the
+ * run is empty, matching the "starting the cycle over" the dashboard shows.
  *
- * Walk from slot 0: each workout slot consumes one completed workout → "done";
- * rest slots passed on the way are consumed too and fill a notch (matching the
- * calendar bar); the walk halts at the first workout slot with nothing left to
- * spend. Rest slots that trail the last completed workout are consumed as well —
- * that rest is what the workout earned, so a week ignites the moment its final
- * workout lands, and a block whose last slot is a rest can still reach 100%.
- * Everything past the walk is "future". No "pending"/"missed": without a
- * calendar no slot is ever late.
- *
- * Nothing is consumed before the first completed workout (an untrained block is
- * empty even when the cycle opens with a rest slot), and a rotation with no
- * workout slot at all never fills — a training-driven bar must not complete a
- * block that was never trained. Both are deliberate divergences from
- * `programDayKinds`, whose all-rest/empty handling was calendar reasoning.
+ * Day indices in (local-midnight, as `currentStreak` takes them); order doesn't
+ * matter. Two workouts on one day are both counted — a zero gap breaks nothing.
  */
-export function programRotationDayKinds(args: {
-  blockWeeks: number;
-  restByOrder: readonly boolean[];
-  completedWorkouts: number;
-}): ProgramDayKind[] {
-  const { restByOrder } = args;
-  const totalSlots = Math.max(0, Math.floor(args.blockWeeks)) * 7;
-  const out: ProgramDayKind[] =
-    Array<ProgramDayKind>(totalSlots).fill("future");
-  const len = restByOrder.length;
-  let credits = Math.max(0, Math.floor(args.completedWorkouts));
-  // Untrained, or no workout slot to attribute training to. The second guard is
-  // also what stops the walk below from marking an all-rest block complete.
-  if (credits === 0 || len === 0 || !restByOrder.includes(false)) return out;
-
-  for (let i = 0; i < totalSlots; i++) {
-    if (restByOrder[i % len]!) {
-      out[i] = "rest";
-      continue;
-    }
-    if (credits === 0) break; // next workout not done yet — the walk ends here
-    out[i] = "done";
-    credits--;
+export function workoutsSinceLayoff(
+  workoutDayIndices: readonly number[],
+  todayIndex: number,
+  threshold: number = LAYOFF_RESTART_DAYS,
+): number {
+  const days = [...workoutDayIndices].sort((a, b) => a - b);
+  const last = days[days.length - 1];
+  if (last === undefined) return 0;
+  if (todayIndex - last >= threshold) return 0;
+  let count = 1;
+  for (let i = days.length - 1; i > 0; i--) {
+    if (days[i]! - days[i - 1]! >= threshold) break;
+    count++;
   }
-  return out;
+  return count;
 }
 
 /**

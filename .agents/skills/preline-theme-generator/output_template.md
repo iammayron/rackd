@@ -37,7 +37,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   /* ============================================ */
   /* CUSTOM COLOR PALETTES                        */
   /* ============================================ */
-  
+
   /* 
    * ALWAYS create BOTH palettes:
    *   1. Brand palette (--color-<name>-*) — for primary/accent colors
@@ -49,24 +49,24 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
    *   - DEFAULT: Use Tailwind grays (zinc/stone) — see dark mode section below
    *   - If user says "matching dark mode": Use custom gray palette
    */
-  
+
   /* -------------------------------------------- */
   /* BRAND PALETTE (always required)              */
   /* -------------------------------------------- */
   /* Vibrant by default, soft only if user says "muted/ash/soft" */
-  
-  --color-<name>-50:  oklch(97%  0.08 <hue>);
-  --color-<name>-100: oklch(94%  0.10 <hue>);
-  --color-<name>-200: oklch(88%  0.12 <hue>);
-  --color-<name>-300: oklch(80%  0.14 <hue>);
-  --color-<name>-400: oklch(70%  0.16 <hue>);
-  --color-<name>-500: oklch(58%  0.14 <hue>);
-  --color-<name>-600: oklch(50%  0.12 <hue>);
-  --color-<name>-700: oklch(42%  0.10 <hue>);
-  --color-<name>-800: oklch(35%  0.08 <hue>);
-  --color-<name>-900: oklch(28%  0.06 <hue>);
-  --color-<name>-950: oklch(20%  0.05 <hue>);
-  
+
+  --color-<name>-50: oklch(97% 0.08 <hue>);
+  --color-<name>-100: oklch(94% 0.1 <hue>);
+  --color-<name>-200: oklch(88% 0.12 <hue>);
+  --color-<name>-300: oklch(80% 0.14 <hue>);
+  --color-<name>-400: oklch(70% 0.16 <hue>);
+  --color-<name>-500: oklch(58% 0.14 <hue>);
+  --color-<name>-600: oklch(50% 0.12 <hue>);
+  --color-<name>-700: oklch(42% 0.1 <hue>);
+  --color-<name>-800: oklch(35% 0.08 <hue>);
+  --color-<name>-900: oklch(28% 0.06 <hue>);
+  --color-<name>-950: oklch(20% 0.05 <hue>);
+
   /* -------------------------------------------- */
   /* GRAY PALETTE (always required for light mode)*/
   /* -------------------------------------------- */
@@ -74,13 +74,13 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
    * Uses bell curve chroma: very low at extremes, peak at midtones.
    * Dark end (800-950) has very low chroma for clean dark mode (if used).
    */
-  
-  --color-<name>-gray-50:  oklch(98%   0.002 <hue>);  
+
+  --color-<name>-gray-50: oklch(98% 0.002 <hue>);
   --color-<name>-gray-100: oklch(95.5% 0.004 <hue>);
   --color-<name>-gray-200: oklch(89.7% 0.008 <hue>);
   --color-<name>-gray-300: oklch(82.7% 0.012 <hue>);
-  --color-<name>-gray-400: oklch(73%   0.018 <hue>);
-  --color-<name>-gray-500: oklch(62.5% 0.020 <hue>);
+  --color-<name>-gray-400: oklch(73% 0.018 <hue>);
+  --color-<name>-gray-500: oklch(62.5% 0.02 <hue>);
   --color-<name>-gray-600: oklch(52.8% 0.016 <hue>);
   --color-<name>-gray-700: oklch(41.4% 0.012 <hue>);
   --color-<name>-gray-800: oklch(26.9% 0.006 <hue>);
@@ -90,7 +90,6 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
 
 :root[data-theme="theme-<name>"],
 [data-theme="theme-<name>"] {
-  
   /* ============================================== */
   /* THEME-SPECIFIC OVERRIDES (optional)            */
   /* ============================================== */
@@ -107,21 +106,21 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
    * --radius-2xl: 6px;
    * --radius-3xl: 6px;
    */
-  
+
   /* ============================================ */
   /* GLOBAL SURFACES + TEXT                       */
   /* ============================================ */
-  
+
   --background-1: ...;
   --background-2: ...;
   --foreground: ...;
-  
+
   --inverse: ...;
-  
+
   /* ============================================ */
   /* BORDERS (Full Scale)                         */
   /* ============================================ */
-  
+
   --border: ...;
   --border-line-1: ...;
   --border-line-2: ...;
@@ -131,11 +130,11 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --border-line-6: ...;
   --border-line-7: ...;
   --border-line-8: ...;
-  
+
   /* ============================================ */
   /* PRIMARY RAMP (Full 11-shade scale)           */
   /* ============================================ */
-  
+
   --primary-50: ...;
   --primary-100: ...;
   --primary-200: ...;
@@ -147,37 +146,37 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --primary-800: ...;
   --primary-900: ...;
   --primary-950: ...;
-  
+
   /* PRIMARY STATES */
   --primary: ...;
   --primary-hover: ...;
   --primary-focus: ...;
   --primary-active: ...;
   --primary-checked: ...;
-  
+
   /* ============================================ */
   /* SECONDARY                                    */
   /* ============================================ */
-  
+
   --secondary: ...;
   --secondary-hover: ...;
   --secondary-focus: ...;
   --secondary-active: ...;
-  
+
   /* ============================================ */
   /* LAYER                                        */
   /* ============================================ */
-  
+
   --layer-line: ...;
   --layer-foreground: ...;
   --layer-hover: ...;
   --layer-focus: ...;
   --layer-active: ...;
-  
+
   /* ============================================ */
   /* SURFACE                                      */
   /* ============================================ */
-  
+
   --surface: ...;
   --surface-1: ...;
   --surface-2: ...;
@@ -188,11 +187,11 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --surface-hover: ...;
   --surface-focus: ...;
   --surface-active: ...;
-  
+
   /* ============================================ */
   /* MUTED                                        */
   /* ============================================ */
-  
+
   --muted: ...;
   --muted-foreground: ...;
   --muted-foreground-1: ...;
@@ -200,11 +199,11 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --muted-hover: ...;
   --muted-focus: ...;
   --muted-active: ...;
-  
+
   /* ============================================ */
   /* NAVBAR (Base)                                */
   /* ============================================ */
-  
+
   --navbar-line: ...;
   --navbar-divider: ...;
   --navbar-nav-foreground: ...;
@@ -213,7 +212,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --navbar-nav-active: ...;
   --navbar-nav-list-divider: ...;
   --navbar-inverse: ...;
-  
+
   /* NAVBAR-1 (Subtle/tinted variant) */
   --navbar-1: ...;
   --navbar-1-line: ...;
@@ -223,7 +222,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --navbar-1-nav-focus: ...;
   --navbar-1-nav-active: ...;
   --navbar-1-nav-list-divider: ...;
-  
+
   /* NAVBAR-2 (Stronger tint variant) */
   --navbar-2: ...;
   --navbar-2-divider: ...;
@@ -232,11 +231,11 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --navbar-2-nav-focus: ...;
   --navbar-2-nav-active: ...;
   --navbar-2-nav-list-divider: ...;
-  
+
   /* ============================================ */
   /* SIDEBAR (Base)                               */
   /* ============================================ */
-  
+
   --sidebar-line: ...;
   --sidebar-divider: ...;
   --sidebar-nav-foreground: ...;
@@ -245,7 +244,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --sidebar-nav-active: ...;
   --sidebar-nav-list-divider: ...;
   --sidebar-inverse: ...;
-  
+
   /* SIDEBAR-1 */
   --sidebar-1: ...;
   --sidebar-1-line: ...;
@@ -255,7 +254,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --sidebar-1-nav-focus: ...;
   --sidebar-1-nav-active: ...;
   --sidebar-1-nav-list-divider: ...;
-  
+
   /* SIDEBAR-2 */
   --sidebar-2: ...;
   --sidebar-2-divider: ...;
@@ -264,21 +263,21 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --sidebar-2-nav-focus: ...;
   --sidebar-2-nav-active: ...;
   --sidebar-2-nav-list-divider: ...;
-  
+
   /* ============================================ */
   /* CARD                                         */
   /* ============================================ */
-  
+
   --card-line: ...;
   --card-divider: ...;
   --card-header: ...;
   --card-footer: ...;
   --card-inverse: ...;
-  
+
   /* ============================================ */
   /* DROPDOWN                                     */
   /* ============================================ */
-  
+
   --dropdown-divider: ...;
   --dropdown-header: ...;
   --dropdown-footer: ...;
@@ -287,53 +286,53 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --dropdown-item-focus: ...;
   --dropdown-item-active: ...;
   --dropdown-inverse: ...;
-  
+
   /* ============================================ */
   /* SELECT                                       */
   /* ============================================ */
-  
+
   --select-item-foreground: ...;
   --select-item-hover: ...;
   --select-item-focus: ...;
   --select-item-active: ...;
   --select-inverse: ...;
-  
+
   /* ============================================ */
   /* OVERLAY                                      */
   /* ============================================ */
-  
+
   --overlay-divider: ...;
   --overlay-header: ...;
   --overlay-footer: ...;
   --overlay-inverse: ...;
-  
+
   /* ============================================ */
   /* POPOVER, TOOLTIP, TABLE, FOOTER              */
   /* ============================================ */
-  
+
   --popover-line: ...;
-  
+
   --tooltip: ...;
-  
+
   --table-line: ...;
-  
+
   --footer-line: ...;
   --footer-inverse: ...;
-  
+
   /* ============================================ */
   /* SCROLLBAR                                    */
   /* ============================================ */
-  
+
   --scrollbar-track: ...;
   --scrollbar-thumb: ...;
-  
+
   /* ============================================ */
   /* CHARTS (Apexcharts)                          */
   /* ============================================ */
-  
+
   /* IMPORTANT: Avoid using Tailwind's default color variables for gradient Apexcharts colors.
   The Apexcharts plugin does not support the oklch color format, so these colors may not render correctly. */
-  
+
   --chart-colors-background-inverse: ...;
   --chart-colors-foreground: ...;
   --chart-primary: ...;
@@ -341,88 +340,88 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --chart-colors-primary-inverse: ...;
   --chart-colors-primary-hex: #......; /* Must be valid hex */
   --chart-colors-primary-hex-inverse: #......; /* Must be valid hex */
-  
+
   --chart-1: ...;
   --chart-colors-chart-1: ...;
   --chart-colors-chart-1-inverse: ...;
   --chart-colors-chart-1-hex: #......;
   --chart-colors-chart-1-hex-inverse: #......;
-  
+
   --chart-2: ...;
   --chart-colors-chart-2: ...;
   --chart-colors-chart-2-inverse: ...;
   --chart-colors-chart-2-hex: #......;
   --chart-colors-chart-2-hex-inverse: #......;
-  
+
   --chart-3: ...;
   --chart-colors-chart-3: ...;
   --chart-colors-chart-3-inverse: ...;
   --chart-colors-chart-3-hex: #......;
   --chart-colors-chart-3-hex-inverse: #......;
-  
+
   --chart-4: ...;
   --chart-colors-chart-4: ...;
   --chart-colors-chart-4-inverse: ...;
   --chart-colors-chart-4-hex: #......;
   --chart-colors-chart-4-hex-inverse: #......;
-  
+
   --chart-5: ...;
   --chart-colors-chart-5: ...;
   --chart-colors-chart-5-inverse: ...;
   --chart-colors-chart-5-hex: #......;
   --chart-colors-chart-5-hex-inverse: #......;
-  
+
   --chart-6: ...;
   --chart-colors-chart-6: ...;
   --chart-colors-chart-6-inverse: ...;
   --chart-colors-chart-6-hex: #......;
   --chart-colors-chart-6-hex-inverse: #......;
-  
+
   --chart-7: ...;
   --chart-colors-chart-7: ...;
   --chart-colors-chart-7-inverse: ...;
   --chart-colors-chart-7-hex: #......;
   --chart-colors-chart-7-hex-inverse: #......;
-  
+
   --chart-8: ...;
   --chart-colors-chart-8: ...;
   --chart-colors-chart-8-inverse: ...;
   --chart-colors-chart-8-hex: #......;
   --chart-colors-chart-8-hex-inverse: #......;
-  
+
   --chart-9: ...;
   --chart-colors-chart-9: ...;
   --chart-colors-chart-9-inverse: ...;
   --chart-colors-chart-9-hex: #......;
   --chart-colors-chart-9-hex-inverse: #......;
-  
+
   --chart-10: ...;
   --chart-colors-chart-10: ...;
   --chart-colors-chart-10-inverse: ...;
   --chart-colors-chart-10-hex: #......;
   --chart-colors-chart-10-hex-inverse: #......;
-  
+
   --chart-colors-candlestick-upward: ...;
   --chart-colors-candlestick-upward-inverse: ...;
   --chart-colors-candlestick-downward: ...;
   --chart-colors-candlestick-downward-inverse: ...;
-  
+
   --chart-colors-labels: ...;
   --chart-colors-labels-inverse: ...;
   --chart-colors-xaxis-labels: ...;
   --chart-colors-xaxis-labels-inverse: ...;
   --chart-colors-yaxis-labels: ...;
   --chart-colors-yaxis-labels-inverse: ...;
-  
+
   --chart-colors-grid-border: ...;
   --chart-colors-grid-border-inverse: ...;
   --chart-colors-bar-ranges: ...;
   --chart-colors-bar-ranges-inverse: ...;
-  
+
   /* ============================================ */
   /* MAPS (jsvectormap)                           */
   /* ============================================ */
-  
+
   --map-colors-primary: ...;
   --map-colors-primary-inverse: ...;
   --map-colors-default: ...;
@@ -438,11 +437,10 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
 /* ============================================== */
 
 [data-theme="theme-<name>"].dark {
-  
   /* ============================================ */
   /* DARK MODE OVERRIDES                          */
   /* ============================================ */
-  
+
   /* 
    * CRITICAL: Choose correct mode based on user request
    *
@@ -455,19 +453,19 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
    *   Use custom gray palette: var(--color-<name>-gray-*)
    *   (uncomment the dual-palette section below and comment out Tailwind section)
    */
-  
+
   /* -------------------------------------------- */
   /* DEFAULT: Use Tailwind gray for dark mode     */
   /* -------------------------------------------- */
-  
+
   /* BACKGROUNDS - dark end of scale (800-950) */
   --background: var(--color-stone-950);
   --background-1: var(--color-stone-900);
   --background-2: var(--color-stone-800);
   --foreground: var(--color-stone-200);
-  
+
   --inverse: var(--color-stone-50);
-  
+
   /* BORDERS - mid-dark range (700-900) */
   --border: var(--color-stone-800);
   --border-line-inverse: var(--color-stone-200);
@@ -479,7 +477,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --border-line-6: var(--color-stone-650);
   --border-line-7: var(--color-stone-600);
   --border-line-8: var(--color-stone-550);
-  
+
   /* -------------------------------------------- */
   /* DUAL-PALETTE: Use custom gray (uncomment)    */
   /* -------------------------------------------- */
@@ -498,7 +496,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --border-line-2: var(--color-<name>-gray-850);
   ... etc ...
   */
-  
+
   /* PRIMARY STATES (adjust for dark backgrounds) */
   --primary: var(--color-<name>-400);
   /* 
@@ -511,13 +509,13 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --primary-focus: var(--color-<name>-500);
   --primary-active: var(--color-<name>-500);
   --primary-checked: var(--color-<name>-400);
-  
+
   /* SECONDARY */
   --secondary: var(--color-white);
   --secondary-hover: var(--color-stone-100);
   --secondary-focus: var(--color-stone-100);
   --secondary-active: ...;
-  
+
   /* LAYER */
   --layer: ...;
   --layer-line: ...;
@@ -525,7 +523,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --layer-hover: ...;
   --layer-focus: ...;
   --layer-active: ...;
-  
+
   /* SURFACE */
   --surface: ...;
   --surface-1: ...;
@@ -537,7 +535,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --surface-hover: ...;
   --surface-focus: ...;
   --surface-active: ...;
-  
+
   /* MUTED */
   --muted: ...;
   --muted-foreground: ...;
@@ -546,7 +544,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --muted-hover: ...;
   --muted-focus: ...;
   --muted-active: ...;
-  
+
   /* NAVBAR (all variants) */
   --navbar: ...;
   --navbar-line: ...;
@@ -557,7 +555,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --navbar-nav-active: ...;
   --navbar-nav-list-divider: ...;
   --navbar-inverse: ...;
-  
+
   --navbar-1: ...;
   --navbar-1-line: ...;
   --navbar-1-divider: ...;
@@ -566,7 +564,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --navbar-1-nav-focus: ...;
   --navbar-1-nav-active: ...;
   --navbar-1-nav-list-divider: ...;
-  
+
   --navbar-2: ...;
   --navbar-2-divider: ...;
   --navbar-2-nav-foreground: ...;
@@ -574,7 +572,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --navbar-2-nav-focus: ...;
   --navbar-2-nav-active: ...;
   --navbar-2-nav-list-divider: ...;
-  
+
   /* SIDEBAR (all variants) */
   --sidebar: ...;
   --sidebar-line: ...;
@@ -585,7 +583,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --sidebar-nav-active: ...;
   --sidebar-nav-list-divider: ...;
   --sidebar-inverse: ...;
-  
+
   --sidebar-1: ...;
   --sidebar-1-line: ...;
   --sidebar-1-divider: ...;
@@ -594,7 +592,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --sidebar-1-nav-focus: ...;
   --sidebar-1-nav-active: ...;
   --sidebar-1-nav-list-divider: ...;
-  
+
   --sidebar-2: ...;
   --sidebar-2-divider: ...;
   --sidebar-2-nav-foreground: ...;
@@ -602,7 +600,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --sidebar-2-nav-focus: ...;
   --sidebar-2-nav-active: ...;
   --sidebar-2-nav-list-divider: ...;
-  
+
   /* CARD */
   --card: ...;
   --card-line: ...;
@@ -610,7 +608,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --card-header: ...;
   --card-footer: ...;
   --card-inverse: ...;
-  
+
   /* DROPDOWN */
   --dropdown: ...;
   --dropdown-1: ...;
@@ -622,7 +620,7 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --dropdown-item-focus: ...;
   --dropdown-item-active: ...;
   --dropdown-inverse: ...;
-  
+
   /* SELECT */
   --select: ...;
   --select-1: ...;
@@ -631,37 +629,37 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --select-item-focus: ...;
   --select-item-active: ...;
   --select-inverse: ...;
-  
+
   /* OVERLAY */
   --overlay: ...;
   --overlay-divider: ...;
   --overlay-header: ...;
   --overlay-footer: ...;
   --overlay-inverse: ...;
-  
+
   /* POPOVER, TOOLTIP, TABLE */
   --popover: ...;
   --popover-line: ...;
-  
+
   --tooltip: ...;
   --tooltip-foreground: ...;
-  
+
   --table-line: ...;
-  
+
   /* SWITCH */
   --switch: ...;
-  
+
   /* FOOTER */
   --footer: ...;
   --footer-line: ...;
   --footer-inverse: ...;
-  
+
   /* SCROLLBAR */
   --scrollbar-track: ...;
   --scrollbar-thumb: ...;
   --scrollbar-track-inverse: ...;
   --scrollbar-thumb-inverse: ...;
-  
+
   /* CHARTS (dark mode adjustments) */
   --chart-primary: ...;
   --chart-5: ...; /* Often needs adjustment */
@@ -670,7 +668,6 @@ Use this skeleton for every generated theme. Replace `<name>` with the theme nam
   --chart-9: ...;
   --chart-10: ...;
 }
-
 ```
 
 ---
@@ -708,6 +705,7 @@ For dark mode, add the `.dark` class:
 ## Notes
 
 **Palette Rules:**
+
 1. `@theme theme-<name> inline { }` ALWAYS contains TWO palettes: brand + gray
 2. Light mode ALWAYS uses custom gray palette for backgrounds/surfaces/borders
 3. Dark mode DEFAULT: Use Tailwind gray (stone/zinc) based on brand warmth
@@ -715,10 +713,4 @@ For dark mode, add the `.dark` class:
 5. Brand palette is VIBRANT by default; only use soft/low-chroma if user says "muted/ash/soft"
 6. Gray palette uses bell curve chroma (low at 800-950 for clean dark mode)
 
-**Token Rules:**
-7. All semantic tokens (`--background`, `--primary`, etc.) go in selector blocks, NOT in @theme block
-8. Replace all `...` with actual color values using `var(--color-<family>-<shade>)` format
-9. Chart `-hex` tokens MUST contain valid hex values (e.g., `#2563eb`), not CSS variables
-10. Dark mode MUST use CSS variables for readability - never hardcode oklch values
-11. Use ONE consistent grayscale family throughout dark mode (don't mix)
-12. Dark mode only needs to override tokens that differ from light mode
+**Token Rules:** 7. All semantic tokens (`--background`, `--primary`, etc.) go in selector blocks, NOT in @theme block 8. Replace all `...` with actual color values using `var(--color-<family>-<shade>)` format 9. Chart `-hex` tokens MUST contain valid hex values (e.g., `#2563eb`), not CSS variables 10. Dark mode MUST use CSS variables for readability - never hardcode oklch values 11. Use ONE consistent grayscale family throughout dark mode (don't mix) 12. Dark mode only needs to override tokens that differ from light mode

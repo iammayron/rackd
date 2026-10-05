@@ -1,9 +1,5 @@
 import { sql } from "drizzle-orm";
-import {
-  MUSCLE_TAXONOMY,
-  SOURCE_MUSCLE_MAP,
-  SOURCE_EQUIPMENT_MAP,
-} from "@rackd/core";
+import { MUSCLE_TAXONOMY, SOURCE_MUSCLE_MAP, SOURCE_EQUIPMENT_MAP } from "@rackd/core";
 import { db } from "../db";
 import { muscles, muscleMap, equipmentMap } from "../schema";
 
@@ -44,7 +40,10 @@ export async function seedTaxonomy(): Promise<void> {
   await db
     .insert(muscleMap)
     .values(muscleMapRows)
-    .onConflictDoUpdate({ target: muscleMap.sourceValue, set: { muscleId: sql`excluded.muscle_id` } });
+    .onConflictDoUpdate({
+      target: muscleMap.sourceValue,
+      set: { muscleId: sql`excluded.muscle_id` },
+    });
 
   const equipmentMapRows = Object.entries(SOURCE_EQUIPMENT_MAP).map(([sourceValue, canonical]) => ({
     sourceValue,
@@ -53,7 +52,10 @@ export async function seedTaxonomy(): Promise<void> {
   await db
     .insert(equipmentMap)
     .values(equipmentMapRows)
-    .onConflictDoUpdate({ target: equipmentMap.sourceValue, set: { canonical: sql`excluded.canonical` } });
+    .onConflictDoUpdate({
+      target: equipmentMap.sourceValue,
+      set: { canonical: sql`excluded.canonical` },
+    });
 
   console.log(
     `[taxonomy] ${muscleRows.length} muscles, ${muscleMapRows.length} muscle maps, ${equipmentMapRows.length} equipment maps`,

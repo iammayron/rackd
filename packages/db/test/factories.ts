@@ -57,7 +57,12 @@ export async function makeSessionWithSets(opts: {
 }) {
   const ownerId = opts.ownerId ?? OWNER_A;
   const exerciseId = opts.exerciseId ?? "ex_bench";
-  const session = await startSession({ ownerId, routineId: opts.routineId, name: "W", now: Date.now() });
+  const session = await startSession({
+    ownerId,
+    routineId: opts.routineId,
+    name: "W",
+    now: Date.now(),
+  });
   const se = await addSessionExercise({ sessionId: session.id, exerciseId, order: 1 });
   const setIds: string[] = [];
   let order = 1;

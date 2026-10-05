@@ -31,12 +31,7 @@ export interface ShareCardProps extends React.HTMLAttributes<HTMLDivElement> {
  * Self-contained (inline styles + token vars) so it rasterizes cleanly via
  * html-to-image. Three themes: coral (accent), dark, light.
  */
-export function ShareCard({
-  data,
-  theme = "accent",
-  style,
-  ...rest
-}: ShareCardProps) {
+export function ShareCard({ data, theme = "accent", style, ...rest }: ShareCardProps) {
   // The card is rasterized and shared, so each theme uses fixed colors rather
   // than the app's semantic tokens — otherwise "light" inherits whatever theme
   // the app is currently in (and renders dark in a dark-mode app).
@@ -109,11 +104,7 @@ export function ShareCard({
         >
           {value}
         </span>
-        {unit && (
-          <span style={{ fontSize: 13, fontWeight: 700, color: sub }}>
-            {unit}
-          </span>
-        )}
+        {unit && <span style={{ fontSize: 13, fontWeight: 700, color: sub }}>{unit}</span>}
       </div>
     </div>
   );
@@ -148,11 +139,7 @@ export function ShareCard({
             filter: whiteMark ? "brightness(0) invert(1)" : "none",
           }}
         />
-        <span
-          style={{ fontWeight: 800, fontSize: 16, letterSpacing: "-0.01em" }}
-        >
-          Rackd
-        </span>
+        <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: "-0.01em" }}>Rackd</span>
         <span
           style={{
             marginLeft: "auto",
@@ -205,11 +192,7 @@ export function ShareCard({
         <Stat label="Volume" value={data.volume} unit={data.volumeUnit} />
         <Stat label="Duration" value={data.duration} />
         <Stat label="Sets" value={data.sets} />
-        <Stat
-          label="PRs"
-          value={data.prCount}
-          unit={data.prCount === 1 ? "record" : "records"}
-        />
+        <Stat label="PRs" value={data.prCount} unit={data.prCount === 1 ? "record" : "records"} />
       </div>
 
       {data.topSet && (

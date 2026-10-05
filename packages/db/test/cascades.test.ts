@@ -17,9 +17,15 @@ const count = async (table: typeof t.routineSets, col: typeof t.routineSets.id, 
 
 describe("FK cascade / SET NULL behavior (real Postgres)", () => {
   it("deleteRoutine cascades exercises→sets and SET NULLs referencing rows", async () => {
-    const { routineId, exercises } = await makeRoutine({ setsPer: 2, exerciseIds: ["ex_bench", "ex_squat"] });
+    const { routineId, exercises } = await makeRoutine({
+      setsPer: 2,
+      exerciseIds: ["ex_bench", "ex_squat"],
+    });
     // A finished history session that came from this routine.
-    const { sessionId } = await makeSessionWithSets({ routineId, sets: [{ weight: 100, reps: 5 }] });
+    const { sessionId } = await makeSessionWithSets({
+      routineId,
+      sets: [{ weight: 100, reps: 5 }],
+    });
     // A program day pinned to this routine.
     const program = await createProgram({ ownerId: OWNER_A, name: "P" });
     const day = await addProgramDay({ programId: program.id, order: 1, routineId });
@@ -41,7 +47,10 @@ describe("FK cascade / SET NULL behavior (real Postgres)", () => {
 
   it("discardSession cascades sessionExercises→setLogs", async () => {
     const { sessionId, sessionExerciseId, setIds } = await makeSessionWithSets({
-      sets: [{ weight: 100, reps: 5 }, { weight: 105, reps: 3 }],
+      sets: [
+        { weight: 100, reps: 5 },
+        { weight: 105, reps: 3 },
+      ],
     });
     await discardSession(sessionId);
     expect(await count(t.sessions, t.sessions.id, sessionId)).toBe(0);

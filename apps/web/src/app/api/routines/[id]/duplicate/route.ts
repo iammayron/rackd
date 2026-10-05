@@ -9,11 +9,7 @@ const { routines } = schema;
 /** POST /api/routines/[id]/duplicate — deep-clone an owned routine. */
 export const POST = withUser(async (ownerId, req, ctx) => {
   const { id } = await ctx.params;
-  const [routine] = await db
-    .select()
-    .from(routines)
-    .where(eq(routines.id, id))
-    .limit(1);
+  const [routine] = await db.select().from(routines).where(eq(routines.id, id)).limit(1);
   if (!routine) return Response.json({ error: "Not found" }, { status: 404 });
   if (routine.ownerId !== ownerId) return Response.json({ error: "Forbidden" }, { status: 403 });
 

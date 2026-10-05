@@ -21,11 +21,7 @@ export const GET = withUser(async (ownerId) => {
     .innerJoin(sessionExercises, eq(setLogs.sessionExerciseId, sessionExercises.id))
     .innerJoin(sessions, eq(sessionExercises.sessionId, sessions.id))
     .where(
-      and(
-        eq(sessions.ownerId, ownerId),
-        eq(setLogs.completed, true),
-        isNotNull(sessions.endedAt),
-      ),
+      and(eq(sessions.ownerId, ownerId), eq(setLogs.completed, true), isNotNull(sessions.endedAt)),
     )
     .groupBy(sessionExercises.sessionId);
 

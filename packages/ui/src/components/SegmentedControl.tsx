@@ -4,7 +4,10 @@ import * as React from "react";
 
 export type SegmentedOption = string | { value: string; label: React.ReactNode };
 
-export interface SegmentedControlProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onChange"> {
+export interface SegmentedControlProps extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  "onChange"
+> {
   options: SegmentedOption[];
   value?: string;
   onChange?: (value: string) => void;
@@ -18,7 +21,15 @@ export interface SegmentedControlProps extends Omit<React.HTMLAttributes<HTMLDiv
  * Segmented control — the kg/lb unit toggle and similar 2–3 option switches.
  * Selected segment rides a coral pill; the track is surface-2.
  */
-export function SegmentedControl({ options, value, onChange, size = "md", fullWidth = false, style, ...rest }: SegmentedControlProps) {
+export function SegmentedControl({
+  options,
+  value,
+  onChange,
+  size = "md",
+  fullWidth = false,
+  style,
+  ...rest
+}: SegmentedControlProps) {
   const h = size === "sm" ? 36 : 44;
   return (
     <div

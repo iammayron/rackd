@@ -21,7 +21,8 @@ export const PUT = withUser(async (ownerId, req, ctx) => {
     .from(sessionExercises)
     .where(eq(sessionExercises.sessionId, id));
   const owned = new Set(children.map((c) => c.id));
-  if (!ids.every((x) => owned.has(x))) return Response.json({ error: "Forbidden" }, { status: 403 });
+  if (!ids.every((x) => owned.has(x)))
+    return Response.json({ error: "Forbidden" }, { status: 403 });
 
   await reorderSessionExercises(ids);
   return Response.json({ ok: true });

@@ -75,17 +75,14 @@ export function ReplaceExercisePicker({
       (!muscle || e.primaryMuscle === muscle) &&
       (!equipment || e.equipment === equipment) &&
       (!q || e.name.toLowerCase().includes(q));
-    const isSimilar = (e: ExerciseRow) =>
-      !!current && e.primaryMuscle === current.primaryMuscle;
+    const isSimilar = (e: ExerciseRow) => !!current && e.primaryMuscle === current.primaryMuscle;
     return {
       similar: exercises.filter((e) => matches(e) && isSimilar(e)),
       all: exercises.filter((e) => matches(e) && !isSimilar(e)),
     };
   }, [exercises, search, muscle, equipment, current, excluded]);
 
-  const previewName = previewId
-    ? exercises.find((e) => e.id === previewId)?.name
-    : undefined;
+  const previewName = previewId ? exercises.find((e) => e.id === previewId)?.name : undefined;
 
   function close() {
     setOpen(false);
@@ -115,9 +112,7 @@ export function ReplaceExercisePicker({
           <ExerciseThumb ex={ex} size={44} />
           <span className="min-w-0 flex-1">
             <span className="block font-bold truncate">{ex.name}</span>
-            <span className="block text-sm text-[var(--text-muted)] truncate">
-              {subtitle}
-            </span>
+            <span className="block text-sm text-[var(--text-muted)] truncate">{subtitle}</span>
           </span>
           <span className="ms-2 shrink-0 text-sm font-semibold text-[var(--accent)]">
             Preview ›
@@ -153,9 +148,7 @@ export function ReplaceExercisePicker({
         header={
           <>
             <div className="flex items-center gap-3">
-              <h2 className="flex-1 text-[17px] font-extrabold">
-                Replace exercise
-              </h2>
+              <h2 className="flex-1 text-[17px] font-extrabold">Replace exercise</h2>
               <button
                 type="button"
                 onClick={close}
@@ -170,9 +163,7 @@ export function ReplaceExercisePicker({
               <div className="mt-3 flex items-center gap-2 text-sm text-[var(--text-muted)]">
                 <span>Replacing</span>
                 <ExerciseThumb ex={current} size={26} />
-                <span className="font-semibold text-[var(--text)]">
-                  {current.name}
-                </span>
+                <span className="font-semibold text-[var(--text)]">{current.name}</span>
               </div>
             )}
 
@@ -208,9 +199,7 @@ export function ReplaceExercisePicker({
           <>
             {similar.length > 0 && current && (
               <>
-                <SectionHeader>
-                  SIMILAR · {current.primaryMuscle.toUpperCase()}
-                </SectionHeader>
+                <SectionHeader>SIMILAR · {current.primaryMuscle.toUpperCase()}</SectionHeader>
                 <ul className="list-none p-0 m-0 flex flex-col gap-2">
                   {similar.map((ex) => (
                     <Row key={ex.id} ex={ex} />

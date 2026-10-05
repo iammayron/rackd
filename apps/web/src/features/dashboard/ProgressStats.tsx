@@ -23,10 +23,22 @@ function dayIndex(ms: number): number {
   return Math.floor(new Date(ms).setHours(0, 0, 0, 0) / DAY_MS);
 }
 
-function Stat({ label, value, suffix, caption }: { label: string; value: string; suffix?: string; caption: string }) {
+function Stat({
+  label,
+  value,
+  suffix,
+  caption,
+}: {
+  label: string;
+  value: string;
+  suffix?: string;
+  caption: string;
+}) {
   return (
     <div className="min-w-0">
-      <p className="truncate text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">{label}</p>
+      <p className="truncate text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+        {label}
+      </p>
       <p className="mt-1 flex items-baseline gap-0.5 text-[1.6rem] font-extrabold leading-none text-[var(--accent)] tabular-nums">
         <span className="truncate">{value}</span>
         {suffix && <span className="shrink-0 text-sm font-bold">{suffix}</span>}
@@ -55,7 +67,10 @@ export function ProgressStats() {
   const { streak, weekCount, volume } = useMemo(() => {
     const now = Date.now();
     const weekStart = weekStartIndex(dayIndex(now), new Date(now).getDay()) * DAY_MS;
-    const streak = currentStreak(sessions.map((s) => dayIndex(s.startedAt)), dayIndex(now));
+    const streak = currentStreak(
+      sessions.map((s) => dayIndex(s.startedAt)),
+      dayIndex(now),
+    );
     const weekCount = sessions.filter((s) => s.startedAt >= weekStart).length;
     const volumeKg = weeklyVolume
       .filter((w) => w.weekStart >= weekStart)
@@ -70,8 +85,16 @@ export function ProgressStats() {
   return (
     <section className="mb-8 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-5">
       <div className="grid grid-cols-3 gap-4">
-        <Stat label="Streak" value={String(streak)} caption={`day${streak === 1 ? "" : "s"} ${streak > 0 ? "🔥" : ""}`} />
-        <Stat label="This week" value={String(weekCount)} caption={`workout${weekCount === 1 ? "" : "s"}`} />
+        <Stat
+          label="Streak"
+          value={String(streak)}
+          caption={`day${streak === 1 ? "" : "s"} ${streak > 0 ? "🔥" : ""}`}
+        />
+        <Stat
+          label="This week"
+          value={String(weekCount)}
+          caption={`workout${weekCount === 1 ? "" : "s"}`}
+        />
         <Stat label="Volume" value={volume} suffix={unit} caption="this week" />
       </div>
     </section>

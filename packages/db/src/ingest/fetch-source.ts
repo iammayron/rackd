@@ -16,7 +16,8 @@ const SOURCES: Record<string, string> = {
 
 export async function fetchSource(source: string): Promise<string> {
   const url = SOURCES[source];
-  if (!url) throw new Error(`Unknown source "${source}". Known: ${Object.keys(SOURCES).join(", ")}`);
+  if (!url)
+    throw new Error(`Unknown source "${source}". Known: ${Object.keys(SOURCES).join(", ")}`);
   const out = sourceFile(source);
   console.log(`[fetch] ${source} ← ${url}`);
   const res = await fetch(url);
@@ -30,7 +31,8 @@ export async function fetchSource(source: string): Promise<string> {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const source = process.argv.find((a) => a.startsWith("--source="))?.split("=")[1] ?? "free-exercise-db";
+  const source =
+    process.argv.find((a) => a.startsWith("--source="))?.split("=")[1] ?? "free-exercise-db";
   void CACHE_DIR;
   fetchSource(source)
     .then(() => process.exit(0))

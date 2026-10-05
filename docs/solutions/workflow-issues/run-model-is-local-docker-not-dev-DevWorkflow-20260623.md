@@ -17,14 +17,17 @@ tags: [docker, docker-compose, workflow, dev-server, pwa, run-model]
 # Troubleshooting: This project's run model is local Docker Compose, not `pnpm dev`
 
 ## Problem
+
 While iterating, the assistant defaulted to suggesting `pnpm dev` (and `pnpm --filter @myfit/web dev`), then assumed the Triplit sync server was on a separate remote "deploy box." In reality the user runs the **entire stack as local Docker containers** via `docker compose` on the same machine. The mismatch caused a wrong-port diagnosis and confusion about why source edits weren't showing up.
 
 ## Environment
+
 - Module: Development Workflow / local runtime
 - Affected Component: `docker-compose.yml` (`web` + `sync` services), `apps/web/Dockerfile`, `apps/sync/Dockerfile`
 - Date: 2026-06-23
 
 ## Symptoms
+
 - Suggested `pnpm dev`; user replied they "will not keep running dev, I want to run the docker and that is it."
 - `lsof :3000` showed `com.docke...` — the port owner was the project's own `myfit-web-1` (earlier `fitnow-web-1`) container.
 - The compose header comment "home box + Tailscale" read like a remote deploy target, but it's how the user runs it locally.
@@ -33,9 +36,11 @@ While iterating, the assistant defaulted to suggesting `pnpm dev` (and `pnpm --f
 ## What Didn't Work
 
 **Assumption 1: iterate with `pnpm dev`**
+
 - **Why it was wrong:** the user runs the app exclusively through Docker. Dev-server advice added friction and a port clash with the already-running container.
 
 **Assumption 2: the sync server is a remote deploy box**
+
 - **Why it was wrong:** both `web` (:3000) and `sync` (:8787) run as local containers from this same repo's compose file. There is no separate box in this user's setup.
 
 ## Solution
@@ -43,23 +48,26 @@ While iterating, the assistant defaulted to suggesting `pnpm dev` (and `pnpm --f
 Treat **local Docker Compose as the canonical run model** for this repo.
 
 **Run / restart the stack:**
+
 ```bash
 docker compose up -d --build      # build images from source + start web(:3000) + sync(:8787)
 docker ps --filter name=myfit     # confirm myfit-web-1 / myfit-sync-1 are Up
 ```
 
 **Apply code changes** (images bake source — there is no hot reload):
+
 ```bash
 docker compose up -d --build web  # rebuild just web after editing apps/web or packages it imports
 ```
 
 **Free a "busy" port — it's almost certainly our own container:**
+
 ```bash
 docker ps --format '{{.Names}}\t{{.Ports}}'   # identify the owner
 docker rm -f myfit-web-1                       # remove our container (NOT `kill` a dev process)
 ```
 
-Supabase runs separately via its own CLI containers (`supabase_*`), several of which expose `:3000` *internally* but unpublished — not the host-port owner.
+Supabase runs separately via its own CLI containers (`supabase_*`), several of which expose `:3000` _internally_ but unpublished — not the host-port owner.
 
 ## Why This Works
 
@@ -75,4 +83,5 @@ Supabase runs separately via its own CLI containers (`supabase_*`), several of w
 - Consider adding a one-line "How this project runs (local Docker)" note to `CLAUDE.md` so future sessions skip the wrong assumption.
 
 ## Related Issues
+
 - See also: [content-under-status-bar-WebPWA-20260623.md](../ui-bugs/content-under-status-bar-WebPWA-20260623.md) — the safe-area fix that surfaced this (changes only appeared after a Docker rebuild + SW refresh).

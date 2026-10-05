@@ -9,11 +9,7 @@ const { routines, routineExercises } = schema;
 /** PUT /api/routines/[id]/exercises/reorder — persist a full exercise reorder. */
 export const PUT = withUser(async (ownerId, req, ctx) => {
   const { id } = await ctx.params;
-  const [routine] = await db
-    .select()
-    .from(routines)
-    .where(eq(routines.id, id))
-    .limit(1);
+  const [routine] = await db.select().from(routines).where(eq(routines.id, id)).limit(1);
   if (!routine) return Response.json({ error: "Not found" }, { status: 404 });
   if (routine.ownerId !== ownerId) return Response.json({ error: "Forbidden" }, { status: 403 });
 
@@ -26,7 +22,8 @@ export const PUT = withUser(async (ownerId, req, ctx) => {
     .from(routineExercises)
     .where(eq(routineExercises.routineId, id));
   const owned = new Set(children.map((c) => c.id));
-  if (!ids.every((x) => owned.has(x))) return Response.json({ error: "Forbidden" }, { status: 403 });
+  if (!ids.every((x) => owned.has(x)))
+    return Response.json({ error: "Forbidden" }, { status: 403 });
 
   await reorderRoutineExercises(ids);
   return Response.json({ ok: true });

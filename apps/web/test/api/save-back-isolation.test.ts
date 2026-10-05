@@ -67,8 +67,7 @@ async function routineSetSnapshot(routineId: string) {
       .from(routineSets)
       .where(eq(routineSets.routineExerciseId, re.id))
       .orderBy(asc(routineSets.order));
-    for (const s of sets)
-      out.push({ targetReps: s.targetReps, targetWeight: s.targetWeight });
+    for (const s of sets) out.push({ targetReps: s.targetReps, targetWeight: s.targetWeight });
   }
   return out;
 }
@@ -93,9 +92,7 @@ describe("/api/sessions/[id]/save-back owner isolation", () => {
     const after = await routineSetSnapshot(routineId);
     // "everything" writes the performed numbers (140kg x 8) back over the plan (100kg x 5).
     expect(after).not.toEqual(before);
-    expect(
-      after.some((s) => s.targetReps === 8 && s.targetWeight === 140),
-    ).toBe(true);
+    expect(after.some((s) => s.targetReps === 8 && s.targetWeight === 140)).toBe(true);
   });
 
   it("links the session to the routine it was saved back into (forked program copy)", async () => {
@@ -154,10 +151,7 @@ describe("/api/sessions/[id]/save-back owner isolation", () => {
     expect([403, 404]).toContain(res.status);
 
     // A's routine is still readable and unchanged.
-    const owned = await routineGet(
-      authedRequest(`http://t/x`, A),
-      ctx({ id: routineA }),
-    );
+    const owned = await routineGet(authedRequest(`http://t/x`, A), ctx({ id: routineA }));
     expect(owned.status).toBe(200);
   });
 

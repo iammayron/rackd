@@ -27,8 +27,8 @@ export function FinishPromptSheet({
     >
       <div className="flex flex-col gap-3 pt-1 pb-1">
         <p className="text-sm text-[var(--text-muted)] leading-snug">
-          You&apos;ve logged every set. Finish up now, or keep the session open
-          to add more exercises.
+          You&apos;ve logged every set. Finish up now, or keep the session open to add more
+          exercises.
         </p>
         <Button variant="primary" size="lg" fullWidth onClick={onFinish}>
           Finish workout

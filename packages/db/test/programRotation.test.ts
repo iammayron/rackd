@@ -2,19 +2,11 @@ import { describe, it, expect } from "vitest";
 import { eq } from "drizzle-orm";
 import { db } from "../src/db";
 import * as t from "../src/schema";
-import {
-  createProgram,
-  addProgramDay,
-  setProgramSchedule,
-  finishSession,
-} from "../src/index";
+import { createProgram, addProgramDay, setProgramSchedule, finishSession } from "../src/index";
 import { makeRoutine, makeSessionWithSets, OWNER_A } from "./factories";
 
 const cursorOf = async (programId: string) => {
-  const [row] = await db
-    .select()
-    .from(t.programs)
-    .where(eq(t.programs.id, programId));
+  const [row] = await db.select().from(t.programs).where(eq(t.programs.id, programId));
   return row!.rotationCursor ?? 0;
 };
 

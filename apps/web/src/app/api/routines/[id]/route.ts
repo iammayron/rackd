@@ -47,11 +47,7 @@ export const GET = withUser(async (ownerId, _req, ctx) => {
 /** PUT /api/routines/[id] — patch name/category/schedule of an owned routine. */
 export const PUT = withUser(async (ownerId, req, ctx) => {
   const { id } = await ctx.params;
-  const [routine] = await db
-    .select()
-    .from(routines)
-    .where(eq(routines.id, id))
-    .limit(1);
+  const [routine] = await db.select().from(routines).where(eq(routines.id, id)).limit(1);
   if (!routine) return Response.json({ error: "Not found" }, { status: 404 });
   if (routine.ownerId !== ownerId) return Response.json({ error: "Forbidden" }, { status: 403 });
 
@@ -67,11 +63,7 @@ export const PUT = withUser(async (ownerId, req, ctx) => {
 /** DELETE /api/routines/[id] — delete an owned routine and its tree. */
 export const DELETE = withUser(async (ownerId, _req, ctx) => {
   const { id } = await ctx.params;
-  const [routine] = await db
-    .select()
-    .from(routines)
-    .where(eq(routines.id, id))
-    .limit(1);
+  const [routine] = await db.select().from(routines).where(eq(routines.id, id)).limit(1);
   if (!routine) return Response.json({ error: "Not found" }, { status: 404 });
   if (routine.ownerId !== ownerId) return Response.json({ error: "Forbidden" }, { status: 403 });
 

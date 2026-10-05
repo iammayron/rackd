@@ -187,9 +187,7 @@ export function BottomSheet({
           {(title || subtitle) && (
             <div className="flex items-baseline justify-between gap-3 px-5 pt-2">
               {title && <h2 className="text-[17px] font-extrabold">{title}</h2>}
-              {subtitle && (
-                <span className="text-[13px] text-[var(--text-muted)]">{subtitle}</span>
-              )}
+              {subtitle && <span className="text-[13px] text-[var(--text-muted)]">{subtitle}</span>}
             </div>
           )}
         </div>

@@ -19,6 +19,7 @@ The layers (never skip one, never collapse two):
    - If it needs a new table/column, that's a schema change — stop and run `/db-migrate` first.
 
 2. **Route handler** (`apps/web/src/app/api/<path>/route.ts`):
+
    ```ts
    import { withUser } from "@/lib/api-auth";
    import { <repoFn>, db, schema } from "@rackd/db";
@@ -32,6 +33,7 @@ The layers (never skip one, never collapse two):
      return Response.json(rows);
    });
    ```
+
    - **Always** `withUser`; derive `ownerId` from it. NEVER read an ownerId from the body, query string, or params — that's the core security gotcha.
    - POST returns `201`; mutations with no body return `Response.json(row)` or a 204.
    - `[id]` params come from `await ctx.params` (the `RouteCtx` is typed loosely on purpose).

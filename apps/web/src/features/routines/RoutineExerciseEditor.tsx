@@ -85,9 +85,7 @@ export function RoutineExerciseEditor({
   const { data: sets = [] } = useQuery({
     queryKey: qk.routine(routineExercise.routineId),
     queryFn: () =>
-      api<{ exercises: RoutineDetailExercise[] }>(
-        `/api/routines/${routineExercise.routineId}`,
-      ),
+      api<{ exercises: RoutineDetailExercise[] }>(`/api/routines/${routineExercise.routineId}`),
     select: (routine) =>
       [...(routine.exercises.find((e) => e.id === routineExercise.id)?.sets ?? [])].sort(
         (a, b) => a.order - b.order,
@@ -98,9 +96,7 @@ export function RoutineExerciseEditor({
   const { data: prev = null } = useQuery({
     queryKey: qk.lastPerformance(routineExercise.exerciseId),
     queryFn: () =>
-      api<PrevSet[] | null>(
-        `/api/exercises/${routineExercise.exerciseId}/last-performance`,
-      ),
+      api<PrevSet[] | null>(`/api/exercises/${routineExercise.exerciseId}/last-performance`),
   });
 
   function prevFor(order: number): PrevSet | undefined {
@@ -188,9 +184,21 @@ export function RoutineExerciseEditor({
           aria-label={`Rest ${mmss(routineExercise.restSec * 1000)} — edit`}
           className="inline-flex shrink-0 items-center gap-1.5 min-h-9 px-3 rounded-full border border-[var(--border)] bg-[var(--surface)] text-sm font-semibold text-[var(--text)] tabular-nums focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
         >
-          <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" className="text-[var(--text-muted)]">
+          <svg
+            viewBox="0 0 24 24"
+            width="15"
+            height="15"
+            aria-hidden="true"
+            className="text-[var(--text-muted)]"
+          >
             <circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" strokeWidth="2" />
-            <path d="M12 9v4l2.5 1.5M9 2h6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            <path
+              d="M12 9v4l2.5 1.5M9 2h6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
           </svg>
           {mmss(routineExercise.restSec * 1000)}
         </button>
@@ -327,7 +335,8 @@ function RoutineSetRow({
   const repsWriting = useRef(false);
 
   useEffect(() => {
-    if (!weightWriting.current) setWeight(data.targetWeight ? String(display(data.targetWeight)) : "");
+    if (!weightWriting.current)
+      setWeight(data.targetWeight ? String(display(data.targetWeight)) : "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.targetWeight, unit]);
   useEffect(() => {

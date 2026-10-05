@@ -55,8 +55,7 @@ export interface MuscleInvolvementView {
   activation: number;
 }
 
-export interface MuscleVisualizerProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
+export interface MuscleVisualizerProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
   /** Primary mover (rendered at full intensity). */
   primary: string;
   /** Assisting groups (rendered at reduced intensity). */
@@ -104,12 +103,21 @@ export function MuscleVisualizer({
         hue: muscleHue(m.canonicalGroup),
       }))
     : [{ muscle: primary, level: 1, role: "Primary" }]
-        .concat(secondary.filter(Boolean).map((m) => ({ muscle: m, level: 0.55, role: "Secondary" })))
-        .map((w) => ({ key: `${w.role}-${w.muscle}`, label: label(w.muscle), level: w.level, role: w.role, hue: muscleHue(w.muscle) }));
+        .concat(
+          secondary.filter(Boolean).map((m) => ({ muscle: m, level: 0.55, role: "Secondary" })),
+        )
+        .map((w) => ({
+          key: `${w.role}-${w.muscle}`,
+          label: label(w.muscle),
+          level: w.level,
+          role: w.role,
+          hue: muscleHue(w.muscle),
+        }));
 
   // Map highlights by coarse group — derive from fine data when present.
   const mapPrimary = fine
-    ? fine.find((m) => m.role.toLowerCase() === "primary")?.canonicalGroup ?? fine[0]!.canonicalGroup
+    ? (fine.find((m) => m.role.toLowerCase() === "primary")?.canonicalGroup ??
+      fine[0]!.canonicalGroup)
     : primary;
   const mapSecondary = fine
     ? Array.from(new Set(fine.map((m) => m.canonicalGroup))).filter((g) => g !== mapPrimary)
@@ -130,7 +138,16 @@ export function MuscleVisualizer({
           }}
         />
       )}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 10, justifyContent: "center" }}>
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          justifyContent: "center",
+        }}
+      >
         {bars.map((b) => (
           <div key={b.key}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4 }}>
@@ -149,7 +166,14 @@ export function MuscleVisualizer({
                 {b.role}
               </span>
             </div>
-            <div style={{ height: 7, borderRadius: 999, background: "var(--surface-2)", overflow: "hidden" }}>
+            <div
+              style={{
+                height: 7,
+                borderRadius: 999,
+                background: "var(--surface-2)",
+                overflow: "hidden",
+              }}
+            >
               <div
                 style={{
                   width: `${Math.round(b.level * 100)}%`,
