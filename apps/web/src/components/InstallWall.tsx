@@ -22,7 +22,12 @@ export function useIsInstalled(): boolean | null {
       setInstalled(false);
       return;
     }
-    if (process.env.NODE_ENV !== "production") {
+    if (
+      process.env.NODE_ENV !== "production" ||
+      window.location.hostname.includes("run.app") ||
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1"
+    ) {
       setInstalled(true);
       return;
     }

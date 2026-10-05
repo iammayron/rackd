@@ -41,6 +41,12 @@ export async function requestNotifyPermission(): Promise<NotificationPermission>
   }
 }
 
+export interface ExtendedNotificationOptions extends NotificationOptions {
+  renotify?: boolean;
+  vibrate?: number[] | number;
+  actions?: Array<{ action: string; title: string; icon?: string }>;
+}
+
 /**
  * Show a notification now. Prefers the service-worker registration
  * (`showNotification`) — the only path that works on iOS — and falls back to the
@@ -48,15 +54,19 @@ export async function requestNotifyPermission(): Promise<NotificationPermission>
  */
 export async function showLocalNotification(
   title: string,
-  options?: NotificationOptions,
+  options?: ExtendedNotificationOptions,
 ): Promise<void> {
   if (!canNotify()) return;
-  const opts: NotificationOptions = {
+  const opts = {
     icon: "/icons/icon-192.png",
     badge: "/icons/icon-192.png",
     tag: "rest-timer",
+    renotify: true,
+    silent: false,
+    requireInteraction: true,
+    vibrate: [400, 150, 400, 150, 600],
     ...options,
-  };
+  } as NotificationOptions;
   if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
     try {
       const reg = await navigator.serviceWorker.ready;

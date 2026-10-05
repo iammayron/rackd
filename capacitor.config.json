@@ -1,0 +1,9 @@
+{
+  "appId": "dev.rackd.app",
+  "appName": "Rackd",
+  "webDir": "apps/web/public",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
+}

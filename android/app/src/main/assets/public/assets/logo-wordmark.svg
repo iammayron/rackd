@@ -1,0 +1,8 @@
+<svg width="260" height="80" viewBox="0 0 260 80" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Rackd">
+  <g transform="translate(8 4)">
+    <circle cx="36" cy="36" r="27" stroke="var(--ring-track, #e2e6ec)" stroke-width="8"></circle>
+    <circle cx="36" cy="36" r="27" stroke="var(--ring-accent, #ff5a3c)" stroke-width="8" stroke-linecap="round" stroke-dasharray="130 170" transform="rotate(-78 36 36)"></circle>
+    <text x="36" y="36" dy="0.355em" text-anchor="middle" font-family="'Hanken Grotesk', system-ui, sans-serif" font-weight="800" font-size="34" fill="var(--ring-accent, #ff5a3c)" letter-spacing="-0.02em">R</text>
+  </g>
+  <text x="86" y="40" dy="0.355em" font-family="'Hanken Grotesk', system-ui, sans-serif" font-weight="800" font-size="40" fill="var(--wordmark, #11161d)" letter-spacing="-0.02em">Rackd</text>
+</svg>

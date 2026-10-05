@@ -75,7 +75,15 @@ self.addEventListener("push", (event) => {
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
       tag: "rest-timer",
+      renotify: true,
+      silent: false,
+      requireInteraction: true,
+      vibrate: [400, 150, 400, 150, 600],
       data: { url: data.url },
+      actions: [
+        { action: "next", title: "Next Set" },
+        { action: "plus30", title: "+30s" },
+      ],
     }),
   );
 });

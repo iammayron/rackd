@@ -9,17 +9,16 @@ import {
   rescheduleRestPush,
   cancelRestPush,
 } from "@/lib/push";
+import { playRestChime, unlockAudio } from "@/lib/sound";
 
 /**
  * Global rest timer — one instance for the whole app, survives navigation.
  * Wall-clock based (core FSM); a single interval ticks `now` for re-renders.
- * On fire: vibrate + an (iOS-safe, SW-routed) notification, then auto-close
- * back to idle after a brief green "rest over" state. True background firing
- * (locked iPhone) needs a server-side Web Push — see lib/push.ts.
+ * On fire: play audio chime + strong vibration + high priority notification.
  */
 
 /** How long the green "Rest over" state lingers before auto-dismissing. */
-const FIRED_AUTOCLOSE_MS = 2000;
+const FIRED_AUTOCLOSE_MS = 2500;
 
 interface TimerStore {
   state: TimerState;
@@ -46,10 +45,22 @@ function clearTimers() {
 }
 
 function fireEffects() {
+  // Strong gym vibration pattern (loud buzz on hard gym surface or in pocket)
   if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-    navigator.vibrate([200, 100, 200]);
+    navigator.vibrate([400, 150, 400, 150, 600]);
   }
-  void showLocalNotification("Rest over", { body: "Time for your next set." });
+  // Play synthesized gym timer beeps through speaker
+  playRestChime();
+
+  // High priority notification with sound & vibration
+  void showLocalNotification("Rest over", {
+    body: "Time for your next set.",
+    tag: "rest-timer",
+    renotify: true,
+    silent: false,
+    requireInteraction: true,
+    vibrate: [400, 150, 400, 150, 600],
+  });
 }
 
 export const useTimerStore = create<TimerStore>((set, get) => ({
@@ -59,6 +70,7 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
 
   start: (durationSec) => {
     void requestNotifyPermission();
+    unlockAudio();
     clearTimers();
     const now = Date.now();
     const state = startTimer(durationSec, now);
@@ -71,19 +83,12 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
       const now = Date.now();
       const { state, fired } = get();
       if (!fired && isFired(state, now)) {
-        // How far past endAt this tick is. A foreground interval fires within a
-        // tick (~250ms); a large lag means the app was suspended (backgrounded)
-        // and is only now catching up — in which case the server Web Push has
-        // ALREADY alerted, so a local notif here would be the second one.
-        const lateMs = state.endAt !== undefined ? now - state.endAt : 0;
-        if (lateMs <= 1000) fireEffects();
-        // Cancel the server push (no-op if it already fired) to avoid a dupe.
+        fireEffects();
         void cancelRestPush();
         set({ now, fired: true });
         if (intervalId) clearInterval(intervalId);
         intervalId = null;
-        // Linger on the green "rest over" state, then auto-dismiss. A manual
-        // skip()/start() clears this timeout, so the two never fight.
+        // Linger on the green "rest over" state, then auto-dismiss.
         fireTimeoutId = setTimeout(() => {
           fireTimeoutId = null;
           get().skip();

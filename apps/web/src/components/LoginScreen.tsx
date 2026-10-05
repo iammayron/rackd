@@ -33,6 +33,12 @@ export function LoginScreen() {
     }
   }
 
+  async function continueAsDemo() {
+    setBusy(true);
+    await signIn("demo@rackd.test", "demo-password");
+    setBusy(false);
+  }
+
   const input =
     "w-full min-h-11 px-3 bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-[var(--radius-sm)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]";
 
@@ -47,8 +53,8 @@ export function LoginScreen() {
       </div>
 
       {!configured && (
-        <div className="mb-4 p-3 rounded-[var(--radius-sm)] bg-[var(--surface-2)] border border-[var(--warning)] text-sm text-[var(--warning)]">
-          Auth not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.
+        <div className="mb-4 p-3 rounded-[var(--radius-sm)] bg-[var(--surface-2)] border border-[var(--border)] text-sm text-[var(--text-muted)] text-center">
+          Running in preview mode with demo data.
         </div>
       )}
 
@@ -78,11 +84,22 @@ export function LoginScreen() {
 
         <button
           type="submit"
-          disabled={busy || !configured}
-          className="min-h-12 rounded-[var(--radius-sm)] bg-[var(--accent)] text-white font-bold disabled:opacity-60"
+          disabled={busy}
+          className="min-h-12 rounded-[var(--radius-sm)] bg-[var(--accent)] text-white font-bold disabled:opacity-60 cursor-pointer"
         >
           {busy ? "…" : mode === "in" ? "Sign in" : "Sign up"}
         </button>
+
+        {!configured && (
+          <button
+            type="button"
+            onClick={continueAsDemo}
+            disabled={busy}
+            className="min-h-11 rounded-[var(--radius-sm)] bg-[var(--surface-2)] border border-[var(--border)] text-[var(--text)] font-semibold cursor-pointer"
+          >
+            Continue as Demo Lifter
+          </button>
+        )}
       </form>
 
       <button
@@ -92,7 +109,7 @@ export function LoginScreen() {
           setError(null);
           setInfo(null);
         }}
-        className="mt-4 text-sm text-[var(--accent)] font-semibold"
+        className="mt-4 text-sm text-[var(--accent)] font-semibold cursor-pointer"
       >
         {mode === "in" ? "Need an account? Sign up" : "Have an account? Sign in"}
       </button>

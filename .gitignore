@@ -33,3 +33,12 @@ supabase/.temp/
 
 # Local Claude Code worktrees
 .claude/worktrees/
+
+# Android build outputs
+android/.gradle/
+android/app/build/
+android/.idea/
+android/local.properties
+android/*.iml
+android/app/*.iml
+

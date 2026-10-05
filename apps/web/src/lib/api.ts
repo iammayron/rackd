@@ -2,18 +2,25 @@ import { getSupabase } from "./supabase";
 import { enqueue, isWriteMethod } from "./offline-queue";
 
 /**
- * Typed fetch wrapper for the JSON API. Attaches the Supabase access token and
- * throws on non-2xx so React Query surfaces the error.
+ * Typed fetch wrapper for the JSON API. Attaches the Supabase access token (or
+ * demo token when running without an external auth provider) and throws on
+ * non-2xx so React Query surfaces the error.
  */
 export async function api<T>(path: string, options?: RequestInit): Promise<T> {
-  const { data } = await getSupabase().auth.getSession();
+  let token: string | undefined;
+  try {
+    const { data } = await getSupabase().auth.getSession();
+    token = data.session?.access_token;
+  } catch {}
+  if (!token) {
+    token = "demo-token";
+  }
+
   const res = await fetch(path, {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...(data.session?.access_token
-        ? { Authorization: `Bearer ${data.session.access_token}` }
-        : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
   });

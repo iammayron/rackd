@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { getSupabase } from "./supabase";
+import { getSupabase, isAuthConfigured } from "./supabase";
 import { api } from "./api";
 
 /**
@@ -43,6 +43,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isAuthConfigured()) {
+      try {
+        const saved = localStorage.getItem("rackd.demo_user");
+        if (saved) {
+          const u = JSON.parse(saved);
+          currentUserId = u.id;
+          setUser(u);
+        } else {
+          // Auto sign in as demo lifter so preview works instantly
+          const demoUser = {
+            id: "demo-user-id",
+            email: "demo@rackd.test",
+            app_metadata: {},
+            user_metadata: { name: "Demo Lifter" },
+            aud: "authenticated",
+            created_at: new Date().toISOString(),
+          } as User;
+          currentUserId = demoUser.id;
+          setUser(demoUser);
+          localStorage.setItem("rackd.demo_user", JSON.stringify(demoUser));
+        }
+      } catch {
+        const fallback = {
+          id: "demo-user-id",
+          email: "demo@rackd.test",
+          app_metadata: {},
+          user_metadata: { name: "Demo Lifter" },
+          aud: "authenticated",
+          created_at: new Date().toISOString(),
+        } as User;
+        currentUserId = fallback.id;
+        setUser(fallback);
+      }
+      setLoading(false);
+      return;
+    }
+
     const sb = getSupabase();
 
     // Just track the Supabase session: the API client reads the access token per
@@ -67,17 +104,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     loading,
     signIn: async (email, password) => {
+      if (!isAuthConfigured()) {
+        const demoUser = {
+          id: "demo-user-id",
+          email: email || "demo@rackd.test",
+          app_metadata: {},
+          user_metadata: { name: "Demo Lifter" },
+          aud: "authenticated",
+          created_at: new Date().toISOString(),
+        } as User;
+        currentUserId = demoUser.id;
+        setUser(demoUser);
+        localStorage.setItem("rackd.demo_user", JSON.stringify(demoUser));
+        return {};
+      }
       const { error } = await getSupabase().auth.signInWithPassword({ email, password });
       return { error: error?.message };
     },
     signUp: async (email, password) => {
+      if (!isAuthConfigured()) {
+        const demoUser = {
+          id: "demo-user-id",
+          email: email || "demo@rackd.test",
+          app_metadata: {},
+          user_metadata: { name: "Demo Lifter" },
+          aud: "authenticated",
+          created_at: new Date().toISOString(),
+        } as User;
+        currentUserId = demoUser.id;
+        setUser(demoUser);
+        localStorage.setItem("rackd.demo_user", JSON.stringify(demoUser));
+        return {};
+      }
       const { error } = await getSupabase().auth.signUp({ email, password });
       return { error: error?.message };
     },
     signOut: async () => {
+      if (!isAuthConfigured()) {
+        currentUserId = "";
+        setUser(null);
+        localStorage.removeItem("rackd.demo_user");
+        return;
+      }
       await getSupabase().auth.signOut();
     },
     updatePassword: async (currentPassword, newPassword) => {
+      if (!isAuthConfigured()) {
+        return {};
+      }
       const sb = getSupabase();
       const email = user?.email;
       if (!email) return { error: "You must be signed in." };
@@ -95,6 +169,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await api("/api/account", { method: "DELETE" });
       } catch (e) {
         return { error: e instanceof Error ? e.message : "Couldn't delete account." };
+      }
+      if (!isAuthConfigured()) {
+        currentUserId = "";
+        setUser(null);
+        localStorage.removeItem("rackd.demo_user");
+        return {};
       }
       await getSupabase().auth.signOut();
       return {};

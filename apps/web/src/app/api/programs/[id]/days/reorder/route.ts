@@ -20,7 +20,7 @@ export const PUT = withUser(async (ownerId, req, ctx) => {
     .select({ id: programDays.id })
     .from(programDays)
     .where(eq(programDays.programId, id));
-  const owned = new Set(children.map((c) => c.id));
+  const owned = new Set((children as { id: string }[]).map((c) => c.id));
   if (!ids.every((x) => owned.has(x)))
     return Response.json({ error: "Forbidden" }, { status: 403 });
 
