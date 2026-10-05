@@ -31,7 +31,13 @@ export function useIsInstalled(): boolean | null {
       setInstalled(true);
       return;
     }
+    // The Android APK loads this site in a Capacitor WebView, which injects
+    // `window.Capacitor`; that's already an installed app.
+    const native =
+      (window as Window & { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor
+        ?.isNativePlatform?.() === true;
     const standalone =
+      native ||
       window.matchMedia?.("(display-mode: standalone)").matches ||
       (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
     setInstalled(Boolean(standalone));
