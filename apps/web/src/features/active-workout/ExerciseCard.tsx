@@ -13,7 +13,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import { ExerciseThumb, type ExerciseMediaData } from "@/components/ExerciseMedia";
 import { ReplaceExercisePicker } from "@/features/routines/ReplaceExercisePicker";
 import { useExerciseDetail } from "@/features/exercise/exercise-detail-store";
-import { SetRow, type SetRowData } from "./SetRow";
+import { SetRow, SET_LINE, type SetRowData } from "./SetRow";
 import { copyTargets } from "./copy-targets";
 import { PlatesPanel } from "./PlatesPanel";
 import { RestSheet } from "./RestSheet";
@@ -166,7 +166,7 @@ export function ExerciseCard({
       data-sex={sessionExercise.id}
       // scroll-margin so auto-scroll (#18) lands the card below the sticky header
       style={{ scrollMarginTop: "calc(var(--safe-top) + 72px)" }}
-      className={`bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-lg)] p-4 ${
+      className={`@container min-w-0 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-lg)] p-4 ${
         inGroup ? "" : "mb-4"
       } ${dragging ? "opacity-60 ring-2 ring-[var(--accent)]" : ""}`}
     >
@@ -323,12 +323,14 @@ export function ExerciseCard({
         </div>
       )}
 
-      <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] pb-1">
-        <span className="w-6 shrink-0">#</span>
-        <span className="w-16 shrink-0">prev</span>
-        <span className="w-16 shrink-0 text-center">{unit}</span>
-        <span className="w-16 shrink-0 text-center">reps</span>
-        <span className="w-12 shrink-0 text-center">RPE</span>
+      <div className={`${SET_LINE} pb-1 text-sm text-[var(--text-muted)]`}>
+        <span className="text-center">#</span>
+        <span className="min-w-0 truncate">prev</span>
+        <span className="text-center">{unit}</span>
+        <span className="text-center">reps</span>
+        <span className="text-center">RPE</span>
+        <span aria-hidden="true" />
+        <span aria-hidden="true" />
       </div>
 
       {sets.map((s) => {

@@ -21,7 +21,15 @@ export interface SetRowData {
 
 /** Weight/reps display cell — a tap target that opens the slide-up editor. */
 const CELL =
-  "w-16 shrink-0 inline-flex items-center justify-center gap-0.5 min-h-11 text-center bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-[var(--radius-sm)] text-lg px-1 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]";
+  "w-full min-w-0 overflow-hidden inline-flex items-center justify-center min-h-11 text-center bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] rounded-[var(--radius-sm)] text-[15px] tabular-nums px-0.5 @[20rem]:text-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent)]";
+
+/**
+ * The set line: #, previous, weight, reps, RPE, complete, delete.
+ * Fixed tracks stay tappable; the two value tracks share whatever width is
+ * left so the row fits a phone instead of spilling past the card.
+ */
+export const SET_LINE =
+  "grid w-full min-w-0 items-center gap-x-1 [grid-template-columns:1.25rem_minmax(0,3.25rem)_minmax(0,1fr)_minmax(0,1fr)_2.5rem_2.75rem_1.5rem]";
 
 /**
  * One set row: weight, reps, complete toggle. Completing a set starts the
@@ -194,54 +202,97 @@ export function SetRow({
   }
 
   return (
-    <div
-      ref={rowRef}
-      className={`flex items-center gap-2 py-2 ${data.completed ? "opacity-70" : ""}`}
-    >
-      <span className="w-6 shrink-0 font-semibold text-[var(--text-muted)]">{data.order}</span>
-      <span className="w-16 shrink-0 text-sm text-[var(--text-muted)] truncate">
-        {prevLabel ?? "—"}
-      </span>
+    <div ref={rowRef} className={data.completed ? "opacity-70" : undefined}>
+      <div className={`${SET_LINE} py-2`}>
+        <span className="min-w-0 text-center font-semibold text-[var(--text-muted)]">
+          {data.order}
+        </span>
+        <span className="min-w-0 truncate text-sm text-[var(--text-muted)]">
+          {prevLabel ?? "—"}
+        </span>
 
-      <button
-        type="button"
-        onClick={() => openEditor("weight")}
-        aria-label={`Set ${data.order} weight${weight ? ` ${weight} ${unit}` : ""}, tap to edit`}
-        aria-haspopup="dialog"
-        className={CELL}
-      >
-        {weight ? weight : <span className="text-[var(--text-muted)]">{unit}</span>}
-      </button>
+        <button
+          type="button"
+          onClick={() => openEditor("weight")}
+          aria-label={`Set ${data.order} weight${weight ? ` ${weight} ${unit}` : ""}, tap to edit`}
+          aria-haspopup="dialog"
+          className={CELL}
+        >
+          {weight ? weight : <span className="text-[var(--text-muted)]">{unit}</span>}
+        </button>
 
-      <button
-        type="button"
-        onClick={() => openEditor("reps")}
-        aria-label={`Set ${data.order} reps${reps ? ` ${reps}` : ""}, tap to edit`}
-        aria-haspopup="dialog"
-        className={CELL}
-      >
-        {reps ? reps : <span className="text-[var(--text-muted)]">reps</span>}
-      </button>
+        <button
+          type="button"
+          onClick={() => openEditor("reps")}
+          aria-label={`Set ${data.order} reps${reps ? ` ${reps}` : ""}, tap to edit`}
+          aria-haspopup="dialog"
+          className={CELL}
+        >
+          {reps ? reps : <span className="text-[var(--text-muted)]">reps</span>}
+        </button>
 
-      {/* RPE — inline after reps; tap opens the bottom-sheet picker. The chip's
+        {/* RPE — inline after reps; tap opens the bottom-sheet picker. The chip's
           fill matches the sheet's selected tier color for the same value. */}
-      <button
-        type="button"
-        onClick={() => setRpeOpen(true)}
-        aria-label={`Set ${data.order} effort (RPE)`}
-        aria-haspopup="dialog"
-        className={`w-12 shrink-0 inline-flex items-center justify-center min-h-11 rounded-[var(--radius-sm)] border font-bold focus:outline-none focus:ring-2 focus:ring-[var(--accent)] ${
-          rpe != null
-            ? "text-[var(--text-on-accent)] border-transparent text-lg"
-            : "bg-[var(--surface-2)] text-[var(--text-muted)] border-[var(--border)] text-xs"
-        }`}
-        style={rpe != null ? { background: rpeColor(rpe) ?? "var(--accent)" } : undefined}
-      >
-        {rpe != null ? rpe : "RPE"}
-      </button>
+        <button
+          type="button"
+          onClick={() => setRpeOpen(true)}
+          aria-label={`Set ${data.order} effort (RPE)`}
+          aria-haspopup="dialog"
+          className={`w-full min-w-0 inline-flex items-center justify-center min-h-11 rounded-[var(--radius-sm)] border font-bold focus:outline-none focus:ring-2 focus:ring-[var(--accent)] ${
+            rpe != null
+              ? "text-[var(--text-on-accent)] border-transparent text-[15px] tabular-nums @[20rem]:text-lg"
+              : "bg-[var(--surface-2)] text-[var(--text-muted)] border-[var(--border)] text-xs"
+          }`}
+          style={rpe != null ? { background: rpeColor(rpe) ?? "var(--accent)" } : undefined}
+        >
+          {rpe != null ? rpe : "RPE"}
+        </button>
+
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={data.completed ? "Mark set incomplete" : "Complete set"}
+          title={
+            weight && reps
+              ? `est 1RM ${Math.round(estimate1RM(Number(weight), Number(reps)))} ${unit}`
+              : undefined
+          }
+          className={`w-full min-w-0 inline-flex items-center justify-center min-h-11 rounded-[var(--radius-sm)] border border-[var(--border)] text-lg font-bold ${
+            data.completed
+              ? "bg-[var(--success)] text-[#06231a]"
+              : "bg-[var(--surface-2)] text-[var(--text)]"
+          }`}
+        >
+          ✓
+        </button>
+        <button
+          type="button"
+          onClick={async () => {
+            // An untouched, empty row has nothing to lose — deleting a set you
+            // just added by mistake shouldn't cost two taps mid-workout. Once
+            // it carries numbers or a tick, confirm before it's gone.
+            const hasData = data.completed || data.weight > 0 || data.reps > 0;
+            if (hasData) {
+              const ok = await confirm({
+                title: `Remove set ${data.order}?`,
+                message: "The weight, reps and effort logged on it are deleted.",
+                confirmLabel: "Remove set",
+              });
+              if (!ok) return;
+            }
+            await api(`/api/set-logs/${data.id}`, { method: "DELETE" });
+            queryClient.invalidateQueries({ queryKey: qk.session(sessionId) });
+          }}
+          aria-label="Delete set"
+          className="min-h-11 w-full min-w-0 bg-transparent border-none text-lg text-[var(--text-muted)]"
+        >
+          ×
+        </button>
+      </div>
 
       {/* Hidden keyboard primer — see openEditor. Off-screen + non-interactive,
-          focused only programmatically to keep the soft keyboard up on mobile. */}
+          focused only programmatically to keep the soft keyboard up on mobile.
+          Kept out of the set grid so it can't steal a column. */}
       <input
         ref={warmupRef}
         tabIndex={-1}
@@ -273,47 +324,6 @@ export function SetRow({
       />
 
       <RpeSheet open={rpeOpen} value={rpe} onChoose={chooseRpe} onClose={() => setRpeOpen(false)} />
-
-      <button
-        type="button"
-        onClick={toggle}
-        aria-label={data.completed ? "Mark set incomplete" : "Complete set"}
-        title={
-          weight && reps
-            ? `est 1RM ${Math.round(estimate1RM(Number(weight), Number(reps)))} ${unit}`
-            : undefined
-        }
-        className={`ms-auto shrink-0 inline-flex items-center justify-center min-h-11 min-w-11 rounded-[var(--radius-sm)] border border-[var(--border)] text-lg font-bold ${
-          data.completed
-            ? "bg-[var(--success)] text-[#06231a]"
-            : "bg-[var(--surface-2)] text-[var(--text)]"
-        }`}
-      >
-        ✓
-      </button>
-      <button
-        type="button"
-        onClick={async () => {
-          // An untouched, empty row has nothing to lose — deleting a set you
-          // just added by mistake shouldn't cost two taps mid-workout. Once
-          // it carries numbers or a tick, confirm before it's gone.
-          const hasData = data.completed || data.weight > 0 || data.reps > 0;
-          if (hasData) {
-            const ok = await confirm({
-              title: `Remove set ${data.order}?`,
-              message: "The weight, reps and effort logged on it are deleted.",
-              confirmLabel: "Remove set",
-            });
-            if (!ok) return;
-          }
-          await api(`/api/set-logs/${data.id}`, { method: "DELETE" });
-          queryClient.invalidateQueries({ queryKey: qk.session(sessionId) });
-        }}
-        aria-label="Delete set"
-        className="shrink-0 min-h-11 w-7 bg-transparent border-none text-lg text-[var(--text-muted)]"
-      >
-        ×
-      </button>
     </div>
   );
 }
