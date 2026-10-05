@@ -375,7 +375,7 @@ export default function WorkoutPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-[100dvh]">
+    <div className="flex w-full min-w-0 flex-col min-h-[100dvh]">
       <header className="sticky top-[var(--safe-top)] z-10 flex items-center gap-3 py-3 px-4 bg-[var(--bg)] border-b border-[var(--border)]">
         <BackButton onClick={() => router.push("/")} />
         <h1 className="text-lg font-bold">Active Workout</h1>
@@ -397,7 +397,7 @@ export default function WorkoutPage() {
 
       {/* The rest dock below is sticky, so it takes real space at the end of the
           column — no bottom padding needed here to keep content reachable. */}
-      <main className="flex-1 p-4">
+      <main className="min-w-0 flex-1 p-4">
         {fetching && <p className="text-[var(--text-muted)]">Loading…</p>}
         {!fetching && sessionExercises.length === 0 && (
           <p className="text-[var(--text-muted)]">No exercises in this session.</p>
