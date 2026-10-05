@@ -12,9 +12,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@rackd/core": "*",
-    "@rackd/db": "*",
-    "@rackd/ui": "*",
+    "@rackd/core": "workspace:*",
+    "@rackd/db": "workspace:*",
+    "@rackd/ui": "workspace:*",
     "@supabase/supabase-js": "^2.108.2",
     "@tanstack/query-persist-client-core": "^5.101.1",
     "@tanstack/react-query": "^5.101.1",
