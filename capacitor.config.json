@@ -3,7 +3,7 @@
   "appName": "Rackd",
   "webDir": "apps/web/public",
   "server": {
-    "androidScheme": "https",
-    "cleartext": true
+    "url": "https://rackd.fly.dev",
+    "androidScheme": "https"
   }
 }
