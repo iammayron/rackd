@@ -39,12 +39,18 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x android/gradlew
 
-      - name: Build Android APK with Gradle
-        run: cd android && ./gradlew assembleDebug --stacktrace
+      - name: Build signed release APK
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/rackd-release.p12
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$ANDROID_KEYSTORE_PATH"
+          cd android && ./gradlew assembleRelease --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rackd-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: rackd-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
