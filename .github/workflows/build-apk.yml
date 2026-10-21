@@ -48,9 +48,16 @@ jobs:
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > "$ANDROID_KEYSTORE_PATH"
           cd android && ./gradlew assembleRelease --stacktrace
 
-      - name: Upload APK Artifact
+      - name: Upload phone APK
         uses: actions/upload-artifact@v4
         with:
           name: rackd-release-apk
           path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+      - name: Upload watch APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rackd-wear-apk
+          path: android/wear/build/outputs/apk/release/wear-release.apk
           if-no-files-found: error

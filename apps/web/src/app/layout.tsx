@@ -6,6 +6,7 @@ import { PrelineInit } from "@/components/PrelineInit";
 import { OrientationGuard } from "@/components/OrientationGuard";
 import { ForegroundReflow } from "@/components/ForegroundReflow";
 import { MiniWorkoutBar } from "@/features/active-workout/MiniWorkoutBar";
+import { WatchSync } from "@/features/active-workout/WatchSync";
 
 // Brand face — self-hosted at build by next/font, exposed as --font-hanken
 // (wired into --font-sans in tokens.css). Weights match the Rackd type scale.
@@ -59,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Providers>
             {children}
             <MiniWorkoutBar />
+            <WatchSync />
           </Providers>
         </div>
         <OrientationGuard />

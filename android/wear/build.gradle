@@ -1,0 +1,44 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace = "dev.rackd.wear"
+    compileSdk = rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        // Same id as the phone app so a release build signed with the same key
+        // is the companion Play distributes to the watch.
+        applicationId "dev.rackd.app"
+        minSdk 30
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    signingConfigs {
+        release {
+            if (System.getenv("ANDROID_KEYSTORE_PATH")) {
+                storeFile file(System.getenv("ANDROID_KEYSTORE_PATH"))
+                storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+    }
+}
+
+dependencies {
+    implementation "androidx.wear:wear:1.3.0"
+    implementation "com.google.android.gms:play-services-wearable:19.0.0"
+}
