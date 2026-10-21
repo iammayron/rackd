@@ -27,6 +27,8 @@ interface TimerStore {
   start: (durationSec: number) => void;
   add: (deltaSec: number) => void;
   skip: () => void;
+  /** Move the running rest to an absolute end, or clear it. No-op when already there. */
+  adopt: (endAt: number | null) => void;
   remaining: () => number;
 }
 
@@ -111,6 +113,23 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
     clearTimers();
     void cancelRestPush();
     set({ state: idleTimer(), fired: false });
+  },
+
+  adopt: (endAt) => {
+    const now = Date.now();
+    if (endAt == null || endAt <= now) {
+      if (get().state.status === "running" || get().fired) get().skip();
+      return;
+    }
+    const current = get().state.endAt;
+    if (
+      get().state.status === "running" &&
+      current !== undefined &&
+      Math.abs(current - endAt) < 1500
+    ) {
+      return;
+    }
+    get().start(Math.max(1, Math.ceil((endAt - now) / 1000)));
   },
 
   remaining: () => {
