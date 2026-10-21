@@ -108,7 +108,7 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
             BoxInsetLayout.LayoutParams.MATCH_PARENT,
             BoxInsetLayout.LayoutParams.MATCH_PARENT
         );
-        lp.setBoxedEdges(BoxInsetLayout.LayoutParams.BOX_ALL);
+        lp.boxedEdges = BoxInsetLayout.LayoutParams.BOX_ALL;
         box.addView(scroll, lp);
         setContentView(box);
         showIdle();
