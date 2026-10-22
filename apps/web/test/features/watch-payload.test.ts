@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { formatWeight } from "@rackd/core";
 import {
   afterAdd,
+  afterAdjust,
   afterLog,
   afterSkip,
   buildWatchPayload,
@@ -45,6 +47,7 @@ describe("buildWatchPayload", () => {
       2,
     );
     expect(payload.ack).toBe(2);
+    expect(payload.unit).toBe("kg");
     expect(payload.restEndAt).toBe(5000);
     expect(payload.items.map((item) => [item.name, item.rests])).toEqual([
       ["Bench Press", false],
@@ -59,6 +62,7 @@ describe("watch actions", () => {
     revision: 3,
     sessionId: "sess",
     restEndAt: 0,
+    unit: "kg",
     items: buildWatchPayload([bench], "kg", null, 0).items,
   };
 
@@ -85,7 +89,10 @@ describe("watch actions", () => {
       null,
       0,
     ).items;
-    const { next } = afterLog({ revision: 0, sessionId: "sess", restEndAt: 0, items }, 1_000);
+    const { next } = afterLog(
+      { revision: 0, sessionId: "sess", restEndAt: 0, unit: "kg", items },
+      1_000,
+    );
     expect(next.restEndAt).toBe(0);
     expect(next.items[0]?.completed).toBe(true);
   });
@@ -104,6 +111,34 @@ describe("watch actions", () => {
     expect(merged.revision).toBe(4);
     expect(merged.restEndAt).toBe(91_000);
     expect(merged.items[0]?.completed).toBe(true);
+  });
+
+  it("logs the set on screen instead of the first open set", () => {
+    const { setId, next } = afterLog(stored, 1_000, "a2");
+    expect(setId).toBe("a2");
+    expect(next.items.map((item) => item.completed)).toEqual([false, true]);
+    expect(next.restEndAt).toBe(91_000);
+  });
+
+  it("steps weight in kg and keeps it when the phone publish is stale", () => {
+    const adjusted = afterAdjust(stored, "a1", { weight: 90 });
+    expect(adjusted.revision).toBe(4);
+    expect(adjusted.items[0]?.weightLabel).toBe("90 kg");
+    expect(adjusted.items[1]?.weight).toBe(80);
+    const stale = buildWatchPayload([bench], "kg", null, 3);
+    const merged = mergeWatchPublish(adjusted, stale, 2_000);
+    expect(merged.items[0]?.weight).toBe(90);
+    expect(merged.items[0]?.weightLabel).toBe("90 kg");
+    const reps = afterAdjust(stored, "a2", { reps: 6 });
+    expect(reps.items[1]?.reps).toBe(6);
+    expect(reps.items[0]?.reps).toBe(8);
+  });
+
+  it("labels pounds from the canonical kilograms", () => {
+    const payload = buildWatchPayload([bench], "lb", null, 0);
+    expect(payload.unit).toBe("lb");
+    expect(payload.items[0]?.weight).toBe(80);
+    expect(payload.items[0]?.weightLabel).toBe(formatWeight(80, "lb"));
   });
 
   it("accepts the phone UI once it acknowledges the watch revision", () => {

@@ -11,6 +11,7 @@ import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
+import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -18,6 +19,9 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import androidx.wear.widget.BoxInsetLayout;
 import com.google.android.gms.wearable.CapabilityClient;
 import com.google.android.gms.wearable.CapabilityInfo;
@@ -32,24 +36,34 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
- * Glance screen for the set in progress. The phone owns the workout; this
- * activity only shows the latest snapshot and sends log / skip / +30s.
+ * Glance screen for the set in progress. The phone owns the workout.
+ * Rest shows only the timer. Otherwise: weight, reps, and the exercise.
  */
 public class MainActivity extends Activity implements DataClient.OnDataChangedListener {
     private static final int CORAL = 0xFFFF5A3C;
     private static final int INK = 0xFF0E1116;
+    private static final double KG_PER_LB = 0.45359237;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private LinearLayout col;
     private TextView status;
     private TextView name;
     private TextView setLine;
     private TextView weight;
     private TextView reps;
     private TextView countdown;
+    private LinearLayout nameRow;
+    private LinearLayout weightRow;
+    private LinearLayout repsRow;
+    private LinearLayout timerRow;
     private Button log;
     private Button skip;
     private Button add;
+    private Button prev;
+    private Button next;
     private JSONObject snapshot;
+    private String focusName;
+    private String shownSession = "";
     private long buzzedForEndAt = -1;
     private boolean wasResting = false;
 
@@ -68,47 +82,77 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
 
         BoxInsetLayout box = new BoxInsetLayout(this);
         ScrollView scroll = new ScrollView(this);
-        LinearLayout col = new LinearLayout(this);
+        scroll.setFillViewport(true);
+        scroll.setVerticalScrollBarEnabled(false);
+        col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
-        col.setGravity(Gravity.CENTER_HORIZONTAL);
-        int pad = dp(8);
-        col.setPadding(pad, pad, pad, dp(16));
+        col.setGravity(Gravity.CENTER);
+        int pad = dp(2);
+        col.setPadding(pad, pad, pad, pad);
 
-        status = label(13, false, 0xFFB7B0AC);
-        name = label(18, true, Color.WHITE);
-        setLine = label(13, false, 0xFFB7B0AC);
-        weight = label(28, true, Color.WHITE);
-        reps = label(16, false, Color.WHITE);
-        countdown = label(32, true, CORAL);
+        status = label(11, false, 0xFFB7B0AC);
+        name = label(15, true, Color.WHITE);
+        name.setMaxLines(2);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        setLine = label(12, false, 0xFFB7B0AC);
+        weight = label(18, true, Color.WHITE);
+        reps = label(18, true, Color.WHITE);
+        countdown = label(48, true, CORAL);
 
-        log = button("Log set", true);
-        skip = button("Skip", false);
-        add = button("+30s", false);
-        log.setOnClickListener(v -> send("log"));
+        prev = stepButton("‹");
+        next = stepButton("›");
+        Button weightMinus = stepButton("−");
+        Button weightPlus = stepButton("+");
+        Button repsMinus = stepButton("−");
+        Button repsPlus = stepButton("+");
+        weightMinus.setOnClickListener(v -> stepWeight(-1));
+        weightPlus.setOnClickListener(v -> stepWeight(1));
+        repsMinus.setOnClickListener(v -> stepReps(-1));
+        repsPlus.setOnClickListener(v -> stepReps(1));
+        prev.setOnClickListener(v -> move(-1));
+        next.setOnClickListener(v -> move(1));
+
+        nameRow = new LinearLayout(this);
+        nameRow.setOrientation(LinearLayout.HORIZONTAL);
+        nameRow.setGravity(Gravity.CENTER_VERTICAL);
+        nameRow.addView(prev, sideParams());
+        nameRow.addView(name, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        nameRow.addView(next, sideParams());
+
+        weightRow = stepperRow(weightMinus, weight, weightPlus);
+        repsRow = stepperRow(repsMinus, reps, repsPlus);
+
+        log = button("Log set", true, 32);
+        skip = button("Skip", false, 32);
+        add = button("+30s", false, 32);
+        log.setOnClickListener(v -> logFocused());
         skip.setOnClickListener(v -> send("skip"));
         add.setOnClickListener(v -> send("add30"));
 
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER);
-        row.addView(skip, rowParams());
-        row.addView(add, rowParams());
+        timerRow = new LinearLayout(this);
+        timerRow.setOrientation(LinearLayout.HORIZONTAL);
+        timerRow.setGravity(Gravity.CENTER);
+        timerRow.addView(skip, rowParams());
+        timerRow.addView(add, rowParams());
 
         col.addView(status);
-        col.addView(name);
+        col.addView(nameRow);
         col.addView(setLine);
-        col.addView(weight);
-        col.addView(reps);
+        col.addView(weightRow);
+        col.addView(repsRow);
         col.addView(countdown);
         col.addView(log, fullWidth());
-        col.addView(row);
-        scroll.addView(col);
+        col.addView(timerRow);
 
         BoxInsetLayout.LayoutParams lp = new BoxInsetLayout.LayoutParams(
             BoxInsetLayout.LayoutParams.MATCH_PARENT,
             BoxInsetLayout.LayoutParams.MATCH_PARENT
         );
         lp.boxedEdges = BoxInsetLayout.LayoutParams.BOX_ALL;
+        scroll.addView(col, new ScrollView.LayoutParams(
+            ScrollView.LayoutParams.MATCH_PARENT,
+            ScrollView.LayoutParams.WRAP_CONTENT
+        ));
         box.addView(scroll, lp);
         setContentView(box);
         showIdle();
@@ -178,6 +222,11 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
     private void apply(String json) {
         try {
             snapshot = new JSONObject(json);
+            String session = snapshot.optString("sessionId", "");
+            if (!session.equals(shownSession)) {
+                shownSession = session;
+                focusName = null;
+            }
             render();
         } catch (Exception e) {
             showIdle();
@@ -213,61 +262,172 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
         wasResting = resting;
 
         if (total == 0) {
-            status.setText("Rackd");
-            name.setText("Workout in progress");
-            setLine.setText("");
-            weight.setText("");
-            reps.setText("");
-            countdown.setVisibility(View.GONE);
-            log.setVisibility(View.GONE);
-            skip.setVisibility(View.GONE);
-            add.setVisibility(View.GONE);
+            showMessage("Rackd", "Workout in progress", "");
             return;
         }
-        if (open == null) {
-            status.setText(error.isEmpty() ? "Done" : error);
-            name.setText("All sets logged");
-            setLine.setText(done + " sets");
-            weight.setText("");
-            reps.setText("");
-            countdown.setVisibility(View.GONE);
-            log.setVisibility(View.GONE);
-            skip.setVisibility(View.GONE);
-            add.setVisibility(View.GONE);
+        if (open == null && (focusName == null || setOnScreen(items) == null)) {
+            showMessage(error.isEmpty() ? "Done" : error, "All sets logged", done + " sets");
             return;
         }
 
-        status.setText(!error.isEmpty() ? error : resting ? "Rest" : "Next set");
-        name.setText(open.optString("name", "Exercise"));
-        setLine.setText("Set " + open.optInt("index") + " of " + open.optInt("count"));
-        weight.setText(open.optString("weightLabel", ""));
-        int repCount = open.optInt("reps");
-        reps.setText(repCount > 0 ? repCount + " reps" : "");
+        JSONObject shown = setOnScreen(items);
+        if (shown == null) shown = open;
+        List<String> names = exerciseNames(items);
+        boolean several = names.size() > 1;
+
         if (resting) {
+            status.setVisibility(error.isEmpty() ? View.GONE : View.VISIBLE);
+            status.setText(error);
+            nameRow.setVisibility(View.GONE);
+            setLine.setVisibility(View.GONE);
+            weightRow.setVisibility(View.GONE);
+            repsRow.setVisibility(View.GONE);
+            log.setVisibility(View.GONE);
             countdown.setVisibility(View.VISIBLE);
             countdown.setText(format(remaining));
-            log.setVisibility(View.GONE);
-            skip.setVisibility(View.VISIBLE);
-            add.setVisibility(View.VISIBLE);
-        } else {
-            countdown.setVisibility(View.GONE);
-            log.setVisibility(View.VISIBLE);
-            skip.setVisibility(View.GONE);
-            add.setVisibility(View.GONE);
+            timerRow.setVisibility(View.VISIBLE);
+            return;
         }
+
+        status.setVisibility(error.isEmpty() ? View.GONE : View.VISIBLE);
+        status.setText(error);
+        nameRow.setVisibility(View.VISIBLE);
+        name.setVisibility(View.VISIBLE);
+        setLine.setVisibility(View.VISIBLE);
+        weightRow.setVisibility(View.VISIBLE);
+        repsRow.setVisibility(View.VISIBLE);
+        countdown.setVisibility(View.GONE);
+        timerRow.setVisibility(View.GONE);
+        prev.setVisibility(several ? View.VISIBLE : View.GONE);
+        next.setVisibility(several ? View.VISIBLE : View.GONE);
+        name.setText(shown.optString("name", "Exercise"));
+        setLine.setText("Set " + shown.optInt("index") + " of " + shown.optInt("count"));
+        weight.setText(shown.optString("weightLabel", ""));
+        reps.setText(String.valueOf(shown.optInt("reps")));
+        boolean logged = shown.optBoolean("completed");
+        log.setVisibility(logged ? View.GONE : View.VISIBLE);
+        log.setText("Log set");
+        int index = names.indexOf(shown.optString("name"));
+        prev.setEnabled(index > 0);
+        next.setEnabled(index >= 0 && index < names.size() - 1);
     }
 
     private void showIdle() {
         snapshot = null;
-        status.setText("Rackd");
-        name.setText("Start a workout on your phone");
-        setLine.setText("");
-        weight.setText("");
-        reps.setText("");
+        focusName = null;
+        shownSession = "";
+        showMessage("Rackd", "Start a workout on your phone", "");
+    }
+
+    private void showMessage(String title, String body, String detail) {
+        status.setVisibility(View.VISIBLE);
+        status.setText(title);
+        nameRow.setVisibility(View.VISIBLE);
+        prev.setVisibility(View.GONE);
+        next.setVisibility(View.GONE);
+        name.setVisibility(View.VISIBLE);
+        name.setText(body);
+        setLine.setVisibility(detail.isEmpty() ? View.GONE : View.VISIBLE);
+        setLine.setText(detail);
+        weightRow.setVisibility(View.GONE);
+        repsRow.setVisibility(View.GONE);
         countdown.setVisibility(View.GONE);
         log.setVisibility(View.GONE);
-        skip.setVisibility(View.GONE);
-        add.setVisibility(View.GONE);
+        timerRow.setVisibility(View.GONE);
+    }
+
+    private void logFocused() {
+        JSONArray items = snapshot == null ? null : snapshot.optJSONArray("items");
+        JSONObject shown = setOnScreen(items);
+        if (shown == null || shown.optBoolean("completed")) return;
+        send("log:" + shown.optString("setId"));
+    }
+
+    private void stepWeight(int dir) {
+        JSONObject shown = setOnScreen(snapshot == null ? null : snapshot.optJSONArray("items"));
+        if (shown == null) return;
+        String unit = snapshot.optString("unit", "kg");
+        boolean lb = "lb".equals(unit);
+        int stepTenths = lb ? 50 : 25;
+        double kg = shown.optDouble("weight", 0);
+        double display = lb ? kg / KG_PER_LB : kg;
+        int tenths = (int) Math.round(display * 10.0);
+        int nextTenths = Math.max(0, tenths + dir * stepTenths);
+        if (nextTenths == tenths) return;
+        double nextDisplay = nextTenths / 10.0;
+        double nextKg = lb ? nextDisplay * KG_PER_LB : nextDisplay;
+        try {
+            shown.put("weight", nextKg);
+            shown.put("weightLabel", weightLabel(nextKg, unit));
+        } catch (Exception ignored) {
+            return;
+        }
+        render();
+        send("w:" + shown.optString("setId") + ":" + String.format(Locale.US, "%.4f", nextKg));
+    }
+
+    private void stepReps(int dir) {
+        JSONObject shown = setOnScreen(snapshot == null ? null : snapshot.optJSONArray("items"));
+        if (shown == null) return;
+        int nextReps = Math.max(1, Math.min(99, shown.optInt("reps") + dir));
+        if (nextReps == shown.optInt("reps")) return;
+        try {
+            shown.put("reps", nextReps);
+        } catch (Exception ignored) {
+            return;
+        }
+        render();
+        send("r:" + shown.optString("setId") + ":" + nextReps);
+    }
+
+    private void move(int dir) {
+        JSONArray items = snapshot == null ? null : snapshot.optJSONArray("items");
+        List<String> names = exerciseNames(items);
+        if (focusName == null) setOnScreen(items);
+        int index = names.indexOf(focusName);
+        int target = index + dir;
+        if (target < 0 || target >= names.size()) return;
+        focusName = names.get(target);
+        render();
+    }
+
+    private JSONObject setOnScreen(JSONArray items) {
+        List<String> names = exerciseNames(items);
+        if (names.isEmpty()) return null;
+        if (focusName == null || !names.contains(focusName)) {
+            JSONObject open = null;
+            if (items != null) {
+                for (int i = 0; i < items.length(); i++) {
+                    JSONObject item = items.optJSONObject(i);
+                    if (item != null && !item.optBoolean("completed")) {
+                        open = item;
+                        break;
+                    }
+                }
+            }
+            focusName = open != null ? open.optString("name") : names.get(0);
+        }
+        JSONObject open = null;
+        JSONObject last = null;
+        for (int i = 0; items != null && i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            if (item == null || !focusName.equals(item.optString("name"))) continue;
+            last = item;
+            if (open == null && !item.optBoolean("completed")) open = item;
+        }
+        return open != null ? open : last;
+    }
+
+    private static List<String> exerciseNames(JSONArray items) {
+        List<String> names = new ArrayList<>();
+        if (items == null) return names;
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            if (item == null) continue;
+            String name = item.optString("name", "Exercise");
+            if (names.isEmpty() || !names.get(names.size() - 1).equals(name)) names.add(name);
+        }
+        return names;
     }
 
     private void send(String action) {
@@ -317,31 +477,75 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
         return mins + ":" + (secs < 10 ? "0" : "") + secs;
     }
 
+    /** Same rounding as the phone bridge: 1 decimal, drop a trailing .0. */
+    private static String weightLabel(double kg, String unit) {
+        boolean lb = "lb".equals(unit);
+        double display = lb ? kg / KG_PER_LB : kg;
+        double rounded = Math.round(display * 10.0) / 10.0;
+        String text = Math.abs(rounded - Math.rint(rounded)) < 0.001
+            ? String.valueOf((long) Math.rint(rounded))
+            : String.format(Locale.US, "%.1f", rounded);
+        return text + (lb ? " lb" : " kg");
+    }
+
     private TextView label(int sp, boolean bold, int color) {
         TextView view = new TextView(this);
         view.setTextColor(color);
         view.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         view.setGravity(Gravity.CENTER);
         if (bold) view.setTypeface(Typeface.DEFAULT_BOLD);
-        view.setPadding(0, dp(2), 0, dp(2));
+        view.setPadding(0, 0, 0, 0);
         return view;
     }
 
-    private Button button(String text, boolean filled) {
+    private Button button(String text, boolean filled, int minDp) {
         Button button = new Button(this);
         button.setText(text);
         button.setAllCaps(false);
+        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         button.setTextColor(filled ? Color.WHITE : CORAL);
         GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(20));
+        bg.setCornerRadius(dp(18));
         if (filled) bg.setColor(CORAL);
         else {
             bg.setColor(Color.TRANSPARENT);
             bg.setStroke(dp(1), CORAL);
         }
         button.setBackground(bg);
-        button.setMinHeight(dp(40));
+        button.setMinHeight(dp(minDp));
+        button.setMinimumHeight(dp(minDp));
+        button.setPadding(dp(6), 0, dp(6), 0);
         return button;
+    }
+
+    private Button stepButton(String text) {
+        Button button = new Button(this);
+        button.setText(text);
+        button.setAllCaps(false);
+        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        button.setTextColor(CORAL);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(16));
+        bg.setColor(0xFF1C2128);
+        button.setBackground(bg);
+        button.setMinWidth(dp(36));
+        button.setMinimumWidth(dp(36));
+        button.setMinHeight(dp(32));
+        button.setMinimumHeight(dp(32));
+        button.setPadding(0, 0, 0, 0);
+        return button;
+    }
+
+    private LinearLayout stepperRow(Button minus, TextView value, Button plus) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams side = sideParams();
+        LinearLayout.LayoutParams mid = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        row.addView(minus, side);
+        row.addView(value, mid);
+        row.addView(plus, side);
+        return row;
     }
 
     private LinearLayout.LayoutParams fullWidth() {
@@ -349,15 +553,22 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         );
-        lp.topMargin = dp(8);
+        lp.topMargin = dp(4);
         return lp;
     }
 
     private LinearLayout.LayoutParams rowParams() {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        lp.leftMargin = dp(4);
-        lp.rightMargin = dp(4);
-        lp.topMargin = dp(8);
+        lp.leftMargin = dp(3);
+        lp.rightMargin = dp(3);
+        lp.topMargin = dp(4);
+        return lp;
+    }
+
+    private LinearLayout.LayoutParams sideParams() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(36), dp(32));
+        lp.leftMargin = dp(2);
+        lp.rightMargin = dp(2);
         return lp;
     }
 

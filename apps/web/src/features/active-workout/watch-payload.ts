@@ -3,7 +3,7 @@ import { formatWeight, type Unit } from "@rackd/core";
 /**
  * Snapshot the phone publishes to a paired Wear OS watch.
  * The Java bridge in `android/app/.../WearBridge.java` mirrors `mergeWatchPublish`,
- * `afterLog`, `afterSkip`, and `afterAdd`. Keep the two in step.
+ * `afterLog`, `afterAdjust`, `afterSkip`, and `afterAdd`. Keep the two in step.
  */
 
 export interface WatchExerciseInput {
@@ -19,6 +19,8 @@ export interface WatchItem {
   name: string;
   index: number;
   count: number;
+  /** Canonical kilograms. The watch steps this and the phone stores it. */
+  weight: number;
   weightLabel: string;
   reps: number;
   restSec: number;
@@ -31,6 +33,7 @@ export interface WatchPublish {
   sessionId: string;
   ack: number;
   restEndAt: number;
+  unit: Unit;
   items: WatchItem[];
 }
 
@@ -38,6 +41,7 @@ export interface StoredWatch {
   revision: number;
   sessionId: string;
   restEndAt: number;
+  unit: Unit;
   items: WatchItem[];
 }
 
@@ -58,6 +62,7 @@ export function buildWatchPayload(
         name: ex.name || "Exercise",
         index: i + 1,
         count: sets.length,
+        weight: set.weight,
         weightLabel: formatWeight(set.weight, unit),
         reps: set.reps,
         restSec: ex.restSec,
@@ -66,7 +71,7 @@ export function buildWatchPayload(
       });
     });
   });
-  return { sessionId, ack, restEndAt: restEndAt && restEndAt > 0 ? restEndAt : 0, items };
+  return { sessionId, ack, restEndAt: restEndAt && restEndAt > 0 ? restEndAt : 0, unit, items };
 }
 
 /** Which exercises start a rest when one of their sets is logged. */
@@ -102,34 +107,72 @@ export function mergeWatchPublish(
       revision,
       sessionId: incoming.sessionId,
       restEndAt: incoming.restEndAt,
+      unit: incoming.unit,
       items: incoming.items,
     };
   }
-  const done = new Set(stored.items.filter((item) => item.completed).map((item) => item.setId));
+  const previous = new Map(stored.items.map((item) => [item.setId, item]));
   return {
     revision,
     sessionId: stored.sessionId,
     restEndAt: stored.restEndAt,
-    items: incoming.items.map((item) =>
-      done.has(item.setId) ? { ...item, completed: true } : item,
-    ),
+    unit: stored.unit,
+    items: incoming.items.map((item) => {
+      const prev = previous.get(item.setId);
+      if (!prev) return item;
+      return {
+        ...item,
+        weight: prev.weight,
+        weightLabel: prev.weightLabel,
+        reps: prev.reps,
+        completed: prev.completed || item.completed,
+      };
+    }),
   };
 }
 
 export function afterLog(
   stored: StoredWatch,
   now: number,
+  setId?: string,
 ): { next: StoredWatch; setId: string | null } {
   const items = stored.items.map((item) => ({ ...item }));
-  const target = items.find((item) => !item.completed);
+  const target = setId
+    ? items.find((item) => item.setId === setId && !item.completed)
+    : items.find((item) => !item.completed);
   if (!target) return { next: stored, setId: null };
   target.completed = true;
   const anyLeft = items.some((item) => !item.completed);
   const restEndAt = target.rests && anyLeft && target.restSec > 0 ? now + target.restSec * 1000 : 0;
   return {
     setId: target.setId,
-    next: { revision: stored.revision + 1, sessionId: stored.sessionId, restEndAt, items },
+    next: {
+      revision: stored.revision + 1,
+      sessionId: stored.sessionId,
+      restEndAt,
+      unit: stored.unit,
+      items,
+    },
   };
+}
+
+/** Weight is canonical kg. Bumps revision so a stale phone publish cannot undo the edit. */
+export function afterAdjust(
+  stored: StoredWatch,
+  setId: string,
+  patch: { weight?: number; reps?: number },
+): StoredWatch {
+  let changed = false;
+  const items = stored.items.map((item) => {
+    if (item.setId !== setId) return item;
+    const weight = patch.weight ?? item.weight;
+    const reps = patch.reps ?? item.reps;
+    if (weight === item.weight && reps === item.reps) return item;
+    changed = true;
+    return { ...item, weight, reps, weightLabel: formatWeight(weight, stored.unit) };
+  });
+  if (!changed) return stored;
+  return { ...stored, revision: stored.revision + 1, items };
 }
 
 export function afterSkip(stored: StoredWatch): StoredWatch {
