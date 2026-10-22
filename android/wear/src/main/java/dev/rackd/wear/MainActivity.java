@@ -1,9 +1,17 @@
 package dev.rackd.wear;
 
+import android.Manifest;
 import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.Icon;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -11,6 +19,7 @@ import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
+import android.view.WindowManager;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -22,6 +31,8 @@ import android.widget.TextView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import androidx.core.app.NotificationCompat;
+import androidx.wear.ongoing.OngoingActivity;
 import androidx.wear.widget.BoxInsetLayout;
 import com.google.android.gms.wearable.CapabilityClient;
 import com.google.android.gms.wearable.CapabilityInfo;
@@ -38,11 +49,16 @@ import org.json.JSONObject;
 /**
  * Glance screen for the set in progress. The phone owns the workout.
  * Rest shows only the timer. Otherwise: weight, reps, and the exercise.
+ * A live session keeps the screen on and posts an ongoing activity so the
+ * watch face does not replace the workout when the display sleeps.
  */
 public class MainActivity extends Activity implements DataClient.OnDataChangedListener {
     private static final int CORAL = 0xFFFF5A3C;
     private static final int INK = 0xFF0E1116;
     private static final double KG_PER_LB = 0.45359237;
+    private static final String CHANNEL = "rackd_workout";
+    private static final int NOTE_ID = 7;
+    private static final int NOTE_PERMISSION = 41;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private LinearLayout col;
@@ -66,6 +82,9 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
     private String shownSession = "";
     private long buzzedForEndAt = -1;
     private boolean wasResting = false;
+    private boolean presenceOn = false;
+    private boolean askedNotification = false;
+    private String presenceLabel = "";
 
     private final Runnable tick = new Runnable() {
         @Override
@@ -234,6 +253,7 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
     }
 
     private void render() {
+        try {
         if (snapshot == null) {
             showIdle();
             return;
@@ -310,6 +330,9 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
         int index = names.indexOf(shown.optString("name"));
         prev.setEnabled(index > 0);
         next.setEnabled(index >= 0 && index < names.size() - 1);
+        } finally {
+            syncPresence();
+        }
     }
 
     private void showIdle() {
@@ -317,6 +340,88 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
         focusName = null;
         shownSession = "";
         showMessage("Rackd", "Start a workout on your phone", "");
+        syncPresence();
+    }
+
+    /** Screen stays on for the session. The ongoing activity blocks the watch face. */
+    private void syncPresence() {
+        boolean active = snapshot != null;
+        if (active) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        if (!active) {
+            if (!presenceOn) return;
+            presenceOn = false;
+            presenceLabel = "";
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            if (manager != null) manager.cancel(NOTE_ID);
+            return;
+        }
+        String label = presenceText();
+        if (presenceOn && label.equals(presenceLabel)) return;
+        if (!canNotify()) return;
+        postOngoing(label);
+        presenceOn = true;
+        presenceLabel = label;
+    }
+
+    private String presenceText() {
+        if (snapshot == null) return "Workout";
+        long remaining = snapshot.optLong("restEndAt", 0) - System.currentTimeMillis();
+        if (remaining > 0) return "Rest";
+        JSONObject shown = setOnScreen(snapshot.optJSONArray("items"));
+        if (shown == null) return "Workout";
+        String name = shown.optString("name", "Workout");
+        return name.isEmpty() ? "Workout" : name;
+    }
+
+    private boolean canNotify() {
+        if (Build.VERSION.SDK_INT < 33) return true;
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+            return true;
+        }
+        if (!askedNotification) {
+            askedNotification = true;
+            requestPermissions(new String[] {Manifest.permission.POST_NOTIFICATIONS}, NOTE_PERMISSION);
+        }
+        return false;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == NOTE_PERMISSION) syncPresence();
+    }
+
+    private void postOngoing(String label) {
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        if (manager == null) return;
+        if (manager.getNotificationChannel(CHANNEL) == null) {
+            NotificationChannel channel = new NotificationChannel(CHANNEL, "Workout", NotificationManager.IMPORTANCE_LOW);
+            channel.setShowBadge(false);
+            manager.createNotificationChannel(channel);
+        }
+        PendingIntent open = PendingIntent.getActivity(
+            this,
+            0,
+            new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL)
+            .setSmallIcon(R.drawable.ic_status)
+            .setContentTitle("Rackd")
+            .setContentText(label)
+            .setCategory(NotificationCompat.CATEGORY_WORKOUT)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(open);
+        OngoingActivity ongoing = new OngoingActivity.Builder(this, NOTE_ID, builder)
+            .setStaticIcon(Icon.createWithResource(this, R.drawable.ic_status))
+            .setTouchIntent(open)
+            .build();
+        ongoing.apply(this);
+        Notification notification = builder.build();
+        manager.notify(NOTE_ID, notification);
     }
 
     private void showMessage(String title, String body, String detail) {
