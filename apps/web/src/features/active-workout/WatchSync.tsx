@@ -7,29 +7,8 @@ import { queryClient, qk } from "@/lib/query";
 import { getSupabase } from "@/lib/supabase";
 import { useUnitStore } from "@/lib/units-store";
 import { buildWatchPayload } from "./watch-payload";
+import { canMirrorToWatch, watchPlugin, type WatchCap, type WatchPlugin } from "./watch-bridge";
 import { useTimerStore } from "./timer-store";
-
-interface WearAction {
-  type: string;
-  restEndAt: number;
-  revision: number;
-}
-
-interface WearSnapshot {
-  revision: number;
-  restEndAt: number;
-  sessionId: string;
-}
-
-interface WearPlugin {
-  publish(opts: { payload: string; token: string; apiBase: string }): Promise<void>;
-  clear(): Promise<void>;
-  sync(): Promise<WearSnapshot>;
-  addListener(
-    event: "action",
-    cb: (event: WearAction) => void,
-  ): Promise<{ remove: () => Promise<void> }>;
-}
 
 interface WatchSession {
   exercises: {
@@ -40,24 +19,14 @@ interface WatchSession {
   }[];
 }
 
-let cached: WearPlugin | null | undefined;
+let cached: WatchPlugin | null = null;
 
-function wearPlugin(): WearPlugin | null {
-  if (cached !== undefined) return cached;
+function wearPlugin(): WatchPlugin | null {
+  if (cached) return cached;
   if (typeof window === "undefined") return null;
-  const cap = (
-    window as Window & {
-      Capacitor?: {
-        isNativePlatform?: () => boolean;
-        registerPlugin?: (name: string) => WearPlugin;
-      };
-    }
-  ).Capacitor;
-  if (!cap?.isNativePlatform?.() || !cap.registerPlugin) {
-    cached = null;
-    return null;
-  }
-  cached = cap.registerPlugin("RackdWear");
+  const cap = (window as Window & { Capacitor?: WatchCap }).Capacitor;
+  if (!canMirrorToWatch(cap) || !cap) return null;
+  cached = watchPlugin(cap);
   return cached;
 }
 
@@ -76,11 +45,12 @@ export function WatchSync() {
 
 function WatchSyncLive() {
   const plugin = wearPlugin();
-  const { data: active } = useQuery({
+  const activeQuery = useQuery({
     queryKey: qk.activeSession,
     queryFn: () => api<{ id: string } | null>("/api/sessions/active"),
   });
-  const sessionId = active?.id;
+  const sessionId = activeQuery.data?.id;
+  const activeKnown = activeQuery.isFetched;
   const { data: session } = useQuery({
     queryKey: qk.session(sessionId ?? "none"),
     enabled: Boolean(sessionId),
@@ -101,37 +71,45 @@ function WatchSyncLive() {
   }, [ready, sessionId]);
 
   useEffect(() => {
-    if (!plugin) return;
+    if (!plugin || !activeKnown) return;
     let cancel = false;
     void (async () => {
-      if (!sessionId) {
-        await plugin.clear();
-        if (!cancel) setReady(false);
-        return;
-      }
-      const snap = await plugin.sync();
-      if (snap.sessionId !== sessionId) {
-        await plugin.clear();
+      try {
+        if (!sessionId) {
+          await plugin.clear();
+          if (!cancel) setReady(false);
+          return;
+        }
+        const snap = await plugin.sync();
+        if (snap.sessionId !== sessionId) {
+          await plugin.clear();
+          if (cancel) return;
+          setAck(0);
+          setReady(true);
+          return;
+        }
+        await queryClient.refetchQueries({ queryKey: qk.session(sessionId) });
         if (cancel) return;
-        setAck(0);
+        const localEnd =
+          useTimerStore.getState().state.status === "running"
+            ? (useTimerStore.getState().state.endAt ?? 0)
+            : 0;
+        if (snap.restEndAt > Date.now()) useTimerStore.getState().adopt(snap.restEndAt);
+        else if (localEnd <= Date.now() && snap.revision > 0) useTimerStore.getState().adopt(null);
+        setAck(snap.revision);
         setReady(true);
-        return;
+      } catch {
+        // A failed sync must not block the publish. The watch stays idle otherwise.
+        if (!cancel && sessionId) {
+          setAck(0);
+          setReady(true);
+        }
       }
-      await queryClient.refetchQueries({ queryKey: qk.session(sessionId) });
-      if (cancel) return;
-      const localEnd =
-        useTimerStore.getState().state.status === "running"
-          ? (useTimerStore.getState().state.endAt ?? 0)
-          : 0;
-      if (snap.restEndAt > Date.now()) useTimerStore.getState().adopt(snap.restEndAt);
-      else if (localEnd <= Date.now() && snap.revision > 0) useTimerStore.getState().adopt(null);
-      setAck(snap.revision);
-      setReady(true);
     })();
     return () => {
       cancel = true;
     };
-  }, [plugin, sessionId]);
+  }, [plugin, sessionId, activeKnown]);
 
   useEffect(() => {
     if (!plugin) return;
@@ -183,11 +161,15 @@ function WatchSyncLive() {
         token = "";
       }
       if (!token) token = "demo-token";
-      await plugin.publish({
-        payload: JSON.stringify(payload),
-        token,
-        apiBase: window.location.origin,
-      });
+      try {
+        await plugin.publish({
+          payload: JSON.stringify(payload),
+          token,
+          apiBase: window.location.origin,
+        });
+      } catch {
+        // The next session or timer change publishes again.
+      }
     })();
   }, [plugin, ready, sessionId, session, unit, restEndAt, ack, tokenTick]);
 
