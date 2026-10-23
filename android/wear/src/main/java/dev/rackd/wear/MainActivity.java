@@ -19,7 +19,6 @@ import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
-import android.view.WindowManager;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -49,8 +48,8 @@ import org.json.JSONObject;
 /**
  * Glance screen for the set in progress. The phone owns the workout.
  * Rest shows only the timer. Otherwise: weight, reps, and the exercise.
- * A live session keeps the screen on and posts an ongoing activity so the
- * watch face does not replace the workout when the display sleeps.
+ * A live session posts an ongoing activity. The display sleeps when you
+ * look away, and the workout stays one tap from the watch face.
  */
 public class MainActivity extends Activity
     implements DataClient.OnDataChangedListener, CapabilityClient.OnCapabilityChangedListener {
@@ -349,11 +348,9 @@ public class MainActivity extends Activity
         syncPresence();
     }
 
-    /** Screen stays on for the session. The ongoing activity blocks the watch face. */
+    /** Ongoing activity keeps the workout reachable after the display sleeps. */
     private void syncPresence() {
         boolean active = snapshot != null;
-        if (active) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         if (!active) {
             if (!presenceOn) return;
             presenceOn = false;
