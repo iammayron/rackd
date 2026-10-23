@@ -34,7 +34,7 @@ export const SET_LINE =
 /**
  * One set row: weight, reps, complete toggle. Completing a set starts the
  * global rest timer (the core interaction of the whole app). Weight and reps
- * are tap targets — tapping opens {@link SetValueSheet} to edit/step the value.
+ * are tap targets — tapping opens {@link SetValueSheet} to type the value.
  */
 export function SetRow({
   data,
@@ -306,7 +306,6 @@ export function SetRow({
         open={editing === "weight"}
         title={`Weight (${unit})`}
         initial={Number(weight) || 0}
-        step={unit === "kg" ? 2.5 : 5}
         suffix={unit}
         inputMode="decimal"
         onCommit={commitWeight}
@@ -316,7 +315,6 @@ export function SetRow({
         open={editing === "reps"}
         title="Reps"
         initial={Number(reps) || 0}
-        step={1}
         integer
         inputMode="numeric"
         onCommit={commitReps}

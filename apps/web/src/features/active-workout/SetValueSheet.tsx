@@ -8,18 +8,17 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 /**
  * Shared slide-up editor for a single numeric set value (weight OR reps),
  * parameterized so one component serves both. Renders inside the reusable
- * {@link BottomSheet}: a big [−][input][＋] cluster plus Done.
+ * {@link BottomSheet}: one typed field plus Done.
  *
- * Works in DISPLAY units (the caller converts to canonical kg on commit). The
- * field is a real input (type directly); −/＋ step it. Opening or focusing the
- * field selects all, since users usually type a fresh value. Any dismissal
- * (Done / backdrop / Escape / drag-down) commits the final value.
+ * Works in DISPLAY units (the caller converts to canonical kg on commit).
+ * Opening or focusing the field selects all, since users usually type a fresh
+ * value. Any dismissal (Done / backdrop / Escape / drag-down) commits the
+ * final value.
  */
 export function SetValueSheet({
   open,
   title,
   initial,
-  step,
   min = 0,
   integer = false,
   suffix,
@@ -31,8 +30,6 @@ export function SetValueSheet({
   title: string;
   /** Current value in display units, used to seed the field on open. */
   initial: number;
-  /** Amount the −/＋ buttons add or subtract. */
-  step: number;
   min?: number;
   /** Reps are integers; weight is decimal. Controls rounding + keypad. */
   integer?: boolean;
@@ -84,9 +81,6 @@ export function SetValueSheet({
     if (!Number.isFinite(v)) return min;
     return Math.max(min, integer ? Math.round(v) : round2(v));
   }
-  function nudge(dir: 1 | -1) {
-    setText(String(clamp(clamp(Number(text)) + dir * step)));
-  }
   // Stable identity (only `min`/`integer` matter, both constant per field) so
   // BottomSheet's `[open, onClose]` focus effect doesn't re-fire on every
   // keystroke and steal focus back into a select-all loop.
@@ -99,63 +93,25 @@ export function SetValueSheet({
   return (
     <BottomSheet open={open} onClose={commitAndClose} title={title}>
       <div className="flex flex-col gap-4 pt-1 pb-1">
-        <div className="flex items-stretch gap-3">
-          <button
-            type="button"
-            onClick={() => nudge(-1)}
-            aria-label={`Decrease ${title}`}
-            className="h-16 w-16 shrink-0 inline-flex items-center justify-center rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] select-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)] active:bg-[var(--surface)]"
-          >
-            {/* SVG glyph (not a text "−"): the text minus sits high in the line
-                box; an SVG centers exactly and matches the + weight. */}
-            <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-              <path
-                d="M5 12h14"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-
-          <div className="flex flex-1 min-w-0 items-center justify-center gap-1 px-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] focus-within:ring-2 focus-within:ring-[var(--accent)]">
-            <input
-              ref={inputRef}
-              inputMode={inputMode}
-              enterKeyHint="done"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onFocus={(e) => e.currentTarget.setSelectionRange(0, e.currentTarget.value.length)}
-              onKeyDown={(e) => {
-                // Keyboard's Done/checkmark (or Enter) commits, like the button.
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  commitAndClose();
-                }
-              }}
-              aria-label={title}
-              className="min-w-0 w-full text-center bg-transparent text-[var(--text)] text-4xl font-bold tabular-nums py-3 focus:outline-none"
-            />
-            {suffix && <span className="shrink-0 text-lg text-[var(--text-muted)]">{suffix}</span>}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => nudge(1)}
-            aria-label={`Increase ${title}`}
-            className="h-16 w-16 shrink-0 inline-flex items-center justify-center rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--text)] select-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)] active:bg-[var(--surface)]"
-          >
-            <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
-              <path
-                d="M12 5v14M5 12h14"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
+        <div className="flex min-w-0 items-center justify-center gap-1 px-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] focus-within:ring-2 focus-within:ring-[var(--accent)]">
+          <input
+            ref={inputRef}
+            inputMode={inputMode}
+            enterKeyHint="done"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onFocus={(e) => e.currentTarget.setSelectionRange(0, e.currentTarget.value.length)}
+            onKeyDown={(e) => {
+              // Keyboard's Done/checkmark (or Enter) commits, like the button.
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitAndClose();
+              }
+            }}
+            aria-label={title}
+            className="min-w-0 w-full text-center bg-transparent text-[var(--text)] text-4xl font-bold tabular-nums py-3 focus:outline-none"
+          />
+          {suffix && <span className="shrink-0 text-lg text-[var(--text-muted)]">{suffix}</span>}
         </div>
 
         <button

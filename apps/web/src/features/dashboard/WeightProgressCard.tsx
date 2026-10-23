@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { queryClient, qk } from "@/lib/query";
@@ -67,6 +67,14 @@ function Sparkline({ values }: { values: number[] }) {
   );
 }
 
+/** Keep digits and a single decimal point so the field stays a weight. */
+function maskDecimal(s: string): string {
+  const cleaned = s.replace(/[^\d.]/g, "");
+  const dot = cleaned.indexOf(".");
+  if (dot === -1) return cleaned;
+  return cleaned.slice(0, dot + 1) + cleaned.slice(dot + 1).replace(/\./g, "");
+}
+
 /** A friendly first name for the sheet subtitle ("Today · Sam"), best-effort. */
 function firstName(meta: Record<string, unknown> | undefined, email: string | undefined): string {
   const full = typeof meta?.full_name === "string" ? meta.full_name : undefined;
@@ -95,27 +103,38 @@ export function WeightProgressCard() {
 
   // The sheet edits in display units (kg or lb); convert to kg only on save.
   const [open, setOpen] = useState(false);
-  const [value, setValue] = useState(0);
+  const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const remaining = useMemo(() => {
     if (currentKg === undefined || goalKg === undefined) return undefined;
     return display(Math.abs(currentKg - goalKg));
   }, [currentKg, goalKg, display]);
 
+  const value = Number(text);
+  const canSave = Number.isFinite(value) && value > 0;
+
   function openSheet() {
-    // Seed the stepper from the current weight (display units), else a sane start.
+    // Seed the field from the current weight (display units), else a sane start.
     const seed = currentKg !== undefined ? display(currentKg) : unit === "lb" ? 165 : 75;
-    setValue(Math.round(seed * 10) / 10);
+    setText(String(Math.round(seed * 10) / 10));
     setOpen(true);
   }
 
-  function bump(delta: number) {
-    setValue((v) => Math.max(0, Math.round((v + delta) * 10) / 10));
-  }
+  // Focus once the sheet is open so the number keyboard comes up with the field.
+  useEffect(() => {
+    if (!open) return;
+    inputRef.current?.focus({ preventScroll: true });
+    const id = requestAnimationFrame(() => {
+      const el = inputRef.current;
+      if (el) el.setSelectionRange(0, el.value.length);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open]);
 
   async function save() {
-    if (!Number.isFinite(value) || value <= 0 || saving) return;
+    if (!canSave || saving) return;
     setSaving(true);
     try {
       await api("/api/body-weight", {
@@ -188,27 +207,24 @@ export function WeightProgressCard() {
         subtitle={name ? `Today · ${name}` : "Today"}
       >
         <div className="px-1 pt-2">
-          <div className="flex items-center justify-center gap-6">
-            <button
-              type="button"
-              aria-label="Decrease"
-              onClick={() => bump(-0.1)}
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--surface-2)] text-2xl font-bold text-[var(--text)] active:scale-95"
-            >
-              −
-            </button>
-            <div className="min-w-[7.5rem] text-center">
-              <span className="text-5xl font-extrabold tabular-nums">{value.toFixed(1)}</span>
-              <span className="ml-1.5 text-xl font-bold text-[var(--text-muted)]">{unit}</span>
-            </div>
-            <button
-              type="button"
-              aria-label="Increase"
-              onClick={() => bump(0.1)}
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--surface-2)] text-2xl font-bold text-[var(--text)] active:scale-95"
-            >
-              +
-            </button>
+          <div className="flex min-w-0 items-center justify-center gap-1 px-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface-2)] focus-within:ring-2 focus-within:ring-[var(--accent)]">
+            <input
+              ref={inputRef}
+              inputMode="decimal"
+              enterKeyHint="done"
+              value={text}
+              onChange={(e) => setText(maskDecimal(e.target.value))}
+              onFocus={(e) => e.currentTarget.setSelectionRange(0, e.currentTarget.value.length)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void save();
+                }
+              }}
+              aria-label={`Weight (${unit})`}
+              className="min-w-0 w-full text-center bg-transparent text-[var(--text)] text-4xl font-bold tabular-nums py-3 focus:outline-none"
+            />
+            <span className="shrink-0 text-lg text-[var(--text-muted)]">{unit}</span>
           </div>
 
           <Button
@@ -216,7 +232,7 @@ export function WeightProgressCard() {
             size="lg"
             fullWidth
             onClick={save}
-            disabled={saving || value <= 0}
+            disabled={saving || !canSave}
             className="mt-7"
           >
             {saving ? "Saving…" : "Save"}
