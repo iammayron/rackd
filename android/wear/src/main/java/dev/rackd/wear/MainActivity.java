@@ -89,6 +89,9 @@ public class MainActivity extends Activity
     private String presenceLabel = "";
     private String phoneNodeId;
     private boolean phoneUnreachable;
+    /** Set the watch just asked the phone to log. Advance once that set comes back completed. */
+    private String pendingAdvanceSet;
+    private String pendingAdvanceExercise;
     private Button updateButton;
     private WearUpdate.Offer pendingUpdate;
     private boolean updating;
@@ -266,6 +269,11 @@ public class MainActivity extends Activity
             if (!session.equals(shownSession)) {
                 shownSession = session;
                 focusName = null;
+                pendingAdvanceSet = null;
+            }
+            if (pendingAdvanceSet != null && setCompleted(snapshot.optJSONArray("items"), pendingAdvanceSet)) {
+                focusName = ExerciseFocus.nextOpen(rows(snapshot.optJSONArray("items")), pendingAdvanceExercise);
+                pendingAdvanceSet = null;
             }
             render();
         } catch (Exception e) {
@@ -306,8 +314,8 @@ public class MainActivity extends Activity
             showMessage("Rackd", "Workout in progress", "");
             return;
         }
-        if (open == null && (focusName == null || setOnScreen(items) == null)) {
-            showMessage(error.isEmpty() ? "Done" : error, "All sets logged", done + " sets");
+        if (open == null) {
+            showMessage(error.isEmpty() ? "Done" : error, "Finish on your phone", done + " sets");
             return;
         }
 
@@ -516,7 +524,29 @@ public class MainActivity extends Activity
         JSONArray items = snapshot == null ? null : snapshot.optJSONArray("items");
         JSONObject shown = setOnScreen(items);
         if (shown == null || shown.optBoolean("completed")) return;
-        send("log:" + shown.optString("setId"));
+        pendingAdvanceSet = shown.optString("setId");
+        pendingAdvanceExercise = shown.optString("name", focusName);
+        send("log:" + pendingAdvanceSet);
+    }
+
+    private static boolean setCompleted(JSONArray items, String setId) {
+        if (items == null || setId == null) return false;
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            if (item != null && setId.equals(item.optString("setId")) && item.optBoolean("completed")) return true;
+        }
+        return false;
+    }
+
+    private static List<ExerciseFocus.Row> rows(JSONArray items) {
+        List<ExerciseFocus.Row> rows = new ArrayList<>();
+        if (items == null) return rows;
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            if (item == null) continue;
+            rows.add(new ExerciseFocus.Row(item.optString("name", "Exercise"), item.optBoolean("completed")));
+        }
+        return rows;
     }
 
     private void stepWeight(int dir) {

@@ -9,6 +9,31 @@ import { qk } from "@/lib/query";
 import { useUnit } from "@/lib/units-store";
 import { BottomSheet } from "@/components/BottomSheet";
 import { buildShareCardData, type ShareSessionTree, type SharePrRow } from "./buildShareCardData";
+import { deliverShareImage, shareCap } from "./native-share";
+
+/** Copy the logo into the card so the Android WebView can rasterize it. */
+async function inlineImages(root: HTMLElement) {
+  const images = Array.from(root.querySelectorAll("img"));
+  await Promise.all(
+    images.map(async (img) => {
+      if (!img.src || img.src.startsWith("data:")) return;
+      try {
+        const res = await fetch(img.src);
+        if (!res.ok) return;
+        const blob = await res.blob();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result ?? ""));
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(blob);
+        });
+        if (dataUrl) img.src = dataUrl;
+      } catch {
+        // The rasterizer retries the original address.
+      }
+    }),
+  );
+}
 
 /** iOS-style share glyph (tray + up arrow). */
 function ShareIcon() {
@@ -124,8 +149,10 @@ export function ShareWorkoutSheet({
   const cardRef = useRef<HTMLDivElement>(null);
 
   async function rasterize(): Promise<{ dataUrl: string; file: File } | null> {
-    if (!cardRef.current) return null;
-    const dataUrl = await toPng(cardRef.current, { pixelRatio: 2, cacheBust: true });
+    const node = cardRef.current;
+    if (!node) return null;
+    await inlineImages(node);
+    const dataUrl = await toPng(node, { pixelRatio: 2, cacheBust: true, skipFonts: true });
     const blob = await (await fetch(dataUrl)).blob();
     return { dataUrl, file: new File([blob], "rackd-workout.png", { type: "image/png" }) };
   }
@@ -144,7 +171,11 @@ export function ShareWorkoutSheet({
     setMsg(null);
     try {
       const out = await rasterize();
-      if (!out) return;
+      if (!out) {
+        setMsg("Couldn’t make the image.");
+        return;
+      }
+      if (await deliverShareImage(shareCap(), "share", out.dataUrl, shareText)) return;
       const nav = navigator as Navigator & { canShare?: (d?: ShareData) => boolean };
       if (nav.share && nav.canShare?.({ files: [out.file] })) {
         await nav.share({ files: [out.file], text: shareText, title: "Rackd workout" });
@@ -170,10 +201,18 @@ export function ShareWorkoutSheet({
     setMsg(null);
     try {
       const out = await rasterize();
-      if (out) {
-        saveDataUrl(out.dataUrl);
-        setMsg("Image saved");
+      if (!out) {
+        setMsg("Couldn’t make the image.");
+        return;
       }
+      if (await deliverShareImage(shareCap(), "save", out.dataUrl, shareText)) {
+        setMsg("Image saved");
+        return;
+      }
+      saveDataUrl(out.dataUrl);
+      setMsg("Image saved");
+    } catch {
+      setMsg("Couldn’t save the image.");
     } finally {
       setBusy(false);
     }
