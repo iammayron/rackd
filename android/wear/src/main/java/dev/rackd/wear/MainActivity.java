@@ -6,6 +6,7 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -24,14 +25,17 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import androidx.core.app.NotificationCompat;
 import androidx.wear.ongoing.OngoingActivity;
+import androidx.wear.ongoing.Status;
 import androidx.wear.widget.BoxInsetLayout;
 import com.google.android.gms.wearable.CapabilityClient;
 import com.google.android.gms.wearable.CapabilityInfo;
@@ -77,6 +81,13 @@ public class MainActivity extends Activity
     private Button log;
     private Button skip;
     private Button add;
+    private RestRing ring;
+    private long spanEndAt;
+    private long spanMs = 1;
+    private boolean restingNow;
+    private static long lastEpoch;
+    private static String pendingMessage;
+    private static WeakReference<MainActivity> resumed;
     private Button prev;
     private Button next;
     private JSONObject snapshot;
@@ -141,7 +152,7 @@ public class MainActivity extends Activity
         setLine = label(12, false, 0xFFB7B0AC);
         weight = label(18, true, Color.WHITE);
         reps = label(18, true, Color.WHITE);
-        countdown = label(48, true, CORAL);
+        countdown = label(40, true, CORAL);
 
         prev = stepButton("‹");
         next = stepButton("›");
@@ -167,17 +178,20 @@ public class MainActivity extends Activity
         repsRow = stepperRow(repsMinus, reps, repsPlus);
 
         log = button("Log set", true, 32);
-        skip = button("Skip", false, 32);
-        add = button("+30s", false, 32);
+        Button sub = restButton("−15s");
+        skip = restButton("Skip");
+        add = restButton("+15s");
         log.setOnClickListener(v -> logFocused());
+        sub.setOnClickListener(v -> send("sub15"));
         skip.setOnClickListener(v -> send("skip"));
-        add.setOnClickListener(v -> send("add30"));
+        add.setOnClickListener(v -> send("add15"));
 
         timerRow = new LinearLayout(this);
         timerRow.setOrientation(LinearLayout.HORIZONTAL);
         timerRow.setGravity(Gravity.CENTER);
-        timerRow.addView(skip, rowParams());
-        timerRow.addView(add, rowParams());
+        timerRow.addView(sub, restParams());
+        timerRow.addView(skip, restParams());
+        timerRow.addView(add, restParams());
 
         col.addView(status);
         col.addView(nameRow);
@@ -203,7 +217,18 @@ public class MainActivity extends Activity
             ScrollView.LayoutParams.WRAP_CONTENT
         ));
         box.addView(scroll, lp);
-        setContentView(box);
+        ring = new RestRing(this);
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(INK);
+        root.addView(ring, new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        ));
+        root.addView(box, new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        ));
+        setContentView(root);
         showIdle();
     }
 
@@ -212,8 +237,11 @@ public class MainActivity extends Activity
         super.onResume();
         Wearable.getDataClient(this).addListener(this);
         Wearable.getCapabilityClient(this).addListener(this, PHONE_CAPABILITY);
-        loadSnapshot();
+        resumed = new WeakReference<>(this);
+        if (pendingMessage != null) deliverPending();
+        else loadSnapshot();
         warmPhoneNode();
+        send("sync");
         handler.removeCallbacks(updateTick);
         handler.post(updateTick);
         handler.post(tick);
@@ -229,6 +257,12 @@ public class MainActivity extends Activity
     }
 
     @Override
+    protected void onDestroy() {
+        if (resumed != null && resumed.get() == this) resumed = null;
+        super.onDestroy();
+    }
+
+    @Override
     public void onDataChanged(DataEventBuffer events) {
         try {
         for (DataEvent event : events) {
@@ -236,10 +270,12 @@ public class MainActivity extends Activity
             if (path == null || !path.equals("/rackd/workout")) continue;
             if (event.getType() == DataEvent.TYPE_DELETED) {
                 runOnUiThread(() -> {
+                    if (lastEpoch > 0 && snapshot != null) return;
                     snapshot = null;
                     showIdle();
                 });
             } else if (event.getType() == DataEvent.TYPE_CHANGED) {
+                if (lastEpoch > 0) continue;
                 DataMapItem item = DataMapItem.fromDataItem(event.getDataItem());
                 String json = item.getDataMap().getString("json");
                 runOnUiThread(() -> apply(json));
@@ -268,10 +304,26 @@ public class MainActivity extends Activity
                 buffer.release();
                 String found = json;
                 runOnUiThread(() -> {
+                    if (lastEpoch > 0) return;
                     if (found == null) showIdle();
                     else apply(found);
                 });
             });
+    }
+
+    private void deliverPending() {
+        String json = pendingMessage;
+        if (json == null) return;
+        try {
+            JSONObject incoming = new JSONObject(json);
+            if (incoming.optString("sessionId", "").isEmpty()) {
+                showIdle();
+                return;
+            }
+            apply(json);
+        } catch (Exception e) {
+            showIdle();
+        }
     }
 
     private void apply(String json) {
@@ -294,6 +346,7 @@ public class MainActivity extends Activity
     }
 
     private void render() {
+        restingNow = false;
         try {
         if (snapshot == null) {
             showIdle();
@@ -337,6 +390,9 @@ public class MainActivity extends Activity
         boolean several = names.size() > 1;
 
         if (resting) {
+            restingNow = true;
+            trackSpan(restEndAt);
+            if (ring != null) ring.setFraction(remaining / (float) Math.max(spanMs, 1));
             showStatus(error);
             nameRow.setVisibility(View.GONE);
             setLine.setVisibility(View.GONE);
@@ -370,6 +426,7 @@ public class MainActivity extends Activity
         prev.setEnabled(index > 0);
         next.setEnabled(index >= 0 && index < names.size() - 1);
         } finally {
+            if (!restingNow && ring != null) ring.setFraction(0f);
             syncPresence();
             showUpdateOffer();
         }
@@ -379,6 +436,8 @@ public class MainActivity extends Activity
         snapshot = null;
         focusName = null;
         shownSession = "";
+        spanEndAt = 0;
+        if (ring != null) ring.setFraction(0f);
         showMessage("Rackd", "Start a workout on your phone", "");
         if (updateFailed) {
             status.setVisibility(View.VISIBLE);
@@ -440,11 +499,15 @@ public class MainActivity extends Activity
             return;
         }
         String label = presenceText();
-        if (presenceOn && label.equals(presenceLabel)) return;
+        long restEndAt = snapshot.optLong("restEndAt", 0);
+        long now = System.currentTimeMillis();
+        long keyEnd = restEndAt > now ? restEndAt : 0;
+        String key = label + ":" + keyEnd;
+        if (presenceOn && key.equals(presenceLabel)) return;
         if (!canNotify()) return;
-        postOngoing(label);
+        postOngoing(label, keyEnd);
         presenceOn = true;
-        presenceLabel = label;
+        presenceLabel = key;
     }
 
     private String presenceText() {
@@ -475,7 +538,7 @@ public class MainActivity extends Activity
         if (requestCode == NOTE_PERMISSION) syncPresence();
     }
 
-    private void postOngoing(String label) {
+    private void postOngoing(String label, long restEndAt) {
         NotificationManager manager = getSystemService(NotificationManager.class);
         if (manager == null) return;
         if (manager.getNotificationChannel(CHANNEL) == null) {
@@ -489,22 +552,68 @@ public class MainActivity extends Activity
             new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
+        boolean resting = restEndAt > System.currentTimeMillis();
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_status)
             .setContentTitle("Rackd")
             .setContentText(label)
-            .setCategory(NotificationCompat.CATEGORY_WORKOUT)
+            .setColor(CORAL)
+            .setColorized(true)
+            .setCategory(resting ? NotificationCompat.CATEGORY_STOPWATCH : NotificationCompat.CATEGORY_WORKOUT)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(open);
-        OngoingActivity ongoing = new OngoingActivity.Builder(this, NOTE_ID, builder)
+        OngoingActivity.Builder ongoingBuilder = new OngoingActivity.Builder(this, NOTE_ID, builder)
             .setStaticIcon(Icon.createWithResource(this, R.drawable.ic_status))
-            .setTouchIntent(open)
-            .build();
+            .setTouchIntent(open);
+        if (resting) {
+            Status status = new Status.Builder()
+                .addPart("timer", new Status.TimerPart(restEndAt, -1L, Math.max(spanMs, 1)))
+                .addTemplate("#timer#")
+                .build();
+            ongoingBuilder.setStatus(status);
+        }
+        OngoingActivity ongoing = ongoingBuilder.build();
         ongoing.apply(this);
         Notification notification = builder.build();
         manager.notify(NOTE_ID, notification);
+    }
+
+    /** A fresh rest fills the ring. ±15s keeps the same span so the arc moves with the timer. */
+    private void trackSpan(long restEndAt) {
+        long now = System.currentTimeMillis();
+        long delta = spanEndAt == 0 ? 0 : restEndAt - spanEndAt;
+        if (spanEndAt == 0 || Math.abs(delta) > 20_000L) {
+            spanMs = Math.max(1, restEndAt - now);
+        } else if (delta != 0) {
+            spanMs = Math.max(restEndAt - now, spanMs + delta);
+        }
+        spanEndAt = restEndAt;
+    }
+
+    /** Messages from the phone. A lower epoch is a snapshot that left before discard. */
+    public static void onWorkoutMessage(Context context, String json) {
+        if (json == null || json.isEmpty()) return;
+        try {
+            JSONObject incoming = new JSONObject(json);
+            long epoch = incoming.optLong("epoch", 0);
+            if (epoch < lastEpoch) return;
+            lastEpoch = epoch;
+            pendingMessage = json;
+            MainActivity activity = resumed == null ? null : resumed.get();
+            if (incoming.optString("sessionId", "").isEmpty()) {
+                NotificationManager manager = context.getSystemService(NotificationManager.class);
+                if (manager != null) manager.cancel(NOTE_ID);
+                if (activity != null) {
+                    activity.runOnUiThread(() -> activity.showIdle());
+                }
+                return;
+            }
+            if (activity == null) return;
+            activity.runOnUiThread(() -> activity.apply(json));
+        } catch (Exception ignored) {
+        }
     }
 
     /** Snapshot errors stay visible. A failed phone lookup does too; the tick must not clear it. */
@@ -564,8 +673,13 @@ public class MainActivity extends Activity
     private void stepWeight(int dir) {
         JSONObject shown = setOnScreen(snapshot == null ? null : snapshot.optJSONArray("items"));
         if (shown == null) return;
-        String unit = snapshot.optString("unit", "kg");
+        String unit = displayUnit(shown);
         boolean lb = "lb".equals(unit);
+        try {
+            if (snapshot != null) snapshot.put("unit", unit);
+        } catch (Exception ignored) {
+            return;
+        }
         int stepTenths = lb ? 50 : 25;
         double kg = shown.optDouble("weight", 0);
         double display = lb ? kg / KG_PER_LB : kg;
@@ -846,6 +960,34 @@ public class MainActivity extends Activity
             LinearLayout.LayoutParams.WRAP_CONTENT
         );
         lp.topMargin = dp(4);
+        return lp;
+    }
+
+    /** The weight label wins. A missing unit field must not relabel pounds as kilograms. */
+    private String displayUnit(JSONObject shown) {
+        String label = shown.optString("weightLabel", "");
+        if (label.endsWith(" lb")) return "lb";
+        if (label.endsWith(" kg")) return "kg";
+        String unit = snapshot == null ? "kg" : snapshot.optString("unit", "kg");
+        return "lb".equals(unit) ? "lb" : "kg";
+    }
+
+    private Button restButton(String text) {
+        Button button = button(text, false, 30);
+        button.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        button.setMinWidth(dp(46));
+        button.setMinimumWidth(dp(46));
+        button.setPadding(dp(2), 0, dp(2), 0);
+        return button;
+    }
+
+    private LinearLayout.LayoutParams restParams() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        lp.leftMargin = dp(2);
+        lp.rightMargin = dp(2);
         return lp;
     }
 
