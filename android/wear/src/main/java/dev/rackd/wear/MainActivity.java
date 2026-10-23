@@ -52,10 +52,13 @@ import org.json.JSONObject;
  * A live session keeps the screen on and posts an ongoing activity so the
  * watch face does not replace the workout when the display sleeps.
  */
-public class MainActivity extends Activity implements DataClient.OnDataChangedListener {
+public class MainActivity extends Activity
+    implements DataClient.OnDataChangedListener, CapabilityClient.OnCapabilityChangedListener {
     private static final int CORAL = 0xFFFF5A3C;
     private static final int INK = 0xFF0E1116;
     private static final double KG_PER_LB = 0.45359237;
+    private static final String PHONE_CAPABILITY = "rackd_phone";
+    private static final String ACTION_PATH = "/rackd/action";
     private static final String CHANNEL = "rackd_workout";
     private static final int NOTE_ID = 7;
     private static final int NOTE_PERMISSION = 41;
@@ -85,6 +88,8 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
     private boolean presenceOn = false;
     private boolean askedNotification = false;
     private String presenceLabel = "";
+    private String phoneNodeId;
+    private boolean phoneUnreachable;
 
     private final Runnable tick = new Runnable() {
         @Override
@@ -181,7 +186,9 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
     protected void onResume() {
         super.onResume();
         Wearable.getDataClient(this).addListener(this);
+        Wearable.getCapabilityClient(this).addListener(this, PHONE_CAPABILITY);
         loadSnapshot();
+        warmPhoneNode();
         handler.post(tick);
     }
 
@@ -189,6 +196,7 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
     protected void onPause() {
         handler.removeCallbacks(tick);
         Wearable.getDataClient(this).removeListener(this);
+        Wearable.getCapabilityClient(this).removeListener(this, PHONE_CAPABILITY);
         super.onPause();
     }
 
@@ -296,8 +304,7 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
         boolean several = names.size() > 1;
 
         if (resting) {
-            status.setVisibility(error.isEmpty() ? View.GONE : View.VISIBLE);
-            status.setText(error);
+            showStatus(error);
             nameRow.setVisibility(View.GONE);
             setLine.setVisibility(View.GONE);
             weightRow.setVisibility(View.GONE);
@@ -309,8 +316,7 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
             return;
         }
 
-        status.setVisibility(error.isEmpty() ? View.GONE : View.VISIBLE);
-        status.setText(error);
+        showStatus(error);
         nameRow.setVisibility(View.VISIBLE);
         name.setVisibility(View.VISIBLE);
         setLine.setVisibility(View.VISIBLE);
@@ -422,6 +428,14 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
         ongoing.apply(this);
         Notification notification = builder.build();
         manager.notify(NOTE_ID, notification);
+    }
+
+    /** Snapshot errors stay visible. A failed phone lookup does too; the tick must not clear it. */
+    private void showStatus(String snapshotError) {
+        String text = phoneUnreachable ? "Phone not reachable" : snapshotError;
+        boolean show = text != null && !text.isEmpty();
+        status.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (show) status.setText(text);
     }
 
     private void showMessage(String title, String body, String detail) {
@@ -537,31 +551,105 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
 
     private void send(String action) {
         log.setEnabled(false);
+        String cached = phoneNodeId;
+        if (cached != null) post(cached, action, true);
+        else lookupPhone(id -> deliverFound(id, action));
+    }
+
+    /**
+     * Capability sync can stay empty on Wear OS 6 while the phone is connected.
+     * The phone app still logs sets on its own; the watch has to use the
+     * connected node or the tap never reaches it.
+     */
+    private void lookupPhone(NodeCallback callback) {
         Wearable.getCapabilityClient(this)
-            .getCapability("rackd_phone", CapabilityClient.FILTER_REACHABLE)
-            .addOnSuccessListener(info -> deliver(info, action))
-            .addOnFailureListener(e -> runOnUiThread(() -> {
-                status.setText("Phone not reachable");
-                log.setEnabled(true);
+            .getCapability(PHONE_CAPABILITY, CapabilityClient.FILTER_ALL)
+            .addOnCompleteListener(capTask -> {
+                List<PhoneNode.Candidate> capable = new ArrayList<>();
+                if (capTask.isSuccessful() && capTask.getResult() != null) {
+                    capable = candidates(capTask.getResult().getNodes());
+                }
+                List<PhoneNode.Candidate> capableNodes = capable;
+                if (PhoneNode.hasNearby(capableNodes)) {
+                    callback.onNode(PhoneNode.pick(capableNodes, null));
+                    return;
+                }
+                Wearable.getNodeClient(this)
+                    .getConnectedNodes()
+                    .addOnCompleteListener(nodeTask -> {
+                        List<PhoneNode.Candidate> connected = new ArrayList<>();
+                        if (nodeTask.isSuccessful() && nodeTask.getResult() != null) {
+                            connected = candidates(nodeTask.getResult());
+                        }
+                        callback.onNode(PhoneNode.pick(capableNodes, connected));
+                    });
+            });
+    }
+
+    private void deliverFound(String id, String action) {
+        runOnUiThread(() -> {
+            if (id == null) {
+                markUnreachable();
+                return;
+            }
+            phoneNodeId = id;
+            post(id, action, false);
+        });
+    }
+
+    private void post(String nodeId, String action, boolean retry) {
+        Wearable.getMessageClient(this)
+            .sendMessage(nodeId, ACTION_PATH, action.getBytes(StandardCharsets.UTF_8))
+            .addOnCompleteListener(task -> runOnUiThread(() -> {
+                if (task.isSuccessful()) {
+                    phoneUnreachable = false;
+                    log.setEnabled(true);
+                    render();
+                    return;
+                }
+                if (nodeId.equals(phoneNodeId)) phoneNodeId = null;
+                if (retry) lookupPhone(id -> deliverFound(id, action));
+                else markUnreachable();
             }));
     }
 
-    private void deliver(CapabilityInfo info, String action) {
-        Node node = null;
-        for (Node candidate : info.getNodes()) {
-            node = candidate;
-            if (candidate.isNearby()) break;
-        }
-        if (node == null) {
+    private void markUnreachable() {
+        runOnUiThread(() -> {
+            phoneUnreachable = true;
+            log.setEnabled(true);
+            render();
+        });
+    }
+
+    private void warmPhoneNode() {
+        lookupPhone(id -> {
+            if (id == null) return;
             runOnUiThread(() -> {
-                status.setText("Phone not reachable");
-                log.setEnabled(true);
+                if (phoneNodeId == null) phoneNodeId = id;
             });
-            return;
+        });
+    }
+
+    @Override
+    public void onCapabilityChanged(CapabilityInfo capabilityInfo) {
+        if (capabilityInfo == null) return;
+        String id = PhoneNode.pick(candidates(capabilityInfo.getNodes()), null);
+        if (id == null) return;
+        runOnUiThread(() -> phoneNodeId = id);
+    }
+
+    private static List<PhoneNode.Candidate> candidates(Iterable<Node> nodes) {
+        List<PhoneNode.Candidate> list = new ArrayList<>();
+        if (nodes == null) return list;
+        for (Node node : nodes) {
+            if (node == null) continue;
+            list.add(new PhoneNode.Candidate(node.getId(), node.isNearby()));
         }
-        Wearable.getMessageClient(this)
-            .sendMessage(node.getId(), "/rackd/action", action.getBytes(StandardCharsets.UTF_8))
-            .addOnCompleteListener(task -> runOnUiThread(() -> log.setEnabled(true)));
+        return list;
+    }
+
+    private interface NodeCallback {
+        void onNode(String id);
     }
 
     private void buzz() {
