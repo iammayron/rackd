@@ -8,6 +8,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -107,6 +108,7 @@ public class MainActivity extends Activity
     private String pendingAdvanceSet;
     private String pendingAdvanceExercise;
     private Button updateButton;
+    private TextView versionLabel;
     private WearUpdate.Offer pendingUpdate;
     private boolean updating;
     private boolean awaitingInstallPermission;
@@ -210,10 +212,15 @@ public class MainActivity extends Activity
         updateButton = button("Update", true, 32);
         updateButton.setVisibility(View.GONE);
         updateButton.setOnClickListener(v -> startUpdate());
+        versionLabel = label(10, false, 0xFFB7B0AC);
+        String installed = installedVersionName();
+        versionLabel.setText(installed.isEmpty() ? "" : "v" + installed);
+        versionLabel.setPadding(0, dp(6), 0, 0);
 
         col.addView(log, fullWidth());
         col.addView(timerRow);
         col.addView(updateButton, fullWidth());
+        col.addView(versionLabel);
 
         BoxInsetLayout.LayoutParams lp = new BoxInsetLayout.LayoutParams(
             BoxInsetLayout.LayoutParams.MATCH_PARENT,
@@ -498,6 +505,11 @@ public class MainActivity extends Activity
     }
 
     private void showUpdateOffer() {
+        if (versionLabel != null) {
+            boolean idle = snapshot == null;
+            boolean hasText = versionLabel.getText() != null && versionLabel.getText().length() > 0;
+            versionLabel.setVisibility(idle && hasText ? View.VISIBLE : View.GONE);
+        }
         if (updateButton == null) return;
         boolean show = snapshot == null && pendingUpdate != null;
         updateButton.setVisibility(show ? View.VISIBLE : View.GONE);
@@ -973,6 +985,15 @@ public class MainActivity extends Activity
             ? String.valueOf((long) Math.rint(rounded))
             : String.format(Locale.US, "%.1f", rounded);
         return text + (lb ? " lb" : " kg");
+    }
+
+    private String installedVersionName() {
+        try {
+            PackageInfo info = getPackageManager().getPackageInfo(getPackageName(), 0);
+            return info.versionName == null ? "" : info.versionName;
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     private TextView label(int sp, boolean bold, int color) {
