@@ -89,6 +89,10 @@ public class MainActivity extends Activity
     private String presenceLabel = "";
     private String phoneNodeId;
     private boolean phoneUnreachable;
+    private Button updateButton;
+    private WearUpdate.Offer pendingUpdate;
+    private boolean updating;
+    private boolean updateFailed;
 
     private final Runnable tick = new Runnable() {
         @Override
@@ -164,8 +168,13 @@ public class MainActivity extends Activity
         col.addView(weightRow);
         col.addView(repsRow);
         col.addView(countdown);
+        updateButton = button("Update", true, 32);
+        updateButton.setVisibility(View.GONE);
+        updateButton.setOnClickListener(v -> startUpdate());
+
         col.addView(log, fullWidth());
         col.addView(timerRow);
+        col.addView(updateButton, fullWidth());
 
         BoxInsetLayout.LayoutParams lp = new BoxInsetLayout.LayoutParams(
             BoxInsetLayout.LayoutParams.MATCH_PARENT,
@@ -188,6 +197,11 @@ public class MainActivity extends Activity
         Wearable.getCapabilityClient(this).addListener(this, PHONE_CAPABILITY);
         loadSnapshot();
         warmPhoneNode();
+        WearUpdater.check(this, offer -> runOnUiThread(() -> {
+            pendingUpdate = offer;
+            if (offer != null) updateFailed = false;
+            showUpdateOffer();
+        }));
         handler.post(tick);
     }
 
@@ -337,6 +351,7 @@ public class MainActivity extends Activity
         next.setEnabled(index >= 0 && index < names.size() - 1);
         } finally {
             syncPresence();
+            showUpdateOffer();
         }
     }
 
@@ -345,7 +360,52 @@ public class MainActivity extends Activity
         focusName = null;
         shownSession = "";
         showMessage("Rackd", "Start a workout on your phone", "");
+        if (updateFailed) {
+            status.setVisibility(View.VISIBLE);
+            status.setText("Update failed");
+        }
         syncPresence();
+        showUpdateOffer();
+    }
+
+    private void showUpdateOffer() {
+        if (updateButton == null) return;
+        boolean show = snapshot == null && pendingUpdate != null;
+        updateButton.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (!show) return;
+        String name = pendingUpdate.versionName == null || pendingUpdate.versionName.isEmpty()
+            ? ""
+            : " " + pendingUpdate.versionName;
+        updateButton.setText(updating ? "Downloading…" : "Update" + name);
+        updateButton.setEnabled(!updating);
+    }
+
+    private void startUpdate() {
+        if (pendingUpdate == null || updating) return;
+        updateFailed = false;
+        if (!WearUpdater.canInstall(this)) {
+            WearUpdater.requestInstallPermission(this);
+            return;
+        }
+        updating = true;
+        showUpdateOffer();
+        String apkUrl = pendingUpdate.apkUrl;
+        new Thread(() -> {
+            try {
+                WearUpdater.install(this, apkUrl);
+                runOnUiThread(() -> {
+                    updating = false;
+                    showUpdateOffer();
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    updating = false;
+                    updateFailed = true;
+                    if (snapshot == null) showIdle();
+                    else showUpdateOffer();
+                });
+            }
+        }, "rackd-install").start();
     }
 
     /** Ongoing activity keeps the workout reachable after the display sleeps. */

@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     name: Build & Package APK
@@ -61,3 +64,34 @@ jobs:
           name: rackd-wear-apk
           path: android/wear/build/outputs/apk/release/wear-release.apk
           if-no-files-found: error
+
+      - name: Write Android version manifest
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, re
+          def read(path):
+              text = pathlib.Path(path).read_text()
+              code = int(re.search(r"versionCode\s+(\d+)", text).group(1))
+              name = re.search(r'versionName\s+"([^"]+)"', text).group(1)
+              return code, name
+          wear_code, wear_name = read("android/wear/build.gradle")
+          phone_code, phone_name = read("android/app/build.gradle")
+          pathlib.Path("android-versions.json").write_text(json.dumps({
+              "wearVersionCode": wear_code,
+              "wearVersionName": wear_name,
+              "phoneVersionCode": phone_code,
+              "phoneVersionName": phone_name,
+          }))
+          PY
+
+      # The watch offers an update only when wear versionCode is higher than the installed build.
+      - name: Publish Android release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-${{ github.run_number }}
+          name: Android ${{ github.run_number }}
+          files: |
+            android-versions.json
+            android/app/build/outputs/apk/release/app-release.apk
+            android/wear/build/outputs/apk/release/wear-release.apk
+          fail_on_unmatched_files: true
