@@ -2,7 +2,9 @@ package dev.rackd.wear;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
+import android.content.pm.PackageInstaller;
 import org.junit.Test;
 
 public class WearUpdateTest {
@@ -41,6 +43,13 @@ public class WearUpdateTest {
         assertNull(WearUpdate.offer(RELEASE, "{}", 4));
         assertNull(WearUpdate.offer(RELEASE, "not-json", 4));
         assertEquals(-1, WearUpdate.versionCode(null));
+    }
+
+    @Test
+    public void explainsBlockedInstalls() {
+        String message = WearUpdate.failureMessage(PackageInstaller.STATUS_FAILURE_BLOCKED, null);
+        assertTrue(message.contains("Allow installs"));
+        assertEquals("nope", WearUpdate.failureMessage(PackageInstaller.STATUS_FAILURE_BLOCKED, "nope"));
     }
 
     private static String versions(int code, String name) {

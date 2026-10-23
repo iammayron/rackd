@@ -27,6 +27,11 @@ public final class AppUpdater {
         void onOffer(AppUpdate.Offer offer);
     }
 
+    public interface Progress {
+        /** {@code totalBytes} is -1 when the server omits Content-Length. */
+        void onProgress(long readBytes, long totalBytes);
+    }
+
     private AppUpdater() {}
 
     public static void check(Context context, Callback callback) {
@@ -58,7 +63,20 @@ public final class AppUpdater {
         context.startActivity(intent);
     }
 
+    /** Skip re-prompting for this version after the user taps Later. */
+    public static void snooze(Context context, int versionCode) {
+        prefs(context).edit().putInt("snoozedVersionCode", versionCode).apply();
+    }
+
+    public static boolean isSnoozed(Context context, int versionCode) {
+        return prefs(context).getInt("snoozedVersionCode", -1) == versionCode;
+    }
+
     public static void install(Context context, String apkUrl) throws Exception {
+        install(context, apkUrl, null);
+    }
+
+    public static void install(Context context, String apkUrl, Progress progress) throws Exception {
         PackageInstaller installer = context.getPackageManager().getPackageInstaller();
         PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(
             PackageInstaller.SessionParams.MODE_FULL_INSTALL
@@ -70,10 +88,17 @@ public final class AppUpdater {
         PackageInstaller.Session session = installer.openSession(sessionId);
         try {
             HttpURLConnection conn = open(apkUrl, false);
-            try (InputStream in = conn.getInputStream(); OutputStream out = session.openWrite("rackd.apk", 0, -1)) {
+            long total = conn.getContentLengthLong();
+            try (InputStream in = conn.getInputStream();
+                 OutputStream out = session.openWrite("rackd.apk", 0, total > 0 ? total : -1)) {
                 byte[] buf = new byte[8192];
+                long read = 0;
                 int n;
-                while ((n = in.read(buf)) >= 0) out.write(buf, 0, n);
+                while ((n = in.read(buf)) >= 0) {
+                    out.write(buf, 0, n);
+                    read += n;
+                    if (progress != null) progress.onProgress(read, total);
+                }
                 session.fsync(out);
             } finally {
                 conn.disconnect();
@@ -156,6 +181,6 @@ public final class AppUpdater {
     }
 
     private static SharedPreferences prefs(Context app) {
-        return app.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        return app.getApplicationContext().getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 }

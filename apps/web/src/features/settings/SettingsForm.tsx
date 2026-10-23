@@ -17,6 +17,7 @@ import { useTheme, type Theme } from "@/lib/theme";
 import { Avatar } from "@/components/Avatar";
 import { uploadProfilePhoto, PHOTO_ACCEPT } from "@/lib/upload-photo";
 import { useToast } from "@/components/toast/ToastProvider";
+import { appCap, readNativeVersion } from "@/features/settings/native-app-info";
 
 /** Editable profile fields (was @rackd/db's ProfilePatch). */
 interface ProfilePatch {
@@ -168,10 +169,25 @@ export function SettingsForm() {
   const [changingPw, setChangingPw] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [appVersion, setAppVersion] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   // Tracks the unit across renders so a toggle can reconvert the numeric fields
   // in place (below) instead of refetching — refetching wiped unsaved edits.
   const prevUnit = useRef(unit);
+
+  useEffect(() => {
+    let cancelled = false;
+    readNativeVersion(appCap())
+      .then((v) => {
+        if (!cancelled) setAppVersion(v);
+      })
+      .catch(() => {
+        if (!cancelled) setAppVersion(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Load (and create if missing) the profile once, into display units. Runs a
   // SINGLE time: toggling the unit must never refetch (that clobbered unsaved
@@ -633,7 +649,7 @@ export function SettingsForm() {
       </Card>
 
       <p className="pt-2 text-center text-xs text-[var(--text-muted)]">
-        Rackd · local-first · v1.0
+        {appVersion ? `Rackd · v${appVersion}` : "Rackd · local-first"}
       </p>
     </div>
   );
