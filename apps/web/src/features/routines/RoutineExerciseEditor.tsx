@@ -401,7 +401,6 @@ function RoutineSetRow({
         open={editing === "weight"}
         title={`Weight (${unit})`}
         initial={Number(weight) || 0}
-        step={unit === "kg" ? 2.5 : 5}
         suffix={unit}
         inputMode="decimal"
         onCommit={commitWeight}
@@ -411,7 +410,6 @@ function RoutineSetRow({
         open={editing === "reps"}
         title="Reps"
         initial={Number(reps) || 0}
-        step={1}
         integer
         inputMode="numeric"
         onCommit={commitReps}
