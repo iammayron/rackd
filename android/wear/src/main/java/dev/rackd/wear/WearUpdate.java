@@ -1,5 +1,6 @@
 package dev.rackd.wear;
 
+import android.content.pm.PackageInstaller;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -64,5 +65,30 @@ public final class WearUpdate {
         } catch (Exception ignored) {
         }
         return null;
+    }
+
+    /**
+     * Human-readable PackageInstaller failure. Samsung Auto Blocker and unknown-sources
+     * blocks often arrive as STATUS_FAILURE_BLOCKED with a thin system message.
+     */
+    public static String failureMessage(int status, String detail) {
+        String trimmed = detail == null ? "" : detail.trim();
+        if (status == PackageInstaller.STATUS_FAILURE_BLOCKED) {
+            if (!trimmed.isEmpty()) return trimmed;
+            return "Install blocked. Allow installs from Rackd (turn off Auto Blocker if on), then try again.";
+        }
+        if (status == PackageInstaller.STATUS_FAILURE_ABORTED) {
+            return trimmed.isEmpty() ? "Update cancelled." : trimmed;
+        }
+        if (status == PackageInstaller.STATUS_FAILURE_STORAGE) {
+            return trimmed.isEmpty() ? "Not enough storage for the update." : trimmed;
+        }
+        if (status == PackageInstaller.STATUS_FAILURE_CONFLICT
+            || status == PackageInstaller.STATUS_FAILURE_INCOMPATIBLE
+            || status == PackageInstaller.STATUS_FAILURE_INVALID) {
+            return trimmed.isEmpty() ? "This update can’t be installed on this watch." : trimmed;
+        }
+        if (!trimmed.isEmpty()) return trimmed;
+        return "Update failed. Allow installs from Rackd, then try again.";
     }
 }

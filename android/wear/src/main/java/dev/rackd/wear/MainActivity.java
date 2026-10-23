@@ -8,6 +8,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInstaller;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -56,7 +57,9 @@ import org.json.JSONObject;
  * look away, and the workout stays one tap from the watch face.
  */
 public class MainActivity extends Activity
-    implements DataClient.OnDataChangedListener, CapabilityClient.OnCapabilityChangedListener {
+    implements DataClient.OnDataChangedListener,
+        CapabilityClient.OnCapabilityChangedListener,
+        UpdateInstallReceiver.Listener {
     private static final int CORAL = 0xFFFF5A3C;
     private static final int INK = 0xFF0E1116;
     private static final double KG_PER_LB = 0.45359237;
@@ -106,15 +109,20 @@ public class MainActivity extends Activity
     private Button updateButton;
     private WearUpdate.Offer pendingUpdate;
     private boolean updating;
+    private boolean awaitingInstallPermission;
     private boolean updateFailed;
+    private String updateStatus = "";
+    private int downloadPercent = -1;
 
     private final Runnable updateTick = new Runnable() {
         @Override
         public void run() {
             if (isFinishing() || isDestroyed()) return;
             handler.postDelayed(this, WearUpdater.INTERVAL_MS);
+            // Don't stomp an in-flight install when the hourly check finishes.
+            if (updating || awaitingInstallPermission) return;
             WearUpdater.check(MainActivity.this, offer -> runOnUiThread(() -> {
-                if (isFinishing() || isDestroyed()) return;
+                if (isFinishing() || isDestroyed() || updating || awaitingInstallPermission) return;
                 pendingUpdate = offer;
                 if (offer != null) updateFailed = false;
                 showUpdateOffer();
@@ -235,6 +243,7 @@ public class MainActivity extends Activity
     @Override
     protected void onResume() {
         super.onResume();
+        UpdateInstallReceiver.setListener(this);
         Wearable.getDataClient(this).addListener(this);
         Wearable.getCapabilityClient(this).addListener(this, PHONE_CAPABILITY);
         resumed = new WeakReference<>(this);
@@ -245,6 +254,19 @@ public class MainActivity extends Activity
         handler.removeCallbacks(updateTick);
         handler.post(updateTick);
         handler.post(tick);
+        if (awaitingInstallPermission) {
+            if (WearUpdater.canInstall(this)) {
+                awaitingInstallPermission = false;
+                updateStatus = "";
+                startUpdate();
+            } else {
+                updateFailed = true;
+                updateStatus = "Allow installs from Rackd, then return here";
+                showUpdateOffer();
+            }
+        } else {
+            showUpdateOffer();
+        }
     }
 
     @Override
@@ -258,8 +280,36 @@ public class MainActivity extends Activity
 
     @Override
     protected void onDestroy() {
+        UpdateInstallReceiver.setListener(null);
         if (resumed != null && resumed.get() == this) resumed = null;
         super.onDestroy();
+    }
+
+    @Override
+    public void onInstallStatus(int status, String message) {
+        runOnUiThread(() -> {
+            if (status == PackageInstaller.STATUS_PENDING_USER_ACTION) {
+                downloadPercent = -1;
+                updateStatus = "Confirm install…";
+                showUpdateOffer();
+                return;
+            }
+            updating = false;
+            downloadPercent = -1;
+            if (status == PackageInstaller.STATUS_SUCCESS) {
+                pendingUpdate = null;
+                updateFailed = false;
+                updateStatus = "";
+                showUpdateOffer();
+                return;
+            }
+            updateFailed = true;
+            updateStatus = message == null || message.isEmpty()
+                ? WearUpdate.failureMessage(status, null)
+                : message;
+            if (snapshot == null) showIdle();
+            else showUpdateOffer();
+        });
     }
 
     @Override
@@ -441,7 +491,7 @@ public class MainActivity extends Activity
         showMessage("Rackd", "Start a workout on your phone", "");
         if (updateFailed) {
             status.setVisibility(View.VISIBLE);
-            status.setText("Update failed");
+            status.setText(updateStatus.isEmpty() ? "Update failed" : updateStatus);
         }
         syncPresence();
         showUpdateOffer();
@@ -455,31 +505,62 @@ public class MainActivity extends Activity
         String name = pendingUpdate.versionName == null || pendingUpdate.versionName.isEmpty()
             ? ""
             : " " + pendingUpdate.versionName;
-        updateButton.setText(updating ? "Downloading…" : "Update" + name);
-        updateButton.setEnabled(!updating);
+        if (awaitingInstallPermission) {
+            updateButton.setText("Allow installs");
+            updateButton.setEnabled(true);
+        } else if (updating) {
+            if (downloadPercent >= 0) updateButton.setText("Downloading " + downloadPercent + "%");
+            else if (!updateStatus.isEmpty()) updateButton.setText(updateStatus);
+            else updateButton.setText("Downloading…");
+            updateButton.setEnabled(false);
+        } else {
+            updateButton.setText("Update" + name);
+            updateButton.setEnabled(true);
+        }
     }
 
     private void startUpdate() {
         if (pendingUpdate == null || updating) return;
         updateFailed = false;
+        updateStatus = "";
+        downloadPercent = -1;
         if (!WearUpdater.canInstall(this)) {
+            awaitingInstallPermission = true;
+            updateFailed = true;
+            updateStatus = "Allow installs from Rackd, then return here";
+            showUpdateOffer();
             WearUpdater.requestInstallPermission(this);
             return;
         }
+        awaitingInstallPermission = false;
         updating = true;
         showUpdateOffer();
         String apkUrl = pendingUpdate.apkUrl;
         new Thread(() -> {
             try {
-                WearUpdater.install(this, apkUrl);
+                WearUpdater.install(this, apkUrl, (read, total) -> runOnUiThread(() -> {
+                    if (!updating) return;
+                    if (total > 0) {
+                        downloadPercent = (int) Math.min(100, (read * 100) / total);
+                    }
+                    updateStatus = "";
+                    showUpdateOffer();
+                }));
                 runOnUiThread(() -> {
-                    updating = false;
+                    // Stay in updating until PackageInstaller reports back — don't
+                    // flip back to "Update" when the user leaves for the confirm sheet.
+                    downloadPercent = -1;
+                    updateStatus = "Installing…";
                     showUpdateOffer();
                 });
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     updating = false;
+                    downloadPercent = -1;
                     updateFailed = true;
+                    updateStatus = e.getMessage() == null || e.getMessage().isEmpty()
+                        ? "Couldn’t download the update"
+                        : e.getMessage();
                     if (snapshot == null) showIdle();
                     else showUpdateOffer();
                 });

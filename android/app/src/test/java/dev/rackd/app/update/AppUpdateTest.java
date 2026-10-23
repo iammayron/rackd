@@ -2,7 +2,9 @@ package dev.rackd.app.update;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
+import android.content.pm.PackageInstaller;
 import org.junit.Test;
 
 public class AppUpdateTest {
@@ -41,6 +43,19 @@ public class AppUpdateTest {
         assertNull(AppUpdate.offer(RELEASE, "{}", 4));
         assertNull(AppUpdate.offer(RELEASE, "not-json", 4));
         assertEquals(-1, AppUpdate.versionCode(null));
+    }
+
+    @Test
+    public void explainsBlockedInstallsForAutoBlocker() {
+        String message = AppUpdate.failureMessage(PackageInstaller.STATUS_FAILURE_BLOCKED, null);
+        assertTrue(message.contains("Auto Blocker"));
+        assertEquals("system said no", AppUpdate.failureMessage(PackageInstaller.STATUS_FAILURE_BLOCKED, "system said no"));
+    }
+
+    @Test
+    public void keepsSystemDetailWhenPresent() {
+        assertEquals("disk full", AppUpdate.failureMessage(PackageInstaller.STATUS_FAILURE_STORAGE, "disk full"));
+        assertTrue(AppUpdate.failureMessage(PackageInstaller.STATUS_FAILURE, null).contains("Allow installs"));
     }
 
     private static String versions(int code, String name) {
