@@ -97,6 +97,20 @@ public class MainActivity extends Activity
     private boolean updating;
     private boolean updateFailed;
 
+    private final Runnable updateTick = new Runnable() {
+        @Override
+        public void run() {
+            if (isFinishing() || isDestroyed()) return;
+            handler.postDelayed(this, WearUpdater.INTERVAL_MS);
+            WearUpdater.check(MainActivity.this, offer -> runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                pendingUpdate = offer;
+                if (offer != null) updateFailed = false;
+                showUpdateOffer();
+            }));
+        }
+    };
+
     private final Runnable tick = new Runnable() {
         @Override
         public void run() {
@@ -200,17 +214,15 @@ public class MainActivity extends Activity
         Wearable.getCapabilityClient(this).addListener(this, PHONE_CAPABILITY);
         loadSnapshot();
         warmPhoneNode();
-        WearUpdater.check(this, offer -> runOnUiThread(() -> {
-            pendingUpdate = offer;
-            if (offer != null) updateFailed = false;
-            showUpdateOffer();
-        }));
+        handler.removeCallbacks(updateTick);
+        handler.post(updateTick);
         handler.post(tick);
     }
 
     @Override
     protected void onPause() {
         handler.removeCallbacks(tick);
+        handler.removeCallbacks(updateTick);
         Wearable.getDataClient(this).removeListener(this);
         Wearable.getCapabilityClient(this).removeListener(this, PHONE_CAPABILITY);
         super.onPause();

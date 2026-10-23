@@ -84,7 +84,7 @@ jobs:
           }))
           PY
 
-      # The watch offers an update only when wear versionCode is higher than the installed build.
+      # Each app offers an update only when its own versionCode is higher than the installed build.
       - name: Publish Android release
         uses: softprops/action-gh-release@v2
         with:

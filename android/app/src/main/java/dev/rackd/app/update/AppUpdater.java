@@ -1,0 +1,161 @@
+package dev.rackd.app.update;
+
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageInstaller;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+/** Fetches the public GitHub release and hands the phone APK to the system installer. */
+public final class AppUpdater {
+    /** The activity checks on open, then again on this interval while it stays open. */
+    public static final long INTERVAL_MS = 60L * 60 * 1000;
+    private static final String PREFS = "rackd_app_update";
+    private static final AtomicBoolean BUSY = new AtomicBoolean(false);
+
+    public interface Callback {
+        void onOffer(AppUpdate.Offer offer);
+    }
+
+    private AppUpdater() {}
+
+    public static void check(Context context, Callback callback) {
+        Context app = context.getApplicationContext();
+        int installed = installedCode(app);
+        if (!BUSY.compareAndSet(false, true)) {
+            callback.onOffer(readCached(app, installed));
+            return;
+        }
+        new Thread(() -> {
+            try {
+                callback.onOffer(fetch(app, installed));
+            } finally {
+                BUSY.set(false);
+            }
+        }, "rackd-update").start();
+    }
+
+    public static boolean canInstall(Context context) {
+        return Build.VERSION.SDK_INT < 26 || context.getPackageManager().canRequestPackageInstalls();
+    }
+
+    public static void requestInstallPermission(Context context) {
+        Intent intent = new Intent(
+            Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+            Uri.parse("package:" + context.getPackageName())
+        );
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        context.startActivity(intent);
+    }
+
+    public static void install(Context context, String apkUrl) throws Exception {
+        PackageInstaller installer = context.getPackageManager().getPackageInstaller();
+        PackageInstaller.SessionParams params = new PackageInstaller.SessionParams(
+            PackageInstaller.SessionParams.MODE_FULL_INSTALL
+        );
+        if (Build.VERSION.SDK_INT >= 31) {
+            params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED);
+        }
+        int sessionId = installer.createSession(params);
+        PackageInstaller.Session session = installer.openSession(sessionId);
+        try {
+            HttpURLConnection conn = open(apkUrl, false);
+            try (InputStream in = conn.getInputStream(); OutputStream out = session.openWrite("rackd.apk", 0, -1)) {
+                byte[] buf = new byte[8192];
+                int n;
+                while ((n = in.read(buf)) >= 0) out.write(buf, 0, n);
+                session.fsync(out);
+            } finally {
+                conn.disconnect();
+            }
+            Intent callback = new Intent(context, UpdateInstallReceiver.class);
+            callback.setAction(UpdateInstallReceiver.ACTION);
+            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= 31) flags |= PendingIntent.FLAG_MUTABLE;
+            PendingIntent pending = PendingIntent.getBroadcast(context, sessionId, callback, flags);
+            session.commit(pending.getIntentSender());
+        } catch (Exception e) {
+            session.abandon();
+            throw e;
+        } finally {
+            session.close();
+        }
+    }
+
+    private static AppUpdate.Offer fetch(Context app, int installed) {
+        try {
+            String release = get(AppUpdate.RELEASES_URL, true);
+            String versionsUrl = AppUpdate.assetUrl(release, AppUpdate.VERSIONS_ASSET);
+            if (versionsUrl == null) {
+                remember(app, null);
+                return null;
+            }
+            AppUpdate.Offer offer = AppUpdate.offer(release, get(versionsUrl, false), installed);
+            remember(app, offer);
+            return offer;
+        } catch (Exception e) {
+            return readCached(app, installed);
+        }
+    }
+
+    private static void remember(Context app, AppUpdate.Offer offer) {
+        SharedPreferences.Editor editor = prefs(app).edit();
+        if (offer == null) editor.remove("versionCode").remove("versionName").remove("apkUrl");
+        else {
+            editor.putInt("versionCode", offer.versionCode);
+            editor.putString("versionName", offer.versionName);
+            editor.putString("apkUrl", offer.apkUrl);
+        }
+        editor.apply();
+    }
+
+    private static AppUpdate.Offer readCached(Context app, int installed) {
+        SharedPreferences prefs = prefs(app);
+        int code = prefs.getInt("versionCode", -1);
+        String url = prefs.getString("apkUrl", "");
+        if (code <= installed || url == null || url.isEmpty()) return null;
+        return new AppUpdate.Offer(code, prefs.getString("versionName", ""), url);
+    }
+
+    private static int installedCode(Context app) {
+        try {
+            PackageInfo info = app.getPackageManager().getPackageInfo(app.getPackageName(), 0);
+            return (int) info.getLongVersionCode();
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private static String get(String target, boolean api) throws Exception {
+        HttpURLConnection conn = open(target, api);
+        try (InputStream in = conn.getInputStream()) {
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } finally {
+            conn.disconnect();
+        }
+    }
+
+    private static HttpURLConnection open(String target, boolean api) throws Exception {
+        HttpURLConnection conn = (HttpURLConnection) new URL(target).openConnection();
+        conn.setConnectTimeout(8000);
+        conn.setReadTimeout(20000);
+        conn.setInstanceFollowRedirects(true);
+        conn.setRequestProperty("User-Agent", "Rackd");
+        conn.setRequestProperty("Accept", api ? "application/vnd.github+json" : "*/*");
+        return conn;
+    }
+
+    private static SharedPreferences prefs(Context app) {
+        return app.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+    }
+}

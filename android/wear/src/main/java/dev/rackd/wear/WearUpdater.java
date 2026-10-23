@@ -14,11 +14,14 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Fetches the public GitHub release and hands the watch APK to the system installer. */
 public final class WearUpdater {
-    private static final long INTERVAL_MS = 60L * 60 * 1000;
+    /** The activity checks on open, then again on this interval while it stays open. */
+    public static final long INTERVAL_MS = 60L * 60 * 1000;
     private static final String PREFS = "rackd_wear_update";
+    private static final AtomicBoolean BUSY = new AtomicBoolean(false);
 
     public interface Callback {
         void onOffer(WearUpdate.Offer offer);
@@ -29,14 +32,17 @@ public final class WearUpdater {
     public static void check(Context context, Callback callback) {
         Context app = context.getApplicationContext();
         int installed = installedCode(app);
-        WearUpdate.Offer cached = readCached(app, installed);
-        long checkedAt = prefs(app).getLong("checkedAt", 0);
-        boolean fresh = System.currentTimeMillis() - checkedAt < INTERVAL_MS;
-        if (fresh) {
-            callback.onOffer(cached);
+        if (!BUSY.compareAndSet(false, true)) {
+            callback.onOffer(readCached(app, installed));
             return;
         }
-        new Thread(() -> callback.onOffer(fetch(app, installed)), "rackd-update").start();
+        new Thread(() -> {
+            try {
+                callback.onOffer(fetch(app, installed));
+            } finally {
+                BUSY.set(false);
+            }
+        }, "rackd-update").start();
     }
 
     public static boolean canInstall(Context context) {
