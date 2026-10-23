@@ -6,8 +6,7 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.util.Log;
 import com.google.android.gms.wearable.DataClient;
-import com.google.android.gms.wearable.PutDataMapRequest;
-import com.google.android.gms.wearable.PutDataRequest;
+import com.google.android.gms.wearable.Node;
 import com.google.android.gms.wearable.Wearable;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -19,8 +18,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
- * Phone side of the Wear OS companion. The watch reads `/rackd/workout`.
- * Log / skip / +30s / weight / reps arrive on `/rackd/action`. State rules match
+ * Phone side of the Wear OS companion. Workout snapshots go to the watch as
+ * messages on `/rackd/workout`, and only to a nearby node — the Bluetooth link
+ * the watch already has. That does not wake Wi-Fi. Log / skip / ±15s / weight /
+ * reps arrive on `/rackd/action`. State rules match
  * `apps/web/src/features/active-workout/watch-payload.ts`.
  */
 public final class WearBridge {
@@ -31,6 +32,10 @@ public final class WearBridge {
 
     private static boolean inflight = false;
     private static boolean adjustBusy = false;
+    /** Bumped on clear so a message already in flight cannot revive the workout. */
+    private static long epoch = 0;
+    /** The old data-layer copy syncs over Wi-Fi. Drop it once, then stay on Bluetooth. */
+    private static boolean droppedCloudCopy = false;
     /** Latest weight/reps still waiting on the in-flight PUT. One entry per set, in order. */
     private static final ArrayDeque<PendingAdjust> pendingAdjusts = new ArrayDeque<>();
 
@@ -64,6 +69,13 @@ public final class WearBridge {
         synchronized (WearBridge.class) {
             try {
                 JSONObject incoming = new JSONObject(payloadJson);
+                String sessionId = incoming.optString("sessionId", "");
+                String suppressed = prefs(app).getString("suppressedSession", "");
+                if (!sessionId.isEmpty() && sessionId.equals(suppressed)) {
+                    Log.i(TAG, "ignoring discarded session");
+                    return;
+                }
+                if (!suppressed.isEmpty()) prefs(app).edit().remove("suppressedSession").apply();
                 JSONObject stored = read(app);
                 JSONObject next = merge(stored, incoming);
                 if (incoming.has("error")) next.remove("error");
@@ -79,11 +91,17 @@ public final class WearBridge {
     public static void clear(Context context) {
         Context app = context.getApplicationContext();
         synchronized (WearBridge.class) {
-            prefs(app).edit().clear().apply();
+            JSONObject stored = read(app);
+            String sessionId = stored == null ? "" : stored.optString("sessionId", "");
+            epoch++;
             inflight = false;
             adjustBusy = false;
             pendingAdjusts.clear();
+            SharedPreferences.Editor editor = prefs(app).edit().clear();
+            if (!sessionId.isEmpty()) editor.putString("suppressedSession", sessionId);
+            editor.apply();
         }
+        pushIdle(app);
         try {
             Uri uri = new Uri.Builder().scheme("wear").path(PATH).build();
             Wearable.getDataClient(app).deleteDataItems(uri, DataClient.FILTER_PREFIX);
@@ -91,6 +109,17 @@ public final class WearBridge {
             Log.e(TAG, "clear failed", e);
         }
         app.stopService(new Intent(app, WorkoutBridgeService.class));
+    }
+
+    /** Watch opened or reconnected over Bluetooth and needs the current snapshot. */
+    public static void resend(Context context) {
+        Context app = context.getApplicationContext();
+        JSONObject stored;
+        synchronized (WearBridge.class) {
+            stored = read(app);
+        }
+        if (stored == null) pushIdle(app);
+        else push(app, stored);
     }
 
     /** revision + restEndAt for the web view to catch up after a locked screen. */
@@ -159,6 +188,25 @@ public final class WearBridge {
 
     public static void addRest(Context context) {
         mutate(context, "add30");
+    }
+
+    /** Shift the current rest by `deltaMs`. A result in the past ends the rest. */
+    public static void adjustRest(Context context, long deltaMs) {
+        Context app = context.getApplicationContext();
+        synchronized (WearBridge.class) {
+            JSONObject stored = read(app);
+            if (stored == null) return;
+            try {
+                JSONObject next = shiftRest(stored, System.currentTimeMillis(), deltaMs);
+                next.remove("error");
+                write(app, next, null, null);
+                push(app, next);
+                String kind = deltaMs < 0 ? "sub15" : "add15";
+                RackdWearPlugin.emit(kind, next.optLong("restEndAt"), next.optInt("revision"));
+            } catch (Exception e) {
+                Log.e(TAG, "rest adjust failed", e);
+            }
+        }
     }
 
     /** `weightKg` null updates reps only. `reps` null updates weight only. */
@@ -274,7 +322,7 @@ public final class WearBridge {
         if (stored == null || ack >= revision) {
             next.put("sessionId", incoming.optString("sessionId", ""));
             next.put("restEndAt", incoming.optLong("restEndAt", 0));
-            next.put("unit", incoming.optString("unit", "kg"));
+            next.put("unit", resolveUnit(stored, incoming));
             next.put("items", incoming.optJSONArray("items"));
             return next;
         }
@@ -304,7 +352,7 @@ public final class WearBridge {
         }
         next.put("sessionId", stored.optString("sessionId", ""));
         next.put("restEndAt", stored.optLong("restEndAt", 0));
-        next.put("unit", stored.optString("unit", "kg"));
+        next.put("unit", resolveUnit(stored, incoming));
         next.put("items", merged);
         if (stored.has("error")) next.put("error", stored.optString("error"));
         return next;
@@ -349,7 +397,9 @@ public final class WearBridge {
         if (target == null) return stored;
         if (weightKg != null) {
             target.put("weight", weightKg);
-            target.put("weightLabel", formatWeight(weightKg, stored.optString("unit", "kg")));
+            String unit = unitFromLabel(target.optString("weightLabel", ""));
+            if (unit == null) unit = stored.optString("unit", "kg");
+            target.put("weightLabel", formatWeight(weightKg, unit));
         }
         if (reps != null) target.put("reps", reps);
         JSONObject next = new JSONObject(stored.toString());
@@ -376,12 +426,47 @@ public final class WearBridge {
     }
 
     private static JSONObject afterAdd(JSONObject stored, long now) throws Exception {
+        return shiftRest(stored, now, 30_000L);
+    }
+
+    private static JSONObject shiftRest(JSONObject stored, long now, long deltaMs) throws Exception {
         long current = stored.optLong("restEndAt", 0);
         long base = current > now ? current : now;
+        long nextEnd = base + deltaMs;
+        if (nextEnd <= now) nextEnd = 0;
         JSONObject next = new JSONObject(stored.toString());
         next.put("revision", stored.optInt("revision", 0) + 1);
-        next.put("restEndAt", base + 30_000L);
+        next.put("restEndAt", nextEnd);
         return next;
+    }
+
+    private static String resolveUnit(JSONObject stored, JSONObject incoming) {
+        String explicit = incoming.optString("unit", "");
+        if ("lb".equals(explicit) || "kg".equals(explicit)) return explicit;
+        String fromItems = unitFromItems(incoming.optJSONArray("items"));
+        if (fromItems != null) return fromItems;
+        if (stored != null) {
+            String storedUnit = stored.optString("unit", "");
+            if ("lb".equals(storedUnit) || "kg".equals(storedUnit)) return storedUnit;
+        }
+        return "kg";
+    }
+
+    private static String unitFromItems(JSONArray items) {
+        if (items == null) return null;
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            if (item == null) continue;
+            String unit = unitFromLabel(item.optString("weightLabel", ""));
+            if (unit != null) return unit;
+        }
+        return null;
+    }
+
+    private static String unitFromLabel(String label) {
+        if (label.endsWith(" lb")) return "lb";
+        if (label.endsWith(" kg")) return "kg";
+        return null;
     }
 
     private static JSONObject firstOpen(JSONArray items) {
@@ -443,15 +528,58 @@ public final class WearBridge {
     }
 
     private static void push(Context app, JSONObject payload) {
+        final long seen;
+        final byte[] body;
+        synchronized (WearBridge.class) {
+            seen = epoch;
+            try {
+                JSONObject wire = new JSONObject(payload.toString());
+                wire.put("epoch", seen);
+                body = wire.toString().getBytes(StandardCharsets.UTF_8);
+            } catch (Exception e) {
+                Log.e(TAG, "push encode failed", e);
+                return;
+            }
+        }
+        dropCloudCopy(app);
+        Wearable.getNodeClient(app).getConnectedNodes().addOnSuccessListener(nodes -> {
+            synchronized (WearBridge.class) {
+                if (seen != epoch) return;
+            }
+            boolean sent = false;
+            for (Node node : nodes) {
+                if (!node.isNearby()) continue;
+                sent = true;
+                Wearable.getMessageClient(app).sendMessage(node.getId(), PATH, body);
+            }
+            if (!sent) Log.i(TAG, "watch not on bluetooth");
+        });
+    }
+
+    private static void pushIdle(Context app) {
         try {
-            PutDataMapRequest request = PutDataMapRequest.create(PATH);
-            request.getDataMap().putString("json", payload.toString());
-            request.getDataMap().putLong("ts", System.currentTimeMillis());
-            PutDataRequest put = request.asPutDataRequest();
-            put.setUrgent();
-            Wearable.getDataClient(app).putDataItem(put);
+            JSONObject idle = new JSONObject();
+            idle.put("sessionId", "");
+            idle.put("restEndAt", 0);
+            idle.put("revision", 0);
+            idle.put("unit", "kg");
+            idle.put("items", new JSONArray());
+            push(app, idle);
         } catch (Exception e) {
-            Log.e(TAG, "push to watch failed", e);
+            Log.e(TAG, "idle push failed", e);
+        }
+    }
+
+    private static void dropCloudCopy(Context app) {
+        synchronized (WearBridge.class) {
+            if (droppedCloudCopy) return;
+            droppedCloudCopy = true;
+        }
+        try {
+            Uri uri = new Uri.Builder().scheme("wear").path(PATH).build();
+            Wearable.getDataClient(app).deleteDataItems(uri, DataClient.FILTER_PREFIX);
+        } catch (Exception e) {
+            Log.e(TAG, "drop cloud copy failed", e);
         }
     }
 

@@ -116,7 +116,7 @@ export function mergeWatchPublish(
     revision,
     sessionId: stored.sessionId,
     restEndAt: stored.restEndAt,
-    unit: stored.unit,
+    unit: incoming.unit,
     items: incoming.items.map((item) => {
       const prev = previous.get(item.setId);
       if (!prev) return item;
@@ -179,7 +179,12 @@ export function afterSkip(stored: StoredWatch): StoredWatch {
   return { ...stored, revision: stored.revision + 1, restEndAt: 0 };
 }
 
-export function afterAdd(stored: StoredWatch, now: number): StoredWatch {
+export function shiftRest(stored: StoredWatch, now: number, deltaMs: number): StoredWatch {
   const base = stored.restEndAt > now ? stored.restEndAt : now;
-  return { ...stored, revision: stored.revision + 1, restEndAt: base + 30_000 };
+  const next = base + deltaMs;
+  return { ...stored, revision: stored.revision + 1, restEndAt: next > now ? next : 0 };
+}
+
+export function afterAdd(stored: StoredWatch, now: number): StoredWatch {
+  return shiftRest(stored, now, 30_000);
 }

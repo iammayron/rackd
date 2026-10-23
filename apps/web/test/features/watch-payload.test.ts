@@ -7,6 +7,7 @@ import {
   afterSkip,
   buildWatchPayload,
   mergeWatchPublish,
+  shiftRest,
   type StoredWatch,
 } from "@/features/active-workout/watch-payload";
 
@@ -102,6 +103,9 @@ describe("watch actions", () => {
     expect(afterSkip(resting).restEndAt).toBe(0);
     expect(afterAdd(resting, 1_000).restEndAt).toBe(80_000);
     expect(afterAdd({ ...stored, restEndAt: 0 }, 1_000).restEndAt).toBe(31_000);
+    expect(shiftRest(resting, 1_000, 15_000).restEndAt).toBe(65_000);
+    expect(shiftRest(resting, 1_000, -15_000).restEndAt).toBe(35_000);
+    expect(shiftRest({ ...stored, restEndAt: 10_000 }, 1_000, -15_000).restEndAt).toBe(0);
   });
 
   it("keeps a watch log when the phone UI publishes a stale ack", () => {

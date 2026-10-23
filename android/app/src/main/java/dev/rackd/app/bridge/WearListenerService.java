@@ -20,6 +20,9 @@ public class WearListenerService extends WearableListenerService {
         else if (action.startsWith("log:")) WearBridge.logSet(this, action.substring(4));
         else if ("skip".equals(action)) WearBridge.skipRest(this);
         else if ("add30".equals(action)) WearBridge.addRest(this);
+        else if ("add15".equals(action)) WearBridge.adjustRest(this, 15_000L);
+        else if ("sub15".equals(action)) WearBridge.adjustRest(this, -15_000L);
+        else if ("sync".equals(action)) WearBridge.resend(this);
         else if (action.startsWith("w:") || action.startsWith("r:")) adjust(action);
     }
 
