@@ -7,6 +7,12 @@ import java.nio.charset.StandardCharsets;
 /** Watch taps arrive here even when the phone is locked. */
 public class WearListenerService extends WearableListenerService {
     @Override
+    public void onCreate() {
+        super.onCreate();
+        WearBridge.advertise(this);
+    }
+
+    @Override
     public void onMessageReceived(MessageEvent messageEvent) {
         if (messageEvent.getPath() == null || !messageEvent.getPath().equals("/rackd/action")) return;
         String action = new String(messageEvent.getData(), StandardCharsets.UTF_8);

@@ -19,7 +19,6 @@ import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.os.VibratorManager;
-import android.view.WindowManager;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -49,13 +48,16 @@ import org.json.JSONObject;
 /**
  * Glance screen for the set in progress. The phone owns the workout.
  * Rest shows only the timer. Otherwise: weight, reps, and the exercise.
- * A live session keeps the screen on and posts an ongoing activity so the
- * watch face does not replace the workout when the display sleeps.
+ * A live session posts an ongoing activity. The display sleeps when you
+ * look away, and the workout stays one tap from the watch face.
  */
-public class MainActivity extends Activity implements DataClient.OnDataChangedListener {
+public class MainActivity extends Activity
+    implements DataClient.OnDataChangedListener, CapabilityClient.OnCapabilityChangedListener {
     private static final int CORAL = 0xFFFF5A3C;
     private static final int INK = 0xFF0E1116;
     private static final double KG_PER_LB = 0.45359237;
+    private static final String PHONE_CAPABILITY = "rackd_phone";
+    private static final String ACTION_PATH = "/rackd/action";
     private static final String CHANNEL = "rackd_workout";
     private static final int NOTE_ID = 7;
     private static final int NOTE_PERMISSION = 41;
@@ -85,6 +87,15 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
     private boolean presenceOn = false;
     private boolean askedNotification = false;
     private String presenceLabel = "";
+    private String phoneNodeId;
+    private boolean phoneUnreachable;
+    /** Set the watch just asked the phone to log. Advance once that set comes back completed. */
+    private String pendingAdvanceSet;
+    private String pendingAdvanceExercise;
+    private Button updateButton;
+    private WearUpdate.Offer pendingUpdate;
+    private boolean updating;
+    private boolean updateFailed;
 
     private final Runnable tick = new Runnable() {
         @Override
@@ -160,8 +171,13 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
         col.addView(weightRow);
         col.addView(repsRow);
         col.addView(countdown);
+        updateButton = button("Update", true, 32);
+        updateButton.setVisibility(View.GONE);
+        updateButton.setOnClickListener(v -> startUpdate());
+
         col.addView(log, fullWidth());
         col.addView(timerRow);
+        col.addView(updateButton, fullWidth());
 
         BoxInsetLayout.LayoutParams lp = new BoxInsetLayout.LayoutParams(
             BoxInsetLayout.LayoutParams.MATCH_PARENT,
@@ -181,7 +197,14 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
     protected void onResume() {
         super.onResume();
         Wearable.getDataClient(this).addListener(this);
+        Wearable.getCapabilityClient(this).addListener(this, PHONE_CAPABILITY);
         loadSnapshot();
+        warmPhoneNode();
+        WearUpdater.check(this, offer -> runOnUiThread(() -> {
+            pendingUpdate = offer;
+            if (offer != null) updateFailed = false;
+            showUpdateOffer();
+        }));
         handler.post(tick);
     }
 
@@ -189,6 +212,7 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
     protected void onPause() {
         handler.removeCallbacks(tick);
         Wearable.getDataClient(this).removeListener(this);
+        Wearable.getCapabilityClient(this).removeListener(this, PHONE_CAPABILITY);
         super.onPause();
     }
 
@@ -245,6 +269,11 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
             if (!session.equals(shownSession)) {
                 shownSession = session;
                 focusName = null;
+                pendingAdvanceSet = null;
+            }
+            if (pendingAdvanceSet != null && setCompleted(snapshot.optJSONArray("items"), pendingAdvanceSet)) {
+                focusName = ExerciseFocus.nextOpen(rows(snapshot.optJSONArray("items")), pendingAdvanceExercise);
+                pendingAdvanceSet = null;
             }
             render();
         } catch (Exception e) {
@@ -285,8 +314,8 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
             showMessage("Rackd", "Workout in progress", "");
             return;
         }
-        if (open == null && (focusName == null || setOnScreen(items) == null)) {
-            showMessage(error.isEmpty() ? "Done" : error, "All sets logged", done + " sets");
+        if (open == null) {
+            showMessage(error.isEmpty() ? "Done" : error, "Finish on your phone", done + " sets");
             return;
         }
 
@@ -296,8 +325,7 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
         boolean several = names.size() > 1;
 
         if (resting) {
-            status.setVisibility(error.isEmpty() ? View.GONE : View.VISIBLE);
-            status.setText(error);
+            showStatus(error);
             nameRow.setVisibility(View.GONE);
             setLine.setVisibility(View.GONE);
             weightRow.setVisibility(View.GONE);
@@ -309,8 +337,7 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
             return;
         }
 
-        status.setVisibility(error.isEmpty() ? View.GONE : View.VISIBLE);
-        status.setText(error);
+        showStatus(error);
         nameRow.setVisibility(View.VISIBLE);
         name.setVisibility(View.VISIBLE);
         setLine.setVisibility(View.VISIBLE);
@@ -332,6 +359,7 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
         next.setEnabled(index >= 0 && index < names.size() - 1);
         } finally {
             syncPresence();
+            showUpdateOffer();
         }
     }
 
@@ -340,14 +368,57 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
         focusName = null;
         shownSession = "";
         showMessage("Rackd", "Start a workout on your phone", "");
+        if (updateFailed) {
+            status.setVisibility(View.VISIBLE);
+            status.setText("Update failed");
+        }
         syncPresence();
+        showUpdateOffer();
     }
 
-    /** Screen stays on for the session. The ongoing activity blocks the watch face. */
+    private void showUpdateOffer() {
+        if (updateButton == null) return;
+        boolean show = snapshot == null && pendingUpdate != null;
+        updateButton.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (!show) return;
+        String name = pendingUpdate.versionName == null || pendingUpdate.versionName.isEmpty()
+            ? ""
+            : " " + pendingUpdate.versionName;
+        updateButton.setText(updating ? "Downloading…" : "Update" + name);
+        updateButton.setEnabled(!updating);
+    }
+
+    private void startUpdate() {
+        if (pendingUpdate == null || updating) return;
+        updateFailed = false;
+        if (!WearUpdater.canInstall(this)) {
+            WearUpdater.requestInstallPermission(this);
+            return;
+        }
+        updating = true;
+        showUpdateOffer();
+        String apkUrl = pendingUpdate.apkUrl;
+        new Thread(() -> {
+            try {
+                WearUpdater.install(this, apkUrl);
+                runOnUiThread(() -> {
+                    updating = false;
+                    showUpdateOffer();
+                });
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    updating = false;
+                    updateFailed = true;
+                    if (snapshot == null) showIdle();
+                    else showUpdateOffer();
+                });
+            }
+        }, "rackd-install").start();
+    }
+
+    /** Ongoing activity keeps the workout reachable after the display sleeps. */
     private void syncPresence() {
         boolean active = snapshot != null;
-        if (active) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         if (!active) {
             if (!presenceOn) return;
             presenceOn = false;
@@ -424,6 +495,14 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
         manager.notify(NOTE_ID, notification);
     }
 
+    /** Snapshot errors stay visible. A failed phone lookup does too; the tick must not clear it. */
+    private void showStatus(String snapshotError) {
+        String text = phoneUnreachable ? "Phone not reachable" : snapshotError;
+        boolean show = text != null && !text.isEmpty();
+        status.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (show) status.setText(text);
+    }
+
     private void showMessage(String title, String body, String detail) {
         status.setVisibility(View.VISIBLE);
         status.setText(title);
@@ -445,7 +524,29 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
         JSONArray items = snapshot == null ? null : snapshot.optJSONArray("items");
         JSONObject shown = setOnScreen(items);
         if (shown == null || shown.optBoolean("completed")) return;
-        send("log:" + shown.optString("setId"));
+        pendingAdvanceSet = shown.optString("setId");
+        pendingAdvanceExercise = shown.optString("name", focusName);
+        send("log:" + pendingAdvanceSet);
+    }
+
+    private static boolean setCompleted(JSONArray items, String setId) {
+        if (items == null || setId == null) return false;
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            if (item != null && setId.equals(item.optString("setId")) && item.optBoolean("completed")) return true;
+        }
+        return false;
+    }
+
+    private static List<ExerciseFocus.Row> rows(JSONArray items) {
+        List<ExerciseFocus.Row> rows = new ArrayList<>();
+        if (items == null) return rows;
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            if (item == null) continue;
+            rows.add(new ExerciseFocus.Row(item.optString("name", "Exercise"), item.optBoolean("completed")));
+        }
+        return rows;
     }
 
     private void stepWeight(int dir) {
@@ -537,31 +638,105 @@ public class MainActivity extends Activity implements DataClient.OnDataChangedLi
 
     private void send(String action) {
         log.setEnabled(false);
+        String cached = phoneNodeId;
+        if (cached != null) post(cached, action, true);
+        else lookupPhone(id -> deliverFound(id, action));
+    }
+
+    /**
+     * Capability sync can stay empty on Wear OS 6 while the phone is connected.
+     * The phone app still logs sets on its own; the watch has to use the
+     * connected node or the tap never reaches it.
+     */
+    private void lookupPhone(NodeCallback callback) {
         Wearable.getCapabilityClient(this)
-            .getCapability("rackd_phone", CapabilityClient.FILTER_REACHABLE)
-            .addOnSuccessListener(info -> deliver(info, action))
-            .addOnFailureListener(e -> runOnUiThread(() -> {
-                status.setText("Phone not reachable");
-                log.setEnabled(true);
+            .getCapability(PHONE_CAPABILITY, CapabilityClient.FILTER_ALL)
+            .addOnCompleteListener(capTask -> {
+                List<PhoneNode.Candidate> capable = new ArrayList<>();
+                if (capTask.isSuccessful() && capTask.getResult() != null) {
+                    capable = candidates(capTask.getResult().getNodes());
+                }
+                List<PhoneNode.Candidate> capableNodes = capable;
+                if (PhoneNode.hasNearby(capableNodes)) {
+                    callback.onNode(PhoneNode.pick(capableNodes, null));
+                    return;
+                }
+                Wearable.getNodeClient(this)
+                    .getConnectedNodes()
+                    .addOnCompleteListener(nodeTask -> {
+                        List<PhoneNode.Candidate> connected = new ArrayList<>();
+                        if (nodeTask.isSuccessful() && nodeTask.getResult() != null) {
+                            connected = candidates(nodeTask.getResult());
+                        }
+                        callback.onNode(PhoneNode.pick(capableNodes, connected));
+                    });
+            });
+    }
+
+    private void deliverFound(String id, String action) {
+        runOnUiThread(() -> {
+            if (id == null) {
+                markUnreachable();
+                return;
+            }
+            phoneNodeId = id;
+            post(id, action, false);
+        });
+    }
+
+    private void post(String nodeId, String action, boolean retry) {
+        Wearable.getMessageClient(this)
+            .sendMessage(nodeId, ACTION_PATH, action.getBytes(StandardCharsets.UTF_8))
+            .addOnCompleteListener(task -> runOnUiThread(() -> {
+                if (task.isSuccessful()) {
+                    phoneUnreachable = false;
+                    log.setEnabled(true);
+                    render();
+                    return;
+                }
+                if (nodeId.equals(phoneNodeId)) phoneNodeId = null;
+                if (retry) lookupPhone(id -> deliverFound(id, action));
+                else markUnreachable();
             }));
     }
 
-    private void deliver(CapabilityInfo info, String action) {
-        Node node = null;
-        for (Node candidate : info.getNodes()) {
-            node = candidate;
-            if (candidate.isNearby()) break;
-        }
-        if (node == null) {
+    private void markUnreachable() {
+        runOnUiThread(() -> {
+            phoneUnreachable = true;
+            log.setEnabled(true);
+            render();
+        });
+    }
+
+    private void warmPhoneNode() {
+        lookupPhone(id -> {
+            if (id == null) return;
             runOnUiThread(() -> {
-                status.setText("Phone not reachable");
-                log.setEnabled(true);
+                if (phoneNodeId == null) phoneNodeId = id;
             });
-            return;
+        });
+    }
+
+    @Override
+    public void onCapabilityChanged(CapabilityInfo capabilityInfo) {
+        if (capabilityInfo == null) return;
+        String id = PhoneNode.pick(candidates(capabilityInfo.getNodes()), null);
+        if (id == null) return;
+        runOnUiThread(() -> phoneNodeId = id);
+    }
+
+    private static List<PhoneNode.Candidate> candidates(Iterable<Node> nodes) {
+        List<PhoneNode.Candidate> list = new ArrayList<>();
+        if (nodes == null) return list;
+        for (Node node : nodes) {
+            if (node == null) continue;
+            list.add(new PhoneNode.Candidate(node.getId(), node.isNearby()));
         }
-        Wearable.getMessageClient(this)
-            .sendMessage(node.getId(), "/rackd/action", action.getBytes(StandardCharsets.UTF_8))
-            .addOnCompleteListener(task -> runOnUiThread(() -> log.setEnabled(true)));
+        return list;
+    }
+
+    private interface NodeCallback {
+        void onNode(String id);
     }
 
     private void buzz() {

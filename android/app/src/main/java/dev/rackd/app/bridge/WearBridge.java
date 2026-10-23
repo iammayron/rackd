@@ -48,8 +48,19 @@ public final class WearBridge {
 
     private WearBridge() {}
 
+    /** Republish the phone capability. Static wear.xml is not enough after a Wear OS 6 sync stall. */
+    public static void advertise(Context context) {
+        if (context == null) return;
+        try {
+            Wearable.getCapabilityClient(context.getApplicationContext()).addLocalCapability("rackd_phone");
+        } catch (Exception e) {
+            Log.w(TAG, "capability advertise failed", e);
+        }
+    }
+
     public static void publish(Context context, String payloadJson, String token, String apiBase) {
         Context app = context.getApplicationContext();
+        advertise(app);
         synchronized (WearBridge.class) {
             try {
                 JSONObject incoming = new JSONObject(payloadJson);
