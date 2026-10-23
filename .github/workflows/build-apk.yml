@@ -66,9 +66,10 @@ jobs:
           if-no-files-found: error
 
       - name: Write Android version manifest
+        id: versions
         run: |
           python3 - <<'PY'
-          import json, pathlib, re
+          import json, os, pathlib, re
           def read(path):
               text = pathlib.Path(path).read_text()
               code = int(re.search(r"versionCode\s+(\d+)", text).group(1))
@@ -82,14 +83,18 @@ jobs:
               "phoneVersionCode": phone_code,
               "phoneVersionName": phone_name,
           }))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"tag=phone-{phone_name}-watch-{wear_name}\n")
+              out.write(f"title=Phone {phone_name} / Watch {wear_name}\n")
           PY
 
       # Each app offers an update only when its own versionCode is higher than the installed build.
+      # The release is named from those version names. A rebuild of the same pair updates this release.
       - name: Publish Android release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: android-${{ github.run_number }}
-          name: Android ${{ github.run_number }}
+          tag_name: ${{ steps.versions.outputs.tag }}
+          name: ${{ steps.versions.outputs.title }}
           files: |
             android-versions.json
             android/app/build/outputs/apk/release/app-release.apk
