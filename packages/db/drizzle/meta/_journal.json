@@ -50,6 +50,13 @@
       "when": 1785415248920,
       "tag": "0006_soft_wolverine",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794328679525,
+      "tag": "0007_enable_rls",
+      "breakpoints": true
     }
   ]
 }

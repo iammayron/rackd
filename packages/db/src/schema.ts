@@ -24,6 +24,9 @@ import {
  *   slots survive their routine being deleted).
  * - JS property names stay camelCase (DB columns snake_case) so row shapes match
  *   the @rackd/core domain types the UI already consumes.
+ * - Every table has RLS enabled. The app connects as the table owner (`postgres`
+ *   via Drizzle), which skips RLS. No policies: the anon key cannot read or
+ *   write through PostgREST. Do not add FORCE ROW LEVEL SECURITY.
  */
 
 export const exercises = pgTable("exercises", {
@@ -56,7 +59,7 @@ export const exercises = pgTable("exercises", {
   bodyPart: text("body_part"),
   aliases: text("aliases").array().notNull().default([]),
   popularity: integer("popularity").notNull().default(0),
-});
+}).enableRLS();
 
 /**
  * Fine-grained muscle taxonomy. `canonicalGroup` maps each muscle back to the
@@ -70,7 +73,7 @@ export const muscles = pgTable("muscles", {
   region: text("region"),
   svgRegion: text("svg_region"),
   recoveryHours: integer("recovery_hours").notNull().default(48),
-});
+}).enableRLS();
 
 /** Exercise ↔ muscle join with DERIVED activation weight (0..1). */
 export const exerciseMuscles = pgTable(
@@ -86,7 +89,7 @@ export const exerciseMuscles = pgTable(
     activation: doublePrecision("activation").notNull(),
   },
   (t) => ({ pk: primaryKey({ columns: [t.exerciseId, t.muscleId] }) }),
-);
+).enableRLS();
 
 /** Media rows — our CDN URL + source provenance. Never binary in the DB. */
 export const exerciseMedia = pgTable("exercise_media", {
@@ -101,7 +104,7 @@ export const exerciseMedia = pgTable("exercise_media", {
   height: integer("height"),
   order: integer("order").notNull().default(0),
   lang: text("lang"),
-});
+}).enableRLS();
 
 /** Similarity / substitution graph edges. */
 export const exerciseRelations = pgTable(
@@ -118,13 +121,13 @@ export const exerciseRelations = pgTable(
     reason: text("reason"),
   },
   (t) => ({ pk: primaryKey({ columns: [t.exerciseId, t.relatedId, t.kind] }) }),
-);
+).enableRLS();
 
 /** Source equipment string → canonical Equipment enum value. */
 export const equipmentMap = pgTable("equipment_map", {
   sourceValue: text("source_value").primaryKey(),
   canonical: text("canonical").notNull(),
-});
+}).enableRLS();
 
 /** Source muscle string → our muscle id (taxonomy reconciliation). */
 export const muscleMap = pgTable("muscle_map", {
@@ -132,7 +135,7 @@ export const muscleMap = pgTable("muscle_map", {
   muscleId: text("muscle_id")
     .notNull()
     .references(() => muscles.id),
-});
+}).enableRLS();
 
 /**
  * Bundled, public plan template (PPL, 5/3/1, …) — the read-only library users
@@ -152,7 +155,7 @@ export const programTemplates = pgTable("program_templates", {
   source: text("source"),
   attribution: text("attribution"),
   isPublic: boolean("is_public").notNull().default(true),
-});
+}).enableRLS();
 
 export const programTemplateDays = pgTable("program_template_days", {
   id: text("id").primaryKey(),
@@ -162,7 +165,7 @@ export const programTemplateDays = pgTable("program_template_days", {
   weekIndex: integer("week_index"),
   dayIndex: integer("day_index").notNull(),
   label: text("label").notNull(),
-});
+}).enableRLS();
 
 export const programTemplateExercises = pgTable("program_template_exercises", {
   id: text("id").primaryKey(),
@@ -178,7 +181,7 @@ export const programTemplateExercises = pgTable("program_template_exercises", {
   intensity: text("intensity"),
   notes: text("notes"),
   sourceName: text("source_name"),
-});
+}).enableRLS();
 
 /**
  * Per-user, per-muscle fatigue. `accumulatedLoad` decays on read (wall-clock,
@@ -195,7 +198,7 @@ export const muscleFatigue = pgTable(
     lastTrainedAt: bigint("last_trained_at", { mode: "number" }),
   },
   (t) => ({ pk: primaryKey({ columns: [t.ownerId, t.muscleId] }) }),
-);
+).enableRLS();
 
 export const routines = pgTable("routines", {
   id: text("id").primaryKey(),
@@ -207,7 +210,7 @@ export const routines = pgTable("routines", {
   category: text("category"),
   // Weekdays (0=Sun … 6=Sat) this routine is scheduled for; null = unscheduled.
   scheduledDays: integer("scheduled_days").array(),
-});
+}).enableRLS();
 
 export const routineExercises = pgTable("routine_exercises", {
   id: text("id").primaryKey(),
@@ -225,7 +228,7 @@ export const routineExercises = pgTable("routine_exercises", {
   // Bar used for plate math (BarType in @rackd/core); only meaningful for
   // barbell exercises. Default "standard" so existing rows behave as today.
   barType: text("bar_type").notNull().default("standard"),
-});
+}).enableRLS();
 
 export const routineSets = pgTable("routine_sets", {
   id: text("id").primaryKey(),
@@ -239,7 +242,7 @@ export const routineSets = pgTable("routine_sets", {
   targetWeight: doublePrecision("target_weight"),
   targetRpe: doublePrecision("target_rpe"),
   tempo: text("tempo"),
-});
+}).enableRLS();
 
 export const sessions = pgTable("sessions", {
   id: text("id").primaryKey(),
@@ -261,7 +264,7 @@ export const sessions = pgTable("sessions", {
   endedAt: bigint("ended_at", { mode: "number" }),
   notes: text("notes"),
   bodyweight: doublePrecision("bodyweight"),
-});
+}).enableRLS();
 
 export const sessionExercises = pgTable("session_exercises", {
   id: text("id").primaryKey(),
@@ -277,7 +280,7 @@ export const sessionExercises = pgTable("session_exercises", {
   restSec: integer("rest_sec").notNull().default(120),
   // Copied from the routine exercise at session start (see startSessionFromRoutine).
   barType: text("bar_type").notNull().default("standard"),
-});
+}).enableRLS();
 
 export const setLogs = pgTable("set_logs", {
   id: text("id").primaryKey(),
@@ -293,7 +296,7 @@ export const setLogs = pgTable("set_logs", {
   completed: boolean("completed").notNull().default(false),
   restTakenSec: integer("rest_taken_sec"),
   isPr: boolean("is_pr").notNull().default(false),
-});
+}).enableRLS();
 
 export const personalRecords = pgTable("personal_records", {
   id: text("id").primaryKey(),
@@ -305,7 +308,7 @@ export const personalRecords = pgTable("personal_records", {
   value: doublePrecision("value").notNull(),
   sessionId: text("session_id").notNull(),
   achievedAt: bigint("achieved_at", { mode: "number" }).notNull(),
-});
+}).enableRLS();
 
 export const bodyMetrics = pgTable("body_metrics", {
   id: text("id").primaryKey(),
@@ -313,14 +316,14 @@ export const bodyMetrics = pgTable("body_metrics", {
   date: bigint("date", { mode: "number" }).notNull(),
   weightKg: doublePrecision("weight_kg").notNull(),
   note: text("note"),
-});
+}).enableRLS();
 
 export const bodyWeightLogs = pgTable("body_weight_logs", {
   id: text("id").primaryKey(),
   ownerId: text("owner_id").notNull(),
   weightKg: doublePrecision("weight_kg").notNull(),
   loggedAt: bigint("logged_at", { mode: "number" }).notNull(),
-});
+}).enableRLS();
 
 export const programs = pgTable("programs", {
   id: text("id").primaryKey(),
@@ -340,7 +343,7 @@ export const programs = pgTable("programs", {
   // the last finished workout — so skipping during a layoff sticks instead of
   // being re-restarted on the next render.
   rotationTouchedAt: bigint("rotation_touched_at", { mode: "number" }),
-});
+}).enableRLS();
 
 export const programDays = pgTable("program_days", {
   id: text("id").primaryKey(),
@@ -355,7 +358,7 @@ export const programDays = pgTable("program_days", {
     onDelete: "set null",
   }),
   weekday: integer("weekday"),
-});
+}).enableRLS();
 
 export const sharedRoutines = pgTable("shared_routines", {
   id: text("id").primaryKey(),
@@ -367,7 +370,7 @@ export const sharedRoutines = pgTable("shared_routines", {
   exercisesJson: text("exercises_json").notNull(),
   exerciseCount: integer("exercise_count").notNull().default(0),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
-});
+}).enableRLS();
 
 export const userProfile = pgTable("user_profiles", {
   id: text("id").primaryKey(),
@@ -382,7 +385,7 @@ export const userProfile = pgTable("user_profiles", {
   defaultRestSec: integer("default_rest_sec").notNull().default(120),
   defaultSets: integer("default_sets").notNull().default(3),
   defaultReps: integer("default_reps").notNull().default(10),
-});
+}).enableRLS();
 
 export const pushSubscriptions = pgTable("push_subscriptions", {
   id: text("id").primaryKey(),
@@ -392,7 +395,7 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
   auth: text("auth").notNull(),
   userAgent: text("user_agent"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
-});
+}).enableRLS();
 
 export const scheduledPushes = pgTable("scheduled_pushes", {
   id: text("id").primaryKey(),
@@ -405,7 +408,7 @@ export const scheduledPushes = pgTable("scheduled_pushes", {
   body: text("body").notNull().default("Time for your next set."),
   status: text("status").notNull().default("pending"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
-});
+}).enableRLS();
 
 /** All tables, for `drizzle(pool, { schema })` relational queries. */
 export const schema = {
